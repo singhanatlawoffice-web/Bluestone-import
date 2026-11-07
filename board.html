@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2a3b96">
+<meta name="robots" content="noindex,nofollow">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<title>จอคู่รถและปลายทาง · Blue Stone</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+<style>
+:root{
+  --bg:#0a0f28; --panel:#141a3c; --panel2:#101634; --line:#263066;
+  --brand:#2a3b96; --accent:#7b5ad0; --accent2:#5a4fd6;
+  --ink:#f2f3fb; --dim:#9aa0cc; --num:'IBM Plex Mono',ui-monospace,monospace;
+  --go:#2fd48a; --wait:#ffc24a; --done:#7fa6ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'IBM Plex Sans Thai','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+  overflow:hidden;-webkit-font-smoothing:antialiased}
+.board{height:100vh;display:flex;flex-direction:column;padding:1.1vw 1.3vw 1vw;gap:.85vw}
+
+
+/* ================= โทนสว่าง ================= */
+body.lt{--bg:#f0f0f8;--panel:#ffffff;--panel2:#f8f8fd;--line:#d7d6e8;
+  --ink:#16183a;--dim:#66668a;--accent:#5a4fd6;
+  --go:#0a7a4e;--wait:#9a5b00;--done:#1e4fd0}
+body.lt .drv{color:#4a4a6e}
+body.lt .when em{color:#2a3b96}
+body.lt .row{box-shadow:0 .08vw .2vw rgba(16,14,70,.05)}
+body.lt .row.hot{border-color:var(--accent);box-shadow:0 0 0 .14vw rgba(90,79,214,.3) inset,0 .3vw .9vw rgba(90,79,214,.18)}
+body.lt .hrow{color:#5d5d7e}
+body.lt .p-go{background:#e6f7ef;color:var(--go);border-color:#9fd9bf}
+body.lt .p-wait{background:#fdf3e0;color:var(--wait);border-color:#e8c99a}
+body.lt .p-done{background:#e8eefc;color:var(--done);border-color:#aec3f2}
+body.lt .brand{background:#efecfd;border-color:#c9c2f0;color:#3b3570}
+body.lt .dest .due{background:#fdf3e0;border-color:#e8c99a}
+body.lt .dest .due i,body.lt .dest .due em{color:var(--wait)}
+body.lt .kpi{box-shadow:0 .08vw .2vw rgba(16,14,70,.05)}
+body.lt .kpi.g b{color:var(--go)} body.lt .kpi.w b{color:var(--wait)} body.lt .kpi.a b{color:var(--accent)}
+
+/* แบบ ข · ตัดเส้นเข้ม อ่านไกล */
+body.lb{--bg:#e9ebf6;--panel:#ffffff;--panel2:#ffffff;--line:#c3cae6;--dim:#4a4a70}
+body.lb .row{border-width:.1vw;border-radius:.7vw}
+body.lb .hrow{background:#2a3b96;color:#fff;border-radius:.6vw;font-weight:600}
+body.lb .no{color:#b3261e}
+body.lb .plate{color:#0b1c57}
+body.lb .pill{color:#fff;border:0}
+body.lb .p-go{background:#0a7a4e} body.lb .p-wait{background:#b07400} body.lb .p-done{background:#1e4fd0}
+body.lb .dest b{color:#0b1c57}
+
+/* แบบ ค · ครีมนวลตา */
+body.lc{--bg:#f4f1ea;--panel:#fffdf8;--panel2:#faf7f0;--line:#e0d9c9;
+  --ink:#2a2436;--dim:#6f6757;--accent:#6a4fbf}
+body.lc .when em{color:#4a3f8a}
+body.lc .brand{background:#f0ebfa;border-color:#d2c6ee;color:#4a3f8a}
+body.lc .top{background:linear-gradient(105deg,#1a1538 0%,#3a3080 48%,#7b5ad0 100%)}
+
+/* ---------- หัวจอ ---------- */
+.top{display:flex;align-items:center;gap:1.1vw;
+  background:linear-gradient(105deg,#0b1c57 0%,#2a3b96 48%,#7b5ad0 100%);
+  border-radius:1vw;padding:.85vw 1.3vw;flex:0 0 auto;color:#fff}
+.mark{width:3.5vw;height:3.5vw;border-radius:.8vw;background:rgba(255,255,255,.16);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3vw;letter-spacing:.04em}
+.ttl b{display:block;font-size:1.7vw;line-height:1.15;letter-spacing:.01em}
+.ttl span{display:block;font-size:.95vw;opacity:.82;margin-top:.15vw}
+.clock{margin-left:auto;display:flex;gap:.8vw;align-items:stretch;text-align:center}
+.clock div{background:rgba(255,255,255,.14);border-radius:.7vw;padding:.45vw 1.1vw;min-width:8vw}
+.clock p{font-size:.78vw;opacity:.78;letter-spacing:.06em}
+.clock b{font-family:var(--num);font-size:1.9vw;line-height:1.1;display:block}
+
+/* ---------- ตารางคู่รถ ---------- */
+.grid{flex:1 1 auto;display:flex;flex-direction:column;gap:.5vw;min-height:0}
+.hrow,.row{display:grid;grid-template-columns:4.2vw 15.5vw 15.5vw 11vw 1fr 11vw;align-items:center;gap:.7vw}
+.hrow{padding:.45vw 1.1vw;font-size:.92vw;color:var(--dim);letter-spacing:.04em;flex:0 0 auto}
+.hrow span{text-align:center}
+.hrow span:nth-child(5){text-align:left}
+.vp{flex:1 1 auto;min-height:0;position:relative;overflow:hidden}
+.track{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;gap:.5vw;
+  will-change:transform;transition:transform .7s cubic-bezier(.33,0,.2,1)}
+.row{background:var(--panel);border:.1vw solid var(--line);border-radius:.85vw;padding:.7vw 1.1vw;
+  flex:0 0 auto;overflow:hidden}
+.row:nth-child(even){background:var(--panel2)}
+.row.hot{border-color:var(--accent);box-shadow:0 0 0 .14vw rgba(123,90,208,.45) inset}
+
+.no{font-family:var(--num);font-size:2.3vw;font-weight:700;text-align:center;color:var(--accent)}
+.truck{display:flex;flex-direction:column;gap:.12vw}
+.flag{font-size:.78vw;color:var(--dim);letter-spacing:.05em}
+.plate{font-family:var(--num);font-size:1.62vw;font-weight:700;letter-spacing:.02em;line-height:1.08}
+.drv{font-size:.88vw;color:#cfd4f2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.when{display:flex;align-items:baseline;gap:.35vw;margin-top:.12vw;white-space:nowrap}
+.when i{font-style:normal;font-size:.78vw;color:var(--dim)}
+.when em{font-style:normal;font-family:var(--num);font-size:1vw;font-weight:600;color:#d9d6f6}
+.wt{text-align:center}
+.wt b{font-family:var(--num);font-size:1.78vw;font-weight:700;display:block;line-height:1.1}
+.wt span{display:block;font-size:.8vw;color:var(--dim)}
+.brand{display:inline-block;margin-top:.22vw;font-size:.92vw;font-weight:600;color:#e7e3fb;
+  background:rgba(123,90,208,.22);border:.1vw solid rgba(123,90,208,.5);border-radius:.4vw;padding:.08vw .55vw}
+.dest b{display:block;font-size:1.38vw;font-weight:600;line-height:1.18;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dest span{display:block;font-size:.9vw;color:var(--dim);margin-top:.1vw;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dest .due{display:inline-flex;align-items:baseline;gap:.4vw;margin-top:.22vw;width:auto;
+  background:rgba(255,194,74,.12);border:.1vw solid rgba(255,194,74,.38);border-radius:.4vw;padding:.1vw .6vw}
+.dest .due i{font-style:normal;font-size:.78vw;color:var(--wait)}
+.dest .due em{font-style:normal;font-family:var(--num);font-size:1.02vw;font-weight:700;color:var(--wait)}
+.st{text-align:center}
+.pill{display:inline-block;font-size:1.05vw;font-weight:700;border-radius:999px;padding:.35vw 1vw;white-space:nowrap}
+.p-go{background:rgba(47,212,138,.16);color:var(--go);border:.1vw solid rgba(47,212,138,.42)}
+.p-wait{background:rgba(255,194,74,.14);color:var(--wait);border:.1vw solid rgba(255,194,74,.4)}
+.p-done{background:rgba(127,166,255,.14);color:var(--done);border:.1vw solid rgba(127,166,255,.4)}
+.eta{display:block;margin-top:.3vw;line-height:1.25}
+.eta i{display:block;font-style:normal;font-size:.8vw;color:var(--dim)}
+.eta em{display:block;font-style:normal;font-family:var(--num);font-size:1vw;font-weight:600;color:var(--ink)}
+
+/* ---------- แถบสรุปล่าง ---------- */
+.foot{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:.8vw}
+.kpi{background:var(--panel);border:.1vw solid var(--line);border-radius:.85vw;padding:.6vw 1vw}
+.kpi p{font-size:.85vw;color:var(--dim);letter-spacing:.03em}
+.kpi b{font-family:var(--num);font-size:1.8vw;font-weight:700;display:block;line-height:1.2}
+.kpi.g b{color:var(--go)} .kpi.a b{color:var(--accent)} .kpi.w b{color:var(--wait)}
+.pager{font-size:.88vw;opacity:.8;margin-left:.6vw;padding-left:.6vw;border-left:.1vw solid rgba(255,255,255,.3)}
+</style>
+
+
+</head>
+<body class="lt lb">
+<div class="board">
+  <div class="top">
+    <span class="mark">BS</span>
+    <div class="ttl"><b>คู่รถและปลายทางประจำวัน</b>
+      <span>BLUE STONE TRADING CO., LTD. · ด่านเชียงของ — พะเยา<i class="pager" id="pg" style="font-style:normal"></i></span></div>
+    <div class="clock">
+      <div><p>วันที่ DATE</p><b id="d">—</b></div>
+      <div><p>เวลา TIME</p><b id="t">—</b></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="hrow">
+      <span>คู่ที่</span><span>รถฝั่งลาว · ออกจากโรงงาน</span><span>รถฝั่งไทย · รับปูน</span>
+      <span>น้ำหนักและชนิดปูน</span><span>ปลายทางลูกค้า · กำหนดส่ง</span><span>สถานะ · รูปจากคนขับ</span>
+    </div>
+    <div class="vp"><div class="track" id="rows"></div></div>
+  </div>
+
+  <div class="foot">
+    <div class="kpi"><p>คู่รถวันนี้</p><b id="k1">—</b></div>
+    <div class="kpi g"><p>ส่งถึงแล้ว (มีรูปยืนยัน)</p><b id="k2">—</b></div>
+    <div class="kpi w"><p>กำลังเดินทาง</p><b id="k3">—</b></div>
+    <div class="kpi"><p>น้ำหนักรวมฝั่งไทย (ตัน)</p><b id="k4">—</b></div>
+    <div class="kpi a"><p>น้ำหนักรวมฝั่งลาว (ตัน)</p><b id="k5">—</b></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var CFG = window.BS_CONFIG || {};
+  var PER = 5;          /* แสดงพร้อมกันกี่แถว */
+  var STEP = 6000;      /* เลื่อนขึ้นหนึ่งแถวทุกกี่มิลลิวินาที */
+  var RELOAD = 60000;   /* ดึงข้อมูลใหม่ทุกกี่มิลลิวินาที */
+
+  var DATA = [];
+  var idx = 0, track, vp, stepPx = 0, cl = null;
+
+  var TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+    });
+  }
+  function num(v) { var n = parseFloat(String(v === null || v === undefined ? 0 : v).replace(/,/g, '')); return isNaN(n) ? 0 : n; }
+  function t2(n) { return num(n).toFixed(2); }
+
+  /* '2026-11-06T08:15' -> '6 พ.ย. 08:15' */
+  function dtTH(v, withTime) {
+    if (!v) { return '—'; }
+    var p = String(v).split('T'), d = p[0].split('-');
+    if (d.length < 3) { return String(v); }
+    var out = parseInt(d[2], 10) + ' ' + TH_M[parseInt(d[1], 10) - 1];
+    if (withTime !== false && p[1]) { out += ' ' + p[1].slice(0, 5); }
+    return out;
+  }
+  function stampTH(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) { return String(iso); }
+    return d.getDate() + ' ' + TH_M[d.getMonth()] + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  }
+
+  function clock() {
+    var n = new Date();
+    el('d').textContent = n.getDate() + ' ' + TH_M[n.getMonth()] + ' ' + ((n.getFullYear() + 543) % 100);
+    el('t').textContent = p2(n.getHours()) + ':' + p2(n.getMinutes());
+  }
+
+  var ST = {
+    go:   { cls:'p-go',   txt:'กำลังเดินทาง' },
+    wait: { cls:'p-wait', txt:'รอดำเนินการ' },
+    done: { cls:'p-done', txt:'ส่งถึงแล้ว' }
+  };
+  /* มีรูปขั้นส่งมอบเข้าระบบแล้ว = ส่งถึงแล้ว · รับปูนแล้วแต่ยังไม่มีรูป = กำลังเดินทาง */
+  function statusOf(r) {
+    if (r.photoAt) { return 'done'; }
+    if (r.take) { return 'go'; }
+    return 'wait';
+  }
+  function subOf(r, k) {
+    if (k === 'done') {
+      return (r.photoFlag ? '<i style="color:#b3261e;font-weight:700">⚑ ไม่ได้ถ่ายผ่านระบบ</i>' : '<i>รูปเข้าระบบ</i>') +
+        '<em>' + esc(stampTH(r.photoAt)) + '</em>';
+    }
+    if (k === 'go')   { return '<i>รอรูปยืนยันจากคนขับ</i>'; }
+    return '<i>ยังไม่ได้รับปูน</i>';
+  }
+
+  function rowHTML(r) {
+    var k = statusOf(r);
+    var s = ST[k];
+    return '<div class="row">' +
+      '<div class="no">' + r.no + '</div>' +
+      '<div class="truck"><span class="flag">ลาว' + (r.laoCo ? ' · ' + esc(r.laoCo) : '') + '</span>' +
+        '<span class="plate">' + esc(r.lao || '—') + '</span>' +
+        '<span class="when"><i>ออกโรงงาน</i><em>' + esc(r.out ? dtTH(r.out) : '—') + '</em></span></div>' +
+      '<div class="truck"><span class="flag">ไทย' + (r.drv ? ' · ' + esc(r.drv) : '') + '</span>' +
+        '<span class="plate">' + esc(r.thai || '—') + '</span>' +
+        '<span class="when"><i>รับปูน</i><em>' + esc(r.take ? dtTH(r.take) : 'ยังไม่รับ') + '</em></span></div>' +
+      '<div class="wt"><b>' + t2(r.tons) + '</b><span>ตัน · ' + esc(r.type) + '</span>' +
+        (r.brand ? '<span class="brand">' + esc(r.brand) + '</span>' : '') + '</div>' +
+      '<div class="dest"><b>' + esc(r.dest || '—') + '</b><span>' + esc(r.addr || '') + '</span>' +
+        '<span class="due"><i>กำหนดส่ง</i><em>' + esc(r.due ? dtTH(r.due) : '—') + '</em></span></div>' +
+      '<div class="st"><span class="pill ' + s.cls + '">' + s.txt + '</span>' +
+        '<span class="eta">' + subOf(r, k) + '</span></div>' +
+      '</div>';
+  }
+
+  function measure() {
+    if (!track.children.length) { return; }
+    var gap = window.innerWidth * 0.005;
+    var h = (vp.clientHeight - gap * (PER - 1)) / PER;
+    stepPx = h + gap;
+    Array.prototype.forEach.call(track.children, function (n) { n.style.height = h + 'px'; });
+  }
+  function mark() {
+    Array.prototype.forEach.call(track.children, function (n, i) {
+      if (i === idx) { n.classList.add('hot'); } else { n.classList.remove('hot'); }
+    });
+  }
+  function build() {
+    var list = DATA.slice();
+    if (DATA.length > PER) { list = list.concat(DATA.slice(0, PER)); }
+    track.innerHTML = list.map(rowHTML).join('');
+    if (idx >= DATA.length) { idx = 0; }
+    track.style.transition = 'none';
+    track.style.transform = 'translateY(' + (-idx * stepPx) + 'px)';
+    measure();
+    track.style.transform = 'translateY(' + (-idx * stepPx) + 'px)';
+    void track.offsetHeight;
+    track.style.transition = 'transform .7s cubic-bezier(.33,0,.2,1)';
+    mark();
+  }
+  function slide() {
+    if (DATA.length <= PER) { return; }
+    idx += 1;
+    track.style.transform = 'translateY(' + (-idx * stepPx) + 'px)';
+    mark();
+    if (idx >= DATA.length) {
+      window.setTimeout(function () {
+        track.style.transition = 'none';
+        idx = 0;
+        track.style.transform = 'translateY(0)';
+        mark();
+        void track.offsetHeight;
+        track.style.transition = 'transform .7s cubic-bezier(.33,0,.2,1)';
+      }, 760);
+    }
+  }
+
+  function kpis() {
+    var done = 0, go = 0, tThai = 0, tLao = 0;
+    DATA.forEach(function (r) {
+      var k = statusOf(r);
+      if (k === 'done') { done += 1; } else if (k === 'go') { go += 1; }
+      tThai += num(r.tons); tLao += num(r.laoTons);
+    });
+    el('k1').textContent = DATA.length + ' คู่';
+    el('k2').textContent = done + ' คู่';
+    el('k3').textContent = go + ' คู่';
+    el('k4').textContent = t2(tThai);
+    el('k5').textContent = t2(tLao);
+  }
+
+  function note(txt) { el('pg').textContent = txt; }
+
+  function empty(txt) {
+    DATA = [];
+    track.innerHTML = '<div class="row" style="height:auto;justify-content:center">' +
+      '<div class="dest" style="grid-column:1/-1;text-align:center"><b>' + esc(txt) + '</b></div></div>';
+    kpis();
+  }
+
+  /* ---------- ดึงข้อมูลจริง ---------- */
+  function load() {
+    if (!cl) { return; }
+    Promise.all([
+      cl.from('entries').select('*').eq('kind', 'import').order('entry_date', { ascending: false }).limit(60),
+      cl.from('customers').select('*')
+    ]).then(function (res) {
+      var err = null;
+      res.forEach(function (x) { if (x && x.error && !err) { err = x.error; } });
+      if (err) { note('ดึงข้อมูลไม่สำเร็จ: ' + err.message); return; }
+
+      var rows = res[0].data || [];
+      if (!rows.length) { empty('ยังไม่มีรายการปูนเข้าในระบบ'); note('ยังไม่มีข้อมูล'); return; }
+
+      /* วันนี้ก่อน ถ้าวันนี้ยังไม่มี ใช้วันล่าสุดที่มีรายการ */
+      var n = new Date();
+      var today = n.getFullYear() + '-' + p2(n.getMonth() + 1) + '-' + p2(n.getDate());
+      var use = rows.filter(function (r) { return r.entry_date === today; });
+      if (!use.length) { use = rows.filter(function (r) { return r.entry_date === rows[0].entry_date; }); }
+
+      var cus = {};
+      (res[1].data || []).forEach(function (c) { cus[c.id] = c; });
+
+      var list = [], jobs = [];
+      use.forEach(function (e) {
+        var tks = e.trucks || [];
+        if (typeof tks === 'string') { try { tks = JSON.parse(tks); } catch (e2) { tks = []; } }
+        tks.forEach(function (t) {
+          var c = t.destId ? cus[t.destId] : null;
+          var addr = '';
+          if (c) {
+            var ap = [];
+            if (c.hno) { ap.push(c.hno); }
+            if (c.moo) { ap.push('หมู่ ' + c.moo); }
+            if (c.tambon) { ap.push('ต.' + c.tambon); }
+            if (c.amphoe) { ap.push('อ.' + c.amphoe); }
+            if (c.province) { ap.push('จ.' + c.province); }
+            addr = ap.join(' ');
+          }
+          if (t.job) { jobs.push(t.job); }
+          list.push({
+            no: list.length + 1,
+            job: t.job || '',
+            lao: (t.lao || {}).plate || '', laoCo: (t.lao || {}).company || '',
+            laoTons: (t.lao || {}).tons || 0,
+            thai: (t.thai || {}).plate || '',
+            drv: ((t.thai || {}).driver || '') + ((t.thai || {}).phone ? ' ' + t.thai.phone : ''),
+            out: t.tLoad || '', take: t.tSend || '',
+            tons: (t.thai || {}).tons || 0,
+            type: t.type === 'bag' ? 'ปูนถุง' : 'ปูนผง',
+            brand: t.brand || '',
+            dest: c ? c.name : (t.dest || ''),
+            addr: addr,
+            due: t.tDeliver || t.tSend || '',
+            photoAt: '', photoFlag: false
+          });
+        });
+      });
+
+      if (!list.length) { empty('วันนี้ยังไม่มีคู่รถที่บันทึกไว้'); note('ยังไม่มีคู่รถ'); return; }
+
+      function paint() {
+        DATA = list;
+        build(); kpis();
+        note(DATA.length + ' คู่ · ' + (DATA.length > PER ? 'เลื่อนขึ้นอัตโนมัติ · ' : '') +
+          'อัปเดตล่าสุด ' + p2(new Date().getHours()) + ':' + p2(new Date().getMinutes()));
+      }
+
+      if (!jobs.length) { paint(); return; }
+      cl.from('trip_photos').select('job,kind,at,source').eq('kind', 'd').in('job', jobs)
+        .then(function (ph) {
+          if (ph && !ph.error) {
+            var first = {}, cam = {};
+            (ph.data || []).forEach(function (p) {
+              if (!first[p.job] || p.at < first[p.job]) { first[p.job] = p.at; }
+              if (p.source !== 'gallery') { cam[p.job] = 1; }
+            });
+            list.forEach(function (r) {
+              if (r.job && first[r.job]) { r.photoAt = first[r.job]; r.photoFlag = !cam[r.job]; }
+            });
+          }
+          paint();
+        }, paint);
+    }, function (e) { note('ดึงข้อมูลไม่สำเร็จ: ' + e.message); });
+  }
+
+  /* ---------- เริ่มทำงาน ---------- */
+  vp = document.querySelector('.vp');
+  track = el('rows');
+  clock();
+  setInterval(clock, 20000);
+  window.addEventListener('resize', function () {
+    measure();
+    track.style.transform = 'translateY(' + (-idx * stepPx) + 'px)';
+  });
+
+  if (!CFG.url || !CFG.key) {
+    empty('ยังไม่ได้ตั้งค่าการเชื่อมต่อฐานข้อมูลในไฟล์ config.js');
+    note('ยังไม่ได้ตั้งค่า');
+    return;
+  }
+  if (!window.supabase || !window.supabase.createClient) {
+    empty('โหลดไลบรารีฐานข้อมูลไม่สำเร็จ · ตรวจอินเทอร์เน็ตของจอนี้');
+    note('ออฟไลน์');
+    return;
+  }
+  cl = window.supabase.createClient(CFG.url, CFG.key);
+  cl.auth.getSession().then(function (r) {
+    if (!(r && r.data && r.data.session)) {
+      location.replace('login.html?next=board.html');
+      return;
+    }
+    load();
+    setInterval(load, RELOAD);
+    setInterval(slide, STEP);
+  }, function () {
+    empty('ตรวจสอบสิทธิ์ไม่สำเร็จ');
+    note('เข้าสู่ระบบใหม่ที่หน้า login');
+  });
+})();
+</script>
+</body>
+</html>

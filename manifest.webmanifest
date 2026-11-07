@@ -1,0 +1,24 @@
+{
+  "name": "Blue Stone Import · ระบบคุมการตัดเงินและบันทึกปูนเข้า",
+  "short_name": "BS Import",
+  "description": "คุมเครดิตโรงงานฝั่งลาวและผู้ซื้อ บันทึกคู่รถ น้ำหนัก ค่าชิปปิ้ง และปลายทางลูกค้า",
+  "lang": "th",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f0f0f8",
+  "theme_color": "#2a3b96",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "บันทึกปูนเข้า", "url": "./index.html#entry" },
+    { "name": "คุมการตัดเงิน", "url": "./index.html#ledger" },
+    { "name": "ค่าชิปปิ้ง", "url": "./index.html#shipping" },
+    { "name": "จอคู่รถและปลายทาง", "url": "./board.html" }
+  ]
+}

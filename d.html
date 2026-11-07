@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2a3b96">
+<meta name="robots" content="noindex,nofollow">
+<title>ส่งรูปเข้าระบบ · Blue Stone</title>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@600;700&display=swap">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --page:#f0f0f8;--card:#fff;--ink:#16183a;--head:#0b1c57;--muted:#5d5d7e;
+  --brand:#2a3b96;--accent:#5a4fd6;--tint:#e4e4fb;--tint-weak:#f3f3fd;--line:#d7d6e8;
+  --ok:#0a7a4e;--ok-bg:#e6f7ef;--ok-bd:#9fd9bf;
+  --warn:#9a5b00;--warn-bg:#fdf3e0;--warn-bd:#e8c99a;
+  --bad:#b3261e;--bad-bg:#fdeceb;--bad-bd:#f0b8b4;
+  --num:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --page:#0b0b1c;--card:#14152b;--ink:#e9e8f6;--head:#dcdcf8;--muted:#a0a0c0;
+  --brand:#4451c2;--accent:#8e85ee;--tint:#1f2048;--tint-weak:#171833;--line:#282a4a;
+  --ok:#5fd3a6;--ok-bg:#10291f;--ok-bd:#2e6b4e;--warn:#e0a33f;--warn-bg:#2a2008;--warn-bd:#6b5420;
+  --bad:#f08a82;--bad-bg:#2e1513;--bad-bd:#74322c;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'IBM Plex Sans Thai','Segoe UI',system-ui,sans-serif;background:var(--page);color:var(--ink);
+  line-height:1.6;-webkit-font-smoothing:antialiased}
+.hide{display:none !important}
+
+.hd{background:linear-gradient(150deg,#0b1c57 0%,#2a3b96 48%,#7b5ad0 100%);color:#fff;padding:16px 16px 18px}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+.hd .wrap{padding:0}
+.hd b{display:block;font-size:18px;line-height:1.3}
+.hd small{display:block;font-size:12.5px;opacity:.86;margin-top:1px}
+.job{display:inline-block;font-family:var(--num);font-size:13px;font-weight:600;
+  background:rgba(255,255,255,.18);border-radius:7px;padding:3px 10px;margin-top:8px}
+main{padding:14px 0 40px}
+
+.chk{display:flex;align-items:flex-start;gap:11px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:11px 13px;margin-bottom:9px}
+.chk .ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:15px;font-weight:700}
+.i-ok{background:var(--ok-bg);color:var(--ok)}
+.i-no{background:var(--bad-bg);color:var(--bad)}
+.i-wt{background:var(--warn-bg);color:var(--warn)}
+.chk b{display:block;font-size:13.5px}
+.chk span{display:block;font-size:12px;color:var(--muted);line-height:1.5;margin-top:1px}
+.alert{border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.55;border:1px solid;margin-bottom:10px}
+.alert b{display:block;font-size:14px;margin-bottom:2px}
+.a-r{background:var(--bad-bg);border-color:var(--bad-bd);color:var(--bad)}
+.a-y{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
+.a-g{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok)}
+.btn{display:block;width:100%;font:inherit;font-size:16px;font-weight:700;padding:15px;border-radius:12px;
+  border:0;background:var(--brand);color:#fff;cursor:pointer;min-height:54px;margin-top:11px}
+.btn.g{background:var(--ok)}
+.btn.o{background:var(--card);color:var(--brand);border:1.5px solid var(--line)}
+.btn[disabled]{opacity:.45}
+.note{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.6}
+
+/* ---------- กล้อง ---------- */
+#camScreen{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column}
+#stage{flex:1 1 auto;position:relative;overflow:hidden;background:#000}
+#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#ovl{position:absolute;left:10px;right:10px;bottom:12px;background:rgba(8,10,28,.62);color:#fff;
+  border-radius:10px;padding:9px 11px;font-size:11px;line-height:1.55}
+#ovl .big{display:block;font-family:var(--num);font-size:13.5px;font-weight:700}
+#ovl i{font-style:normal;opacity:.72}
+.camtop{position:absolute;left:0;right:0;top:0;padding:11px 13px;display:flex;align-items:center;gap:8px;
+  color:#fff;background:linear-gradient(180deg,rgba(0,0,0,.62),rgba(0,0,0,0));font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:#2fd48a}
+.dot.off{background:#ffc24a}
+.cnt{margin-left:auto;font-family:var(--num);font-size:13px;background:rgba(0,0,0,.45);border-radius:999px;padding:3px 10px}
+.rect{position:absolute;top:46px;left:50%;transform:translateX(-50%);background:rgba(229,72,77,.92);color:#fff;
+  font-family:var(--num);font-size:13px;font-weight:700;border-radius:999px;padding:4px 12px;display:flex;align-items:center;gap:7px}
+.rect i{width:8px;height:8px;border-radius:50%;background:#fff;display:block;animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.25}}
+.modes{position:absolute;left:0;right:0;bottom:96px;display:flex;justify-content:center;gap:8px}
+.modes button{font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.75);background:transparent;
+  border:0;padding:5px 14px;border-radius:999px;cursor:pointer}
+.modes button.on{background:#fff;color:#16183a}
+.ctr{flex:0 0 auto;height:96px;background:#000;display:flex;align-items:center;justify-content:center;gap:26px;padding:0 18px}
+.sh{width:64px;height:64px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.4);cursor:pointer}
+.sh.rec{background:#e5484d}
+.side{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.18);color:#fff;border:0;
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+
+/* ---------- ตรวจก่อนส่ง ---------- */
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:4px}
+.th{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:1px solid var(--line);background:#000}
+.th img,.th video{width:100%;height:100%;object-fit:cover;display:block}
+.th em{position:absolute;left:0;right:0;bottom:0;background:rgba(8,10,28,.68);color:#fff;font-style:normal;
+  font-size:9px;padding:3px 4px;line-height:1.3}
+.th .x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);
+  color:#fff;border:0;font:inherit;font-size:14px;cursor:pointer}
+.th .flag{position:absolute;top:4px;left:4px;background:#b3261e;color:#fff;font-size:8.5px;font-weight:700;
+  border-radius:5px;padding:2px 5px}
+label.fl{display:block;font-size:13px;font-weight:600;color:var(--head);margin:14px 0 5px}
+input[type=text],textarea{width:100%;font:inherit;font-size:15px;padding:11px 12px;border-radius:10px;
+  border:1px solid var(--line);background:var(--tint-weak);color:var(--ink)}
+textarea{min-height:70px;resize:vertical}
+.bar{height:6px;border-radius:999px;background:var(--tint);overflow:hidden;margin-top:12px;display:none}
+.bar.on{display:block}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+
+.done{text-align:center;padding:30px 10px}
+.tick{width:84px;height:84px;border-radius:50%;background:var(--ok-bg);color:var(--ok);font-size:42px;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.done b{font-size:18px;color:var(--head)}
+.ts{display:inline-block;font-family:var(--num);font-size:16px;font-weight:700;color:var(--brand);
+  background:var(--tint);border-radius:10px;padding:8px 15px;margin-top:11px}
+.done p{font-size:13px;color:var(--muted);margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="hd"><div class="wrap">
+  <b id="h1">ส่งรูปเข้าระบบ</b>
+  <small>บริษัท บลูสโตนเทรดดิ้ง จำกัด</small>
+  <span class="job" id="job">—</span>
+</div></div>
+
+<main class="wrap">
+
+  <!-- ขั้นที่ 1 · ตรวจสิทธิ์ -->
+  <section id="gate">
+    <div class="chk"><span class="ic i-wt" id="icCam">…</span>
+      <div><b>กล้อง</b><span id="txCam">ยังไม่ได้ขออนุญาต</span></div></div>
+    <div class="chk"><span class="ic i-wt" id="icGps">…</span>
+      <div><b>ตำแหน่ง GPS</b><span id="txGps">ยังไม่ได้เปิด · จำเป็นต้องเปิดก่อนถ่าย</span></div></div>
+    <div class="chk hide" id="rowPlace"><span class="ic i-wt">◉</span>
+      <div><b>สถานที่ตอนนี้</b><span id="txPlace">กำลังค้นหา...</span></div></div>
+
+    <div class="alert a-r" id="gateMsg"><b>กรุณาเปิดตำแหน่งก่อน</b>
+      รูปต้องมีพิกัดกำกับเพื่อยืนยันว่าถ่ายที่หน้างานจริง</div>
+
+    <button type="button" class="btn" id="bAsk">เปิดตำแหน่งและกล้อง</button>
+    <button type="button" class="btn g hide" id="bStart">เริ่มถ่าย</button>
+    <button type="button" class="btn o hide" id="bFile">เลือกไฟล์จากเครื่องแทน</button>
+    <input type="file" id="fIn" accept="image/*,video/*" multiple hidden>
+    <p class="note" id="gateNote">กด “อนุญาต” ทั้งกล้องและตำแหน่งเมื่อมือถือถาม</p>
+  </section>
+
+  <!-- ขั้นที่ 2 · ตรวจก่อนส่ง -->
+  <section id="review" class="hide">
+    <div class="alert a-g" id="revMsg"><b>ตรวจก่อนส่ง</b>ลบรูปที่ไม่ชัดแล้วถ่ายใหม่ได้</div>
+    <div class="thumbs" id="thumbs"></div>
+    <button type="button" class="btn o" id="bMore">ถ่ายเพิ่ม</button>
+    <label class="fl" for="plate">ทะเบียนรถ (ถ้าจำได้ ไม่ใส่ก็ได้)</label>
+    <input type="text" id="plate" placeholder="เช่น 82-5566 ชร" maxlength="30">
+    <label class="fl" for="note">หมายเหตุถึงออฟฟิศ (ไม่บังคับ)</label>
+    <textarea id="note" placeholder="เช่น ลูกค้าให้ลงที่หลังโกดัง" maxlength="400"></textarea>
+    <button type="button" class="btn" id="bSend">ส่งเข้าระบบ</button>
+    <div class="bar" id="bar"><i id="barI"></i></div>
+    <div class="alert hide" id="sendMsg"></div>
+  </section>
+
+  <!-- ขั้นที่ 3 · เสร็จ -->
+  <section id="done" class="hide">
+    <div class="done">
+      <div class="tick">✓</div>
+      <b>ส่งเข้าระบบแล้ว ขอบคุณครับ</b>
+      <div class="ts" id="doneTs">—</div>
+      <p>ออฟฟิศเห็นรูปของคุณแล้ว<br>ไม่ต้องโทรแจ้งซ้ำ</p>
+      <button type="button" class="btn o" id="bAgain" style="max-width:220px;margin:16px auto 0">ถ่ายเพิ่มอีก</button>
+    </div>
+  </section>
+</main>
+
+<!-- กล้องเต็มจอ -->
+<div id="camScreen" class="hide">
+  <div id="stage">
+    <video id="vid" playsinline muted autoplay></video>
+    <div class="camtop"><span class="dot" id="camDot"></span><b id="camGps">กำลังจับพิกัด…</b>
+      <span class="cnt" id="camCnt">0 / 3</span></div>
+    <div class="rect hide" id="rect"><i></i><span id="rectT">00:00 / 00:20</span></div>
+    <div id="ovl"></div>
+    <div class="modes">
+      <button type="button" id="mPhoto" class="on">รูป</button>
+      <button type="button" id="mVideo">วิดีโอ</button>
+    </div>
+  </div>
+  <div class="ctr">
+    <button type="button" class="side" id="bFlip">สลับ</button>
+    <div class="sh" id="shutter" role="button" aria-label="ถ่าย"></div>
+    <button type="button" class="side" id="bDoneCam">เสร็จ</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var CFG = window.BS_CONFIG || {};
+  var STEPS = {
+    p: { t: 'รูปตอนรับปูนที่โรงงาน',  h: 'ถ่ายรถขณะรับปูน ให้เห็นทะเบียนชัด' },
+    b: { t: 'รูปใบชั่งและใบขนส่ง',    h: 'ถ่ายให้เห็นตัวเลขน้ำหนักและวันที่ชัด' },
+    d: { t: 'รูปตอนส่งปูนให้ลูกค้า',  h: 'ถ่ายตอนลงปูนที่หน้างานลูกค้า' }
+  };
+  var MAX_PHOTO = 3, MAX_VIDEO_MS = 20000;
+
+  function el(id) { return document.getElementById(id); }
+  function qs(k) {
+    var m = new RegExp('[?&]' + k + '=([^&]*)').exec(window.location.search);
+    return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : '';
+  }
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  var TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  function stampTH(d) {
+    return d.getDate() + ' ' + TH_M[d.getMonth()] + ' ' + (d.getFullYear() + 543) +
+      ' · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ' น.';
+  }
+  function rnd(n) {
+    var cs = 'abcdefghijklmnopqrstuvwxyz0123456789', s = '';
+    for (var i = 0; i < n; i++) { s += cs.charAt(Math.floor(Math.random() * cs.length)); }
+    return s;
+  }
+  function show(sec) {
+    ['gate', 'review', 'done'].forEach(function (k) {
+      el(k).className = (k === sec) ? '' : 'hide';
+    });
+  }
+
+  var JOB = qs('j'), KIND = qs('k'), TOK = qs('t');
+  if (!JOB || !STEPS[KIND] || !TOK) {
+    el('job').textContent = 'ลิงก์ไม่ถูกต้อง';
+    el('gate').className = 'hide';
+    document.querySelector('main').innerHTML =
+      '<div class="alert a-r"><b>ลิงก์นี้ใช้ไม่ได้</b>กรุณาเปิดจากลิงก์ในข้อความที่ออฟฟิศส่งให้โดยตรง</div>';
+    return;
+  }
+  el('job').textContent = 'ใบงาน ' + JOB;
+  el('h1').textContent = STEPS[KIND].t;
+  document.title = STEPS[KIND].t + ' · ' + JOB;
+
+  /* ================= ตำแหน่ง ================= */
+  var GPS = { ok: false, lat: 0, lng: 0, acc: 0, place: '', watch: null };
+
+  function gpsLine() {
+    if (!GPS.ok) { return 'ไม่มีพิกัด'; }
+    return GPS.lat.toFixed(6) + ', ' + GPS.lng.toFixed(6);
+  }
+  function paintGate() {
+    el('icGps').className = 'ic ' + (GPS.ok ? 'i-ok' : 'i-no');
+    el('icGps').textContent = GPS.ok ? '✓' : '!';
+    el('txGps').textContent = GPS.ok
+      ? gpsLine() + ' · แม่นยำ ±' + Math.round(GPS.acc) + ' ม.'
+      : 'ยังไม่ได้เปิด · จำเป็นต้องเปิดก่อนถ่าย';
+    if (GPS.place) { el('rowPlace').className = 'chk'; el('txPlace').textContent = GPS.place; }
+  }
+  function askGps() {
+    if (!navigator.geolocation) { gpsFail('มือถือเครื่องนี้ไม่รองรับการระบุตำแหน่ง'); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      GPS.ok = true; GPS.lat = pos.coords.latitude; GPS.lng = pos.coords.longitude;
+      GPS.acc = pos.coords.accuracy || 0;
+      paintGate(); lookupPlace();
+      GPS.watch = navigator.geolocation.watchPosition(function (p) {
+        GPS.lat = p.coords.latitude; GPS.lng = p.coords.longitude; GPS.acc = p.coords.accuracy || 0;
+        paintCam();
+      }, function () {}, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
+    }, function (e) {
+      gpsFail(e && e.code === 1 ? 'ถูกปฏิเสธ · เปิดสิทธิ์ตำแหน่งในตั้งค่าเบราว์เซอร์' : 'จับพิกัดไม่ได้ในจุดนี้');
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+  function gpsFail(msg) {
+    GPS.ok = false;
+    el('icGps').className = 'ic i-no'; el('icGps').textContent = '!';
+    el('txGps').textContent = msg;
+  }
+  /* ชื่อตำบลอำเภอ เป็นของแถม ถ้าเรียกไม่ได้ก็ข้ามไป ไม่ขัดจังหวะงาน */
+  function lookupPlace() {
+    try {
+      var u = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=th&lat=' +
+        GPS.lat + '&lon=' + GPS.lng;
+      var ctl = window.AbortController ? new AbortController() : null;
+      if (ctl) { setTimeout(function () { ctl.abort(); }, 5000); }
+      fetch(u, ctl ? { signal: ctl.signal } : undefined).then(function (r) { return r.json(); })
+        .then(function (j) {
+          var a = j && j.address;
+          if (!a) { return; }
+          var parts = [];
+          if (a.suburb || a.village || a.town) { parts.push('ต.' + (a.suburb || a.village || a.town)); }
+          if (a.county || a.city_district) { parts.push('อ.' + (a.county || a.city_district)); }
+          if (a.province || a.state) { parts.push('จ.' + (a.province || a.state)); }
+          GPS.place = parts.join(' ');
+          paintGate(); paintCam();
+        }).catch(function () { /* ไม่มีชื่อสถานที่ก็ใช้พิกัดอย่างเดียว */ });
+    } catch (e) { /* ข้าม */ }
+  }
+
+  /* ================= กล้อง ================= */
+  var CAM = { stream: null, facing: 'environment', mode: 'photo', rec: null, raf: 0, t0: 0, recTimer: 0 };
+  var shots = [];   /* { blob, url, media, src, at, lat, lng, acc, place, flag, dur } */
+
+  function paintCam() {
+    el('camCnt').textContent = shots.filter(function (s) { return s.media === 'photo'; }).length + ' / ' + MAX_PHOTO;
+    el('camDot').className = 'dot' + (GPS.ok ? '' : ' off');
+    el('camGps').textContent = GPS.ok
+      ? 'GPS ล็อกแล้ว ±' + Math.round(GPS.acc) + ' ม.'
+      : 'ยังจับพิกัดไม่ได้ · รูปจะไม่มีพิกัด';
+    el('ovl').innerHTML = ovlHTML();
+  }
+  function ovlHTML() {
+    var now = new Date();
+    return '<span class="big">' + stampTH(now) + '</span>' +
+      '<i>พิกัด</i> ' + gpsLine() +
+      (GPS.ok ? ' (±' + Math.round(GPS.acc) + ' ม.)' : '') + '<br>' +
+      (GPS.place ? '<i>สถานที่</i> ' + GPS.place + '<br>' : '') +
+      '<i>ใบงาน</i> ' + JOB + ' · ' + STEPS[KIND].t;
+  }
+
+  function openCam() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return Promise.reject(new Error('เบราว์เซอร์นี้เปิดกล้องในหน้าเว็บไม่ได้'));
+    }
+    return navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: CAM.facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    }).then(function (st) {
+      CAM.stream = st;
+      var v = el('vid');
+      v.srcObject = st;
+      return v.play().catch(function () {});
+    });
+  }
+  function closeCam() {
+    if (CAM.stream) { CAM.stream.getTracks().forEach(function (t) { t.stop(); }); CAM.stream = null; }
+  }
+
+  /* วาดลายประทับลงบนภาพจริง ไม่ใช่แค่โชว์บนจอ */
+  function drawStamp(ctx, w, h) {
+    var pad = Math.round(w * 0.022);
+    var fs = Math.max(13, Math.round(w * 0.026));
+    var lines = [
+      stampTH(new Date()),
+      'พิกัด ' + gpsLine() + (GPS.ok ? ' (±' + Math.round(GPS.acc) + ' ม.)' : ''),
+      GPS.place ? ('สถานที่ ' + GPS.place) : '',
+      'ใบงาน ' + JOB + ' · ' + STEPS[KIND].t,
+      'BLUE STONE TRADING CO., LTD.'
+    ].filter(function (x) { return !!x; });
+    var lh = Math.round(fs * 1.45);
+    var boxH = lh * lines.length + pad;
+    ctx.fillStyle = 'rgba(8,10,28,.62)';
+    ctx.fillRect(pad, h - boxH - pad, w - pad * 2, boxH);
+    ctx.textBaseline = 'top';
+    lines.forEach(function (t, i) {
+      ctx.font = (i === 0 ? '700 ' : '500 ') + (i === 0 ? Math.round(fs * 1.15) : fs) +
+        "px 'IBM Plex Sans Thai', sans-serif";
+      ctx.fillStyle = i === 0 ? '#ffffff' : 'rgba(255,255,255,.9)';
+      ctx.fillText(t, pad * 1.7, h - boxH - pad + pad * 0.5 + i * lh);
+    });
+  }
+
+  function snap() {
+    if (shots.filter(function (s) { return s.media === 'photo'; }).length >= MAX_PHOTO) { return; }
+    var v = el('vid');
+    var w = v.videoWidth || 1280, h = v.videoHeight || 720;
+    var sc = Math.min(1, 1600 / Math.max(w, h));
+    var cv = document.createElement('canvas');
+    cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+    var cx = cv.getContext('2d');
+    cx.drawImage(v, 0, 0, cv.width, cv.height);
+    drawStamp(cx, cv.width, cv.height);
+    cv.toBlob(function (b) {
+      if (!b) { return; }
+      shots.push(mkShot(b, 'photo', 'camera', ''));
+      paintCam();
+      if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+    }, 'image/jpeg', 0.86);
+  }
+
+  function mkShot(blob, media, src, flag, dur) {
+    return { blob: blob, url: URL.createObjectURL(blob), media: media, src: src,
+             at: new Date(), lat: GPS.ok ? GPS.lat : null, lng: GPS.ok ? GPS.lng : null,
+             acc: GPS.ok ? GPS.acc : null, place: GPS.place || '', flag: flag || '', dur: dur || 0 };
+  }
+
+  function pickMime() {
+    var want = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    for (var i = 0; i < want.length; i++) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(want[i])) { return want[i]; }
+    }
+    return '';
+  }
+
+  function startVideo() {
+    if (!window.MediaRecorder) { alert('มือถือเครื่องนี้อัดวิดีโอในหน้าเว็บไม่ได้ ให้ถ่ายเป็นรูปแทน'); return; }
+    var v = el('vid');
+    var w = v.videoWidth || 1280, h = v.videoHeight || 720;
+    var sc = Math.min(1, 960 / Math.max(w, h));
+    var cv = document.createElement('canvas');
+    cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+    var cx = cv.getContext('2d');
+    function frame() {
+      cx.drawImage(v, 0, 0, cv.width, cv.height);
+      drawStamp(cx, cv.width, cv.height);
+      CAM.raf = requestAnimationFrame(frame);
+    }
+    frame();
+    var st = cv.captureStream ? cv.captureStream(24) : null;
+    if (!st) { cancelAnimationFrame(CAM.raf); alert('เครื่องนี้อัดวิดีโอไม่ได้ ให้ถ่ายเป็นรูปแทน'); return; }
+    var mime = pickMime();
+    var rec;
+    try { rec = mime ? new MediaRecorder(st, { mimeType: mime }) : new MediaRecorder(st); }
+    catch (e) { cancelAnimationFrame(CAM.raf); alert('อัดวิดีโอไม่ได้: ' + e.message); return; }
+    CAM.rec = rec;
+    var chunks = [];
+    rec.ondataavailable = function (e) { if (e.data && e.data.size) { chunks.push(e.data); } };
+    rec.onstop = function () {
+      cancelAnimationFrame(CAM.raf);
+      var dur = Math.max(1, Math.round((Date.now() - CAM.t0) / 1000));
+      var blob = new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+      if (blob.size) { shots.push(mkShot(blob, 'video', 'camera', '', dur)); }
+      el('rect').className = 'rect hide';
+      el('shutter').className = 'sh';
+      paintCam();
+    };
+    CAM.t0 = Date.now();
+    rec.start();
+    el('shutter').className = 'sh rec';
+    el('rect').className = 'rect';
+    CAM.recTimer = setInterval(function () {
+      var ms = Date.now() - CAM.t0;
+      el('rectT').textContent = '00:' + p2(Math.floor(ms / 1000)) + ' / 00:20';
+      if (ms >= MAX_VIDEO_MS) { stopVideo(); }
+    }, 200);
+  }
+  function stopVideo() {
+    clearInterval(CAM.recTimer);
+    if (CAM.rec && CAM.rec.state !== 'inactive') { CAM.rec.stop(); }
+    CAM.rec = null;
+  }
+
+  /* ================= ทางสำรอง · เลือกไฟล์ ================= */
+  /* อ่าน EXIF เท่าที่จำเป็น เพื่อบอกว่ารูปถ่ายเมื่อไหร่และจากกล้องรุ่นไหน
+     หมายเหตุ: EXIF ถูกลบหรือแก้ได้ จึงเป็นเพียงข้อบ่งชี้ ไม่ใช่หลักฐานเด็ดขาด */
+  function readExif(file) {
+    return new Promise(function (done) {
+      var fr = new FileReader();
+      fr.onload = function () {
+        try { done(parseExif(new DataView(fr.result))); } catch (e) { done({}); }
+      };
+      fr.onerror = function () { done({}); };
+      fr.readAsArrayBuffer(file.slice(0, 196608));
+    });
+  }
+  function parseExif(dv) {
+    var out = {};
+    if (dv.byteLength < 4 || dv.getUint16(0) !== 0xFFD8) { return out; }
+    var off = 2;
+    while (off < dv.byteLength - 4) {
+      if (dv.getUint8(off) !== 0xFF) { break; }
+      var mk = dv.getUint8(off + 1), len = dv.getUint16(off + 2);
+      if (mk === 0xE1) {
+        if (dv.getUint32(off + 4) === 0x45786966) { return tiff(dv, off + 10); }
+      }
+      off += 2 + len;
+    }
+    return out;
+  }
+  function tiff(dv, start) {
+    var out = {};
+    var little = dv.getUint16(start) === 0x4949;
+    function u16(o) { return dv.getUint16(o, little); }
+    function u32(o) { return dv.getUint32(o, little); }
+    if (u16(start + 2) !== 0x002A) { return out; }
+    function str(o, n) {
+      var s = '';
+      for (var i = 0; i < n - 1; i++) { s += String.fromCharCode(dv.getUint8(o + i)); }
+      return s.replace(/\0+$/, '');
+    }
+    function walk(dirOff) {
+      var n = u16(dirOff);
+      for (var i = 0; i < n; i++) {
+        var e = dirOff + 2 + i * 12;
+        var tag = u16(e), type = u16(e + 2), cnt = u32(e + 4);
+        var size = (type === 2 ? 1 : type === 3 ? 2 : 4) * cnt;
+        var vo = size > 4 ? start + u32(e + 8) : e + 8;
+        if (tag === 0x010F) { out.make = str(vo, cnt); }
+        if (tag === 0x0110) { out.model = str(vo, cnt); }
+        if (tag === 0x9003) { out.taken = str(vo, cnt); }
+        if (tag === 0x0132 && !out.taken) { out.taken = str(vo, cnt); }
+        if (tag === 0x8769) { walk(start + u32(e + 8)); }
+      }
+    }
+    walk(start + u32(start + 4));
+    return out;
+  }
+  function exifAge(taken) {
+    /* '2026:11:06 13:28:00' */
+    var m = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(taken || '');
+    if (!m) { return null; }
+    var d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    return { date: d, mins: Math.round((Date.now() - d.getTime()) / 60000) };
+  }
+
+  function addFiles(list) {
+    var jobs = [];
+    Array.prototype.forEach.call(list, function (f) {
+      if (shots.length >= MAX_PHOTO + 1) { return; }
+      var isVid = (f.type || '').indexOf('video/') === 0;
+      if (!isVid && (f.type || '').indexOf('image/') !== 0) { return; }
+      jobs.push(
+        (isVid ? Promise.resolve({}) : readExif(f)).then(function (ex) {
+          var bits = ['ไม่ได้ถ่ายผ่านระบบ'];
+          var ag = exifAge(ex.taken);
+          if (ag) {
+            bits.push('ถ่ายเมื่อ ' + stampTH(ag.date) +
+              (ag.mins > 30 ? ' (เก่ากว่า ' + (ag.mins >= 1440 ? Math.round(ag.mins / 1440) + ' วัน' : ag.mins + ' นาที') + ')' : ''));
+          } else {
+            bits.push('ไม่มีข้อมูลเวลาถ่ายในไฟล์');
+          }
+          if (ex.make || ex.model) { bits.push('กล้อง ' + ((ex.make || '') + ' ' + (ex.model || '')).trim()); }
+          else if (!isVid) { bits.push('ไม่มีข้อมูลกล้อง อาจเป็นภาพแคปหน้าจอหรือรูปที่ส่งต่อกันมา'); }
+          var s = mkShot(f, isVid ? 'video' : 'photo', 'gallery', bits.join(' · '));
+          s.at = ag ? ag.date : new Date();
+          s.lat = null; s.lng = null; s.acc = null; s.place = '';
+          shots.push(s);
+        })
+      );
+    });
+    Promise.all(jobs).then(function () { toReview(); });
+  }
+
+  /* ================= หน้าตรวจก่อนส่ง ================= */
+  function toReview() {
+    closeCam();
+    el('camScreen').className = 'hide';
+    show('review');
+    var flagged = shots.filter(function (s) { return s.flag; }).length;
+    el('revMsg').className = 'alert ' + (flagged ? 'a-r' : 'a-g');
+    el('revMsg').innerHTML = flagged
+      ? '<b>มี ' + flagged + ' ไฟล์ที่ไม่ได้ถ่ายผ่านระบบ</b>ส่งได้ แต่ออฟฟิศจะเห็นธงแดงกำกับไว้ ถ้าถ่ายสดได้ควรถ่ายใหม่' +
+        '<ul style="margin:7px 0 0 17px;font-size:12px;line-height:1.5">' +
+        shots.filter(function (s) { return s.flag; })
+          .map(function (s) { return '<li>' + s.flag + '</li>'; }).join('') + '</ul>'
+      : '<b>ตรวจก่อนส่ง</b>ทุกไฟล์ถ่ายผ่านระบบและมีพิกัดกำกับแล้ว';
+    el('thumbs').innerHTML = shots.map(function (s, i) {
+      var body = s.media === 'video'
+        ? '<video src="' + s.url + '" muted playsinline></video>'
+        : '<img src="' + s.url + '" alt="ไฟล์ที่ ' + (i + 1) + '">';
+      return '<div class="th">' + body +
+        (s.flag ? '<span class="flag">ไม่ได้ถ่ายสด</span>' : '') +
+        '<button type="button" class="x" data-x="' + i + '" aria-label="ลบ">×</button>' +
+        '<em>' + (s.media === 'video' ? 'วิดีโอ ' + s.dur + ' วิ · ' : '') +
+        p2(s.at.getHours()) + ':' + p2(s.at.getMinutes()) +
+        (s.lat ? ' · ' + s.lat.toFixed(4) + ',' + s.lng.toFixed(4) : ' · ไม่มีพิกัด') + '</em></div>';
+    }).join('');
+    Array.prototype.forEach.call(el('thumbs').querySelectorAll('[data-x]'), function (b) {
+      b.addEventListener('click', function () {
+        var i = parseInt(b.getAttribute('data-x'), 10);
+        try { URL.revokeObjectURL(shots[i].url); } catch (e) {}
+        shots.splice(i, 1);
+        if (!shots.length) { show('gate'); return; }
+        toReview();
+      });
+    });
+    el('bSend').disabled = !shots.length;
+    el('bSend').textContent = 'ส่ง ' + shots.length + ' ไฟล์เข้าระบบ';
+  }
+
+  /* ================= ส่งขึ้นฐานข้อมูล ================= */
+  var sending = false;
+  function sendAll() {
+    if (sending || !shots.length) { return; }
+    if (!CFG.url || !CFG.key || !window.supabase || !window.supabase.createClient) {
+      el('sendMsg').className = 'alert a-r';
+      el('sendMsg').innerHTML = '<b>ระบบยังไม่พร้อม</b>ยังเชื่อมฐานข้อมูลไม่ได้ กรุณาแจ้งออฟฟิศ';
+      return;
+    }
+    sending = true;
+    el('bSend').disabled = true; el('bSend').textContent = 'กำลังส่ง...';
+    el('bar').className = 'bar on';
+    var cl = window.supabase.createClient(CFG.url, CFG.key);
+    var plate = el('plate').value.trim(), note = el('note').value.trim();
+    var total = shots.length, ok = 0, firstErr = null;
+
+    function step(i) {
+      if (i >= total) { finish(); return; }
+      var s = shots[i];
+      var ext = s.media === 'video'
+        ? ((s.blob.type || '').indexOf('mp4') >= 0 ? 'mp4' : 'webm')
+        : ((s.blob.type || '').indexOf('png') >= 0 ? 'png' : 'jpg');
+      var path = JOB + '/' + KIND + '/' + Date.now() + '-' + rnd(10) + '.' + ext;
+      cl.storage.from('trip-photos').upload(path, s.blob, {
+        contentType: s.blob.type || (s.media === 'video' ? 'video/webm' : 'image/jpeg'), upsert: false
+      }).then(function (up) {
+        if (up.error) { throw up.error; }
+        /* ถังเป็นแบบปิด ไม่เก็บลิงก์ตรง · ฝั่งออฟฟิศจะขอลิงก์ชั่วคราวจาก path เอง */
+        return cl.from('trip_photos').insert({
+          job: JOB, kind: KIND, token: TOK, path: path, url: null,
+          media: s.media, source: s.src, flag: s.flag || null,
+          lat: s.lat, lng: s.lng, acc: s.acc ? Math.round(s.acc) : null,
+          place: s.place || null, duration: s.dur || null,
+          taken_at: s.at ? s.at.toISOString() : null,
+          plate: plate || null, note: note || null
+        });
+      }).then(function (ins) {
+        if (ins && ins.error) { throw ins.error; }
+        ok += 1;
+      }).catch(function (e) { if (!firstErr) { firstErr = e; } })
+        .then(function () {
+          el('barI').style.width = Math.round(((i + 1) / total) * 100) + '%';
+          step(i + 1);
+        });
+    }
+    function finish() {
+      sending = false;
+      el('bar').className = 'bar';
+      if (!ok) {
+        el('bSend').disabled = false; el('bSend').textContent = 'ลองส่งอีกครั้ง';
+        el('sendMsg').className = 'alert a-r';
+        el('sendMsg').innerHTML = '<b>ส่งไม่สำเร็จ</b>' +
+          (firstErr && firstErr.message ? firstErr.message : 'สัญญาณอาจไม่ดี') +
+          '<br>ไฟล์ยังอยู่ในหน้านี้ ' +
+          (navigator.onLine ? 'กดลองส่งอีกครั้งได้' : 'ตอนนี้ไม่มีสัญญาณ ระบบจะลองส่งให้เองเมื่อสัญญาณกลับมา');
+        armRetry();
+        return;
+      }
+      if (ok < total) {
+        el('sendMsg').className = 'alert a-y';
+        el('sendMsg').innerHTML = '<b>ส่งได้ ' + ok + ' จาก ' + total + ' ไฟล์</b>' +
+          (navigator.onLine ? 'ที่เหลือส่งไม่ผ่าน ลองใหม่อีกครั้ง'
+                            : 'ที่เหลือรอสัญญาณ ระบบจะลองส่งให้เองเมื่อสัญญาณกลับมา');
+        el('bSend').disabled = false; el('bSend').textContent = 'ส่งที่เหลืออีกครั้ง';
+        armRetry();
+        return;
+      }
+      disarmRetry();
+      shots.forEach(function (s) { try { URL.revokeObjectURL(s.url); } catch (e) {} });
+      shots = [];
+      el('doneTs').textContent = stampTH(new Date());
+      show('done');
+    }
+    step(0);
+  }
+
+  /* ลองส่งเองเมื่อสัญญาณกลับมา ไม่ต้องให้คนขับคอยกด */
+  var retryArmed = false;
+  function armRetry() {
+    if (retryArmed || !shots.length) { return; }
+    retryArmed = true;
+    window.addEventListener('online', onBack);
+    el('sendMsg').innerHTML += '<br><small>ระบบจะลองส่งให้เองเมื่อสัญญาณกลับมา ไม่ต้องปิดหน้านี้</small>';
+  }
+  function disarmRetry() {
+    if (!retryArmed) { return; }
+    retryArmed = false;
+    window.removeEventListener('online', onBack);
+  }
+  function onBack() {
+    if (!shots.length || sending) { return; }
+    el('sendMsg').className = 'alert a-y';
+    el('sendMsg').innerHTML = '<b>สัญญาณกลับมาแล้ว</b>กำลังลองส่งอีกครั้ง...';
+    sendAll();
+  }
+
+  /* ================= ปุ่ม ================= */
+  el('bAsk').addEventListener('click', function () {
+    el('bAsk').disabled = true; el('bAsk').textContent = 'กำลังขออนุญาต...';
+    askGps();
+    openCam().then(function () {
+      el('icCam').className = 'ic i-ok'; el('icCam').textContent = '✓';
+      el('txCam').textContent = 'อนุญาตแล้ว พร้อมถ่าย';
+      el('gateMsg').className = 'alert a-y';
+      el('gateMsg').innerHTML = '<b>ถ่ายได้ ' + MAX_PHOTO + ' รูป และวิดีโอ 20 วินาที</b>' +
+        STEPS[KIND].h;
+      el('bAsk').className = 'btn hide';
+      el('bStart').className = 'btn g';
+      closeCam();                      /* ปิดไว้ก่อน เปิดอีกทีตอนกดเริ่มถ่าย */
+    }).catch(function (e) {
+      el('icCam').className = 'ic i-no'; el('icCam').textContent = '!';
+      el('txCam').textContent = e.message || 'เปิดกล้องในหน้าเว็บไม่ได้';
+      el('gateMsg').className = 'alert a-r';
+      el('gateMsg').innerHTML = '<b>เปิดกล้องในหน้าเว็บไม่ได้</b>' +
+        'ถ้ากดลิงก์มาจากในแอป LINE ให้กดเมนูมุมขวาบนแล้วเลือก “เปิดในเบราว์เซอร์” หรือ “เปิดใน Safari” แล้วลองใหม่';
+      el('bAsk').disabled = false; el('bAsk').textContent = 'ลองเปิดกล้องอีกครั้ง';
+      el('bFile').className = 'btn o';
+      el('gateNote').textContent = 'ถ้ายังไม่ได้จริง ๆ ให้เลือกไฟล์จากเครื่องแทน ' +
+        'ระบบจะติดธงแดงให้ออฟฟิศเห็นว่าไฟล์นี้ไม่ได้ถ่ายผ่านระบบ';
+    });
+  });
+
+  el('bStart').addEventListener('click', function () {
+    openCam().then(function () {
+      el('camScreen').className = '';
+      paintCam();
+      setInterval(function () { if (!el('camScreen').className) { el('ovl').innerHTML = ovlHTML(); } }, 10000);
+    }).catch(function (e) { alert('เปิดกล้องไม่ได้: ' + e.message); });
+  });
+
+  el('bFile').addEventListener('click', function () { el('fIn').click(); });
+  el('fIn').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+
+  el('shutter').addEventListener('click', function () {
+    if (CAM.mode === 'photo') { snap(); return; }
+    if (CAM.rec) { stopVideo(); } else { startVideo(); }
+  });
+  el('mPhoto').addEventListener('click', function () {
+    if (CAM.rec) { return; }
+    CAM.mode = 'photo'; el('mPhoto').className = 'on'; el('mVideo').className = '';
+  });
+  el('mVideo').addEventListener('click', function () {
+    if (shots.filter(function (s) { return s.media === 'video'; }).length) {
+      alert('ถ่ายวิดีโอได้ 1 คลิปต่อหนึ่งครั้ง ลบของเดิมก่อนถ้าจะถ่ายใหม่'); return;
+    }
+    CAM.mode = 'video'; el('mVideo').className = 'on'; el('mPhoto').className = '';
+  });
+  el('bFlip').addEventListener('click', function () {
+    if (CAM.rec) { return; }
+    CAM.facing = (CAM.facing === 'environment') ? 'user' : 'environment';
+    closeCam(); openCam().catch(function () {});
+  });
+  el('bDoneCam').addEventListener('click', function () {
+    if (CAM.rec) { stopVideo(); }
+    if (!shots.length) { closeCam(); el('camScreen').className = 'hide'; show('gate'); return; }
+    toReview();
+  });
+  el('bMore').addEventListener('click', function () {
+    openCam().then(function () { el('camScreen').className = ''; paintCam(); })
+      .catch(function () { el('fIn').click(); });
+  });
+  el('bSend').addEventListener('click', sendAll);
+  el('bAgain').addEventListener('click', function () {
+    el('sendMsg').className = 'alert hide';
+    el('bSend').disabled = false;
+    show('gate');
+    el('bAsk').className = 'btn hide'; el('bStart').className = 'btn g';
+  });
+
+  paintGate();
+})();
+</script>
+</body>
+</html>

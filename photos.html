@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2a3b96">
+<meta name="robots" content="noindex,nofollow">
+<title>รูปจากคนขับ · Blue Stone</title>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --page:#f0f0f8;--card:#fff;--ink:#16183a;--head:#0b1c57;--muted:#5d5d7e;
+  --brand:#2a3b96;--accent:#5a4fd6;--tint:#e4e4fb;--tint-weak:#f3f3fd;--line:#d7d6e8;--sunken:#e8e8f4;
+  --ok:#0a7a4e;--ok-bg:#e6f7ef;--ok-bd:#9fd9bf;
+  --warn:#9a5b00;--warn-bg:#fdf3e0;--warn-bd:#e8c99a;
+  --bad:#b3261e;--bad-bg:#fdeceb;--bad-bd:#f0b8b4;
+  --num:'IBM Plex Mono',ui-monospace,monospace;--r:12px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --page:#0b0b1c;--card:#14152b;--ink:#e9e8f6;--head:#dcdcf8;--muted:#a0a0c0;
+  --brand:#4451c2;--accent:#8e85ee;--tint:#1f2048;--tint-weak:#171833;--line:#282a4a;--sunken:#0e0f22;
+  --ok:#5fd3a6;--ok-bg:#10291f;--ok-bd:#2e6b4e;--warn:#e0a33f;--warn-bg:#2a2008;--warn-bd:#6b5420;
+  --bad:#f08a82;--bad-bg:#2e1513;--bad-bd:#74322c;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Thai','Segoe UI',system-ui,sans-serif;background:var(--page);color:var(--ink);
+  line-height:1.6;-webkit-font-smoothing:antialiased}
+.hd{background:linear-gradient(150deg,#0b1c57 0%,#2a3b96 48%,#7b5ad0 100%);color:#fff;padding:16px 0 18px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+.hd b{display:block;font-size:19px}
+.hd small{display:block;font-size:12.5px;opacity:.85;margin-top:1px}
+.hd .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hd .links{margin-left:auto;display:flex;gap:8px}
+.hd a{color:#fff;text-decoration:none;font-size:13px;font-weight:600;
+  background:rgba(255,255,255,.18);border-radius:8px;padding:7px 13px}
+main{padding:16px 0 60px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:12px 14px;margin-bottom:14px}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--head);margin-bottom:4px}
+input[type=text],input[type=date],select{font:inherit;font-size:14px;padding:9px 11px;border-radius:9px;
+  border:1px solid var(--line);background:var(--tint-weak);color:var(--ink)}
+button{font:inherit;font-size:14px;font-weight:600;padding:9px 15px;border-radius:9px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);cursor:pointer}
+button.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.note{font-size:12.5px;color:var(--muted)}
+.job{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.job-h{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line);
+  background:var(--tint-weak)}
+.job-h b{font-family:var(--num);font-size:16px;color:var(--head)}
+.pill{font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;border:1px solid}
+.p-ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-bd)}
+.p-wa{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-bd)}
+.p-no{background:var(--bad-bg);color:var(--bad);border-color:var(--bad-bd)}
+.steps{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.job-b{padding:12px 14px}
+.grp{margin-bottom:14px}
+.grp:last-child{margin-bottom:0}
+.grp h3{font-size:13.5px;color:var(--head);margin-bottom:7px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.cell{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--sunken);position:relative}
+.cell img,.cell video{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#000;cursor:zoom-in}
+.cell .meta{padding:7px 9px;font-size:11px;color:var(--muted);line-height:1.5}
+.cell .meta b{display:block;font-family:var(--num);font-size:12px;color:var(--ink)}
+.cell .flag{position:absolute;top:6px;left:6px;background:var(--bad);color:#fff;font-size:9.5px;font-weight:700;
+  border-radius:5px;padding:2px 6px}
+.cell a{color:var(--accent);font-size:11px}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:var(--r);padding:40px 20px;text-align:center;color:var(--muted)}
+.msg{border-radius:10px;padding:11px 13px;font-size:13.5px;border:1px solid;margin-bottom:12px}
+.m-r{background:var(--bad-bg);border-color:var(--bad-bd);color:var(--bad)}
+.m-w{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
+#lb{position:fixed;inset:0;z-index:60;background:rgba(6,8,22,.9);display:none;align-items:center;justify-content:center;padding:18px}
+#lb.on{display:flex}
+#lb img,#lb video{max-width:100%;max-height:86vh;border-radius:10px}
+#lb .x{position:absolute;top:14px;right:16px;background:rgba(255,255,255,.2);color:#fff;border:0;
+  width:42px;height:42px;border-radius:50%;font-size:20px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="hd"><div class="wrap row">
+  <div><b>รูปจากพนักงานขับรถ</b><small>บริษัท บลูสโตนเทรดดิ้ง จำกัด</small></div>
+  <div class="links"><a href="index.html">หน้าระบบ</a><a href="board.html">จอคู่รถ</a></div>
+</div></div>
+
+<main class="wrap">
+  <div class="bar">
+    <div><label for="q">ค้นหาใบงาน / ทะเบียน</label>
+      <input type="text" id="q" placeholder="เช่น BT-0001 หรือ 82-5566" style="min-width:190px"></div>
+    <div><label for="from">ตั้งแต่วันที่</label><input type="date" id="from"></div>
+    <div><label for="to">ถึงวันที่</label><input type="date" id="to"></div>
+    <div><label for="kind">ขั้นตอน</label>
+      <select id="kind">
+        <option value="">ทุกขั้นตอน</option>
+        <option value="p">รับปูนที่โรงงาน</option>
+        <option value="b">ใบชั่งและใบขนส่ง</option>
+        <option value="d">ส่งปูนให้ลูกค้า</option>
+      </select></div>
+    <div><button type="button" class="pri" id="go">ค้นหา</button></div>
+    <div><button type="button" id="today">วันนี้</button></div>
+    <p class="note" id="sum" style="width:100%;margin-top:2px">กำลังโหลด...</p>
+  </div>
+  <div id="msg"></div>
+  <div id="list"></div>
+</main>
+
+<div id="lb"><button type="button" class="x" id="lbx" aria-label="ปิด">×</button><div id="lbbody"></div></div>
+
+<script>
+(function () {
+  'use strict';
+  var CFG = window.BS_CONFIG || {};
+  var KINDS = { p: 'รับปูนที่โรงงาน', b: 'ใบชั่งและใบขนส่ง', d: 'ส่งปูนให้ลูกค้า' };
+  var TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var cl = null;
+
+  function el(id) { return document.getElementById(id); }
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+    });
+  }
+  function stamp(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) { return String(iso); }
+    return d.getDate() + ' ' + TH_M[d.getMonth()] + ' ' + ((d.getFullYear() + 543) % 100) +
+      ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  }
+  function iso(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+  function say(cls, html) { el('msg').innerHTML = html ? '<div class="msg ' + cls + '">' + html + '</div>' : ''; }
+
+  var n = new Date();
+  var wk = new Date(n.getTime() - 6 * 86400000);
+  el('from').value = iso(wk);
+  el('to').value = iso(n);
+
+  /* ---------- กล่องดูรูปใหญ่ ---------- */
+  function openBox(html) { el('lbbody').innerHTML = html; el('lb').className = 'on'; }
+  el('lbx').addEventListener('click', function () { el('lb').className = ''; el('lbbody').innerHTML = ''; });
+  el('lb').addEventListener('click', function (e) {
+    if (e.target === el('lb')) { el('lb').className = ''; el('lbbody').innerHTML = ''; }
+  });
+
+  /* ---------- โหลดรายการ ---------- */
+  function load() {
+    if (!cl) { return; }
+    el('sum').textContent = 'กำลังโหลด...';
+    say('', '');
+    var from = el('from').value, to = el('to').value, kind = el('kind').value, q = el('q').value.trim();
+
+    var sel = cl.from('trip_photos').select('*').order('at', { ascending: false }).limit(400);
+    if (from) { sel = sel.gte('at', from + 'T00:00:00'); }
+    if (to) { sel = sel.lte('at', to + 'T23:59:59'); }
+    if (kind) { sel = sel.eq('kind', kind); }
+
+    sel.then(function (res) {
+      if (res.error) {
+        el('sum').textContent = '';
+        say('m-r', '<b>ดึงข้อมูลไม่สำเร็จ</b><br>' + esc(res.error.message));
+        return;
+      }
+      var rows = res.data || [];
+      if (q) {
+        rows = rows.filter(function (r) {
+          return (r.job || '').indexOf(q) >= 0 || (r.plate || '').indexOf(q) >= 0;
+        });
+      }
+      if (!rows.length) {
+        el('sum').textContent = 'ไม่พบรูปในช่วงที่เลือก';
+        el('list').innerHTML = '<div class="empty">ยังไม่มีรูปที่ตรงกับเงื่อนไข<br>' +
+          '<span class="note">คนขับจะส่งรูปเข้ามาจากลิงก์ในข้อความใบงาน</span></div>';
+        return;
+      }
+      el('sum').textContent = 'พบ ' + rows.length + ' ไฟล์ · เรียงจากใหม่ไปเก่า · ลิงก์เปิดรูปมีอายุ 1 ชั่วโมง';
+      signAndDraw(rows);
+    }, function (e) {
+      el('sum').textContent = '';
+      say('m-r', '<b>ติดต่อฐานข้อมูลไม่ได้</b><br>' + esc(e.message));
+    });
+  }
+
+  /* ถังเก็บรูปเป็นแบบปิด ต้องขอลิงก์ชั่วคราวทีละชุด */
+  function signAndDraw(rows) {
+    var paths = rows.map(function (r) { return r.path; }).filter(function (x) { return !!x; });
+    cl.storage.from('trip-photos').createSignedUrls(paths, 3600).then(function (sg) {
+      var map = {};
+      if (sg && !sg.error) {
+        (sg.data || []).forEach(function (x) { if (x && x.path) { map[x.path] = x.signedUrl; } });
+      }
+      draw(rows, map, sg && sg.error ? sg.error.message : '');
+    }, function (e) { draw(rows, {}, e.message); });
+  }
+
+  function draw(rows, urls, err) {
+    if (err) {
+      say('m-w', '<b>เปิดรูปบางไฟล์ไม่ได้</b><br>' + esc(err) +
+        '<br>ข้อมูลเวลาและพิกัดยังแสดงได้ตามปกติ');
+    }
+    var jobs = {}, order = [];
+    rows.forEach(function (r) {
+      if (!jobs[r.job]) { jobs[r.job] = []; order.push(r.job); }
+      jobs[r.job].push(r);
+    });
+
+    el('list').innerHTML = order.map(function (job) {
+      var list = jobs[job];
+      var has = { p: 0, b: 0, d: 0 };
+      var flagged = 0, plate = '', last = '';
+      list.forEach(function (r) {
+        has[r.kind] = (has[r.kind] || 0) + 1;
+        if (r.flag) { flagged += 1; }
+        if (!plate && r.plate) { plate = r.plate; }
+        if (!last || r.at > last) { last = r.at; }
+      });
+      var steps = ['p', 'b', 'd'].map(function (k) {
+        return '<span class="pill ' + (has[k] ? 'p-ok' : 'p-no') + '">' +
+          KINDS[k] + ' ' + (has[k] ? has[k] + ' ไฟล์' : 'ยังไม่มี') + '</span>';
+      }).join('');
+
+      var body = ['p', 'b', 'd'].filter(function (k) { return has[k]; }).map(function (k) {
+        var cells = list.filter(function (r) { return r.kind === k; }).map(function (r) {
+          var u = urls[r.path] || '';
+          var isVid = r.media === 'video';
+          var media = u
+            ? (isVid
+              ? '<video src="' + esc(u) + '" muted playsinline preload="metadata" data-full="' + esc(u) + '" data-v="1"></video>'
+              : '<img src="' + esc(u) + '" alt="รูปใบงาน ' + esc(r.job) + '" loading="lazy" data-full="' + esc(u) + '">')
+            : '<div style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">เปิดไฟล์ไม่ได้</div>';
+          var geo = (r.lat && r.lng)
+            ? '<a href="https://maps.google.com/?q=' + r.lat + ',' + r.lng + '" target="_blank" rel="noopener">' +
+              r.lat.toFixed(5) + ', ' + r.lng.toFixed(5) + (r.acc ? ' (±' + r.acc + ' ม.)' : '') + '</a>'
+            : '<span style="color:var(--bad)">ไม่มีพิกัด</span>';
+          return '<div class="cell">' + media +
+            (r.flag ? '<span class="flag">ไม่ได้ถ่ายสด</span>' : '') +
+            '<div class="meta"><b>' + esc(stamp(r.at)) + '</b>' + geo +
+            (r.place ? '<br>' + esc(r.place) : '') +
+            (isVid && r.duration ? '<br>วิดีโอ ' + r.duration + ' วินาที' : '') +
+            (r.note ? '<br>หมายเหตุ: ' + esc(r.note) : '') +
+            (r.flag ? '<br><span style="color:var(--bad)">' + esc(r.flag) + '</span>' : '') +
+            '</div></div>';
+        }).join('');
+        return '<div class="grp"><h3>' + KINDS[k] + '</h3><div class="grid">' + cells + '</div></div>';
+      }).join('');
+
+      return '<section class="job"><div class="job-h">' +
+        '<b>' + esc(job) + '</b>' +
+        (plate ? '<span class="note">ทะเบียน ' + esc(plate) + '</span>' : '') +
+        '<span class="note">ล่าสุด ' + esc(stamp(last)) + '</span>' +
+        (flagged ? '<span class="pill p-no">มี ' + flagged + ' ไฟล์ไม่ได้ถ่ายผ่านระบบ</span>' : '') +
+        '<div class="steps">' + steps + '</div></div>' +
+        '<div class="job-b">' + body + '</div></section>';
+    }).join('');
+
+    Array.prototype.forEach.call(el('list').querySelectorAll('[data-full]'), function (m) {
+      m.addEventListener('click', function () {
+        var u = m.getAttribute('data-full');
+        openBox(m.getAttribute('data-v')
+          ? '<video src="' + esc(u) + '" controls autoplay playsinline></video>'
+          : '<img src="' + esc(u) + '" alt="รูปขยาย">');
+      });
+    });
+  }
+
+  el('go').addEventListener('click', load);
+  el('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { load(); } });
+  el('today').addEventListener('click', function () {
+    var d = new Date();
+    el('from').value = iso(d); el('to').value = iso(d); load();
+  });
+
+  /* ---------- เริ่มทำงาน ---------- */
+  if (!CFG.url || !CFG.key) {
+    el('sum').textContent = '';
+    say('m-r', '<b>ยังไม่ได้ตั้งค่าฐานข้อมูล</b><br>ใส่คีย์ในไฟล์ config.js ก่อน');
+    return;
+  }
+  if (!window.supabase || !window.supabase.createClient) {
+    el('sum').textContent = '';
+    say('m-r', '<b>โหลดไลบรารีไม่สำเร็จ</b><br>ตรวจอินเทอร์เน็ตแล้วรีเฟรช');
+    return;
+  }
+  cl = window.supabase.createClient(CFG.url, CFG.key);
+  cl.auth.getSession().then(function (r) {
+    if (!(r && r.data && r.data.session)) { location.replace('login.html?next=photos.html'); return; }
+    load();
+  }, function () {
+    el('sum').textContent = '';
+    say('m-r', '<b>ตรวจสอบสิทธิ์ไม่สำเร็จ</b><br>เข้าสู่ระบบใหม่ที่หน้า login');
+  });
+})();
+</script>
+</body>
+</html>
