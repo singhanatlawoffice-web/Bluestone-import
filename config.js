@@ -1,21 +1,20 @@
 /* ------------------------------------------------------------------
-   ค่าเชื่อมต่อ Supabase ของ Blue Stone Import
+   ค่าเชื่อมต่อของ Blue Stone Import
 
-   ใส่ค่าจาก Supabase > Project Settings > API
-     url : Project URL        เช่น https://xxxxxxxx.supabase.co
-     key : anon public key    (ห้ามใส่ service_role key เด็ดขาด)
+   แก้เฉพาะในบล็อก window.BS_CONFIG ด้านล่างเท่านั้น
+   อย่าแก้ในส่วนคำอธิบายนี้ เพราะเป็นคอมเมนต์ ระบบไม่อ่าน
 
-   anon key เป็นคีย์ฝั่งผู้ใช้ ออกแบบมาให้เปิดเผยได้ตามปกติของ Supabase
-   ความปลอดภัยจริงอยู่ที่ Row Level Security ในไฟล์ supabase/schema.sql
+     url   Project URL ของ Supabase
+     key   Publishable key (ขึ้นต้น sb_publishable_) หรือ anon public key
+           ห้ามใส่ secret key หรือ service_role เด็ดขาด
+     site  ที่อยู่เว็บจริง ใช้สร้างลิงก์ส่งรูปที่ส่งให้พนักงานขับรถ
+           ถ้าเปลี่ยนชื่อเว็บบน Vercel ต้องแก้บรรทัดนี้ให้ตรงแล้ว push ใหม่
 
-   เว้นว่างไว้ได้ ระบบจะทำงานแบบเก็บข้อมูลในเครื่องเดียว
-   และกรอกค่าจากหน้าตั้งค่าอัตราในเว็บแทนก็ได้
-
-   site : ที่อยู่เว็บจริงหลัง deploy ใช้สร้างลิงก์ส่งรูปที่ส่งให้คนขับ
-          ถ้า Vercel ให้ชื่ออื่น ต้องแก้ตรงนี้ให้ตรง ไม่งั้นลิงก์ในข้อความจะเปิดไม่ได้
+   คีย์ publishable เป็นคีย์ฝั่งผู้ใช้ เปิดเผยได้ตามปกติของ Supabase
+   สิ่งที่กันคนนอกจริง ๆ คือ Row Level Security ในไฟล์ supabase/schema-auth.sql
 ------------------------------------------------------------------- */
 window.BS_CONFIG = {
   url: 'https://eoirzsvknmnjgsuvwzjz.supabase.co',
-  key: '',
+  key: 'sb_publishable_BoWr-6aB_Uz8IExwf6Zp1Q_le7FQQjH',
   site: 'https://bluestone-import.vercel.app'
 };
