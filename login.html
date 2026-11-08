@@ -274,13 +274,27 @@ input:focus{outline-color:var(--lg3);border-color:var(--lg3)}
         '<p class="lede" id="rsWho">ลิงก์นี้ใช้ได้ครั้งเดียว ตั้งเสร็จแล้วระบบจะพาเข้าหน้าหลักให้เอง</p>' +
         '<div><label for="rsNew">รหัสผ่านใหม่</label>' +
         '<div class="fieldwrap"><input id="rsNew" type="password" autocomplete="new-password" ' +
-        'placeholder="อย่างน้อย 8 ตัว"></div></div>' +
+        'placeholder="อย่างน้อย 8 ตัว">' +
+        '<button class="eye" type="button" data-eye="rsNew" aria-label="แสดงรหัสผ่าน">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20" aria-hidden="true">' + '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path>' + '<circle cx="12" cy="12" r="3.2"></circle></svg>' + '</button></div></div>' +
         '<div><label for="rsNew2">พิมพ์รหัสใหม่อีกครั้ง</label>' +
         '<div class="fieldwrap"><input id="rsNew2" type="password" autocomplete="new-password" ' +
-        'placeholder="ให้ตรงกับช่องบน"></div></div>' +
+        'placeholder="ให้ตรงกับช่องบน">' +
+        '<button class="eye" type="button" data-eye="rsNew2" aria-label="แสดงรหัสผ่าน">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20" aria-hidden="true">' + '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path>' + '<circle cx="12" cy="12" r="3.2"></circle></svg>' + '</button></div></div>' +
         '<button class="go" type="button" id="rsGo">บันทึกรหัสผ่านใหม่</button>' +
         '<p class="msg" id="msg" role="status"></p>';
       msg = document.getElementById('msg');   /* say() อ้างตัวแปรนี้ ต้องชี้มาที่กล่องใหม่ */
+
+      /* ปุ่มรูปตาเปิดดูรหัสที่พิมพ์ */
+      Array.prototype.forEach.call(f.querySelectorAll('[data-eye]'), function (b) {
+        b.addEventListener('click', function () {
+          var inp = document.getElementById(b.getAttribute('data-eye'));
+          if (!inp) { return; }
+          var show = inp.type === 'password';
+          inp.type = show ? 'text' : 'password';
+          b.setAttribute('aria-label', show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+          inp.focus();
+        });
+      });
 
       sb.auth.getUser().then(function (u) {
         var em = u && u.data && u.data.user ? u.data.user.email : '';
