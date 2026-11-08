@@ -64,8 +64,9 @@ body.lc .top{background:linear-gradient(105deg,#1a1538 0%,#3a3080 48%,#7b5ad0 10
 .top{display:flex;align-items:center;gap:1.1vw;
   background:linear-gradient(105deg,#0b1c57 0%,#2a3b96 48%,#7b5ad0 100%);
   border-radius:1vw;padding:.85vw 1.3vw;flex:0 0 auto;color:#fff}
-.mark{width:3.5vw;height:3.5vw;border-radius:.8vw;background:rgba(255,255,255,.16);
-  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3vw;letter-spacing:.04em}
+.mark{width:3.5vw;height:3.5vw;border-radius:50%;background:#fff;overflow:hidden;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center}
+.mark img{width:100%;height:100%;object-fit:contain;display:block}
 .ttl b{display:block;font-size:1.7vw;line-height:1.15;letter-spacing:.01em}
 .ttl span{display:block;font-size:.95vw;opacity:.82;margin-top:.15vw}
 /* ปุ่มกลับ เล็กและจางไว้ ไม่ให้แย่งสายตาตอนขึ้นจอทีวี */
@@ -140,7 +141,7 @@ body.lc .top{background:linear-gradient(105deg,#1a1538 0%,#3a3080 48%,#7b5ad0 10
 body.sm .hrow,body.sm .row{grid-template-columns:6vw 15.5vw 15.5vw 12vw 1fr 16vw;gap:.8vw}
 body.sm .hrow{font-size:1.32vw}
 body.sm .ttl b{font-size:2.2vw} body.sm .ttl span{font-size:1.15vw}
-body.sm .mark{width:4.4vw;height:4.4vw;font-size:1.7vw}
+body.sm .mark{width:4.4vw;height:4.4vw}
 body.sm .clock b{font-size:2.4vw} body.sm .clock p{font-size:1vw}
 body.sm .back a{font-size:1.2vw} body.md .back a{font-size:1.05vw}
 body.sm .no{font-size:3.6vw}
@@ -156,7 +157,7 @@ body.sm .dest span,body.sm .dest .due{display:none}
 body.md .hrow,body.md .row{grid-template-columns:5vw 18.5vw 18.5vw 13vw 1fr 14vw;gap:.6vw}
 body.md .hrow{font-size:1.1vw}
 body.md .ttl b{font-size:2vw} body.md .ttl span{font-size:1.05vw}
-body.md .mark{width:4vw;height:4vw;font-size:1.5vw}
+body.md .mark{width:4vw;height:4vw}
 body.md .clock b{font-size:2.2vw} body.md .clock p{font-size:.9vw}
 body.md .no{font-size:2.9vw}
 body.md .flag{font-size:.95vw}
@@ -186,7 +187,7 @@ body.xl .row{padding:.55vw 1vw}
 <body class="lt lb">
 <div class="board">
   <div class="top">
-    <span class="mark">BS</span>
+    <span class="mark"><img src="icons/icon-192.png" alt="โลโก้ บริษัท บลูสโตนเทรดดิ้ง จำกัด"></span>
     <div class="ttl"><b>คู่รถและปลายทางประจำวัน</b>
       <span>BLUE STONE TRADING CO., LTD. · ด่านเชียงของ — พะเยา<i class="pager" id="pg" style="font-style:normal"></i></span></div>
     <div class="back">
