@@ -465,6 +465,27 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     bad: '<span class="ms" aria-hidden="true">error</span>'
   };
 
+  /* ไอคอนถังขยะวาดเป็น SVG ในตัว ไม่ต้องรอฟอนต์ไอคอนโหลด */
+  var ICON_TRASH = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+
+  /* แถบแจ้งเตือนที่มีปุ่มให้กดกลับ ใช้ตอนลบของที่เรียกคืนได้ */
+  function toastAct(msg, label, fn) {
+    var t = document.createElement('div');
+    t.className = 'toast'; t.setAttribute('role', 'status');
+    t.style.display = 'flex'; t.style.alignItems = 'center'; t.style.gap = '12px';
+    var s = document.createElement('span'); s.textContent = msg; t.appendChild(s);
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = label;
+    b.style.cssText = 'flex:0 0 auto;border:1px solid rgba(255,255,255,.5);background:transparent;' +
+      'color:inherit;font:inherit;font-weight:700;border-radius:8px;padding:4px 11px;cursor:pointer';
+    b.addEventListener('click', function () { t.remove(); fn(); });
+    t.appendChild(b);
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 8000);
+  }
+
   function toast(msg) {
     var t = document.createElement('div');
     t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
@@ -1204,9 +1225,16 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         var x = rowsCalc[i];
         var lossWarn = x.loss > 0;
         return '<div class="card" style="border-radius:var(--r-md);box-shadow:none;margin-bottom:10px">' +
-          '<div class="card-h" style="padding:10px 14px;background:var(--tint-weak)">' +
-            '<b style="flex:0 0 auto;font-size:13px;color:var(--head)">คู่รถที่ ' + (i + 1) + '</b>' +
-            '<div style="flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:8px">' +
+          '<div class="card-h" style="padding:10px 14px;background:var(--tint-weak);display:block">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">' +
+              '<b style="font-size:13px;color:var(--head)">คู่รถที่ ' + (i + 1) + '</b>' +
+              '<span style="flex:1 1 auto"></span>' +
+              '<button type="button" class="btn sm" data-rm="' + i + '" title="ลบคู่รถนี้" ' +
+                'aria-label="ลบคู่รถที่ ' + (i + 1) + '" style="flex:0 0 auto;display:inline-flex;' +
+                'align-items:center;justify-content:center;width:34px;height:34px;padding:0;' +
+                'border-radius:9px;color:var(--muted)">' + ICON_TRASH + '</button>' +
+            '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
               '<select data-f="type:' + i + '" aria-label="ประเภทปูนของคู่รถที่ ' + (i + 1) + '" style="width:auto;min-height:38px">' +
                 '<option value="powder"' + (x.ty === 'powder' ? ' selected' : '') + '>ปูนผง</option>' +
                 '<option value="bag"' + (x.ty === 'bag' ? ' selected' : '') + '>ปูนถุง</option></select>' +
@@ -1217,7 +1245,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                 '<option value="thai"' + (x.na === 'thai' ? ' selected' : '') + '>รถไทยข้ามด่านลาว</option>' +
                 '<option value="lao"' + (x.na === 'lao' ? ' selected' : '') + '>รถลาวข้ามด่านไทย</option></select>' +
             '</div>' +
-            '<button type="button" class="btn sm" data-rm="' + i + '" aria-label="ลบคู่รถที่ ' + (i + 1) + '">ลบ</button>' +
           '</div>' +
           '<div class="card-b" style="padding:12px 14px">' +
             '<div style="display:flex;flex-wrap:wrap;gap:10px">' +
@@ -1517,9 +1544,35 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       });
     });
     Array.prototype.forEach.call(el('v-entry').querySelectorAll('[data-rm]'), function (b) {
+      var armT = null;
+      function disarm() {
+        if (armT) { clearTimeout(armT); armT = null; }
+        b.removeAttribute('data-arm');
+        b.innerHTML = ICON_TRASH;
+        b.style.width = '34px'; b.style.padding = '0';
+        b.style.color = 'var(--muted)'; b.style.borderColor = ''; b.style.background = '';
+      }
       b.addEventListener('click', function () {
         if (form.trucks.length <= 1) { toast('ต้องมีอย่างน้อยหนึ่งคัน'); return; }
-        form.trucks.splice(parseInt(b.getAttribute('data-rm'), 10), 1); viewEntry();
+        /* กดครั้งแรกเป็นการถามยืนยัน กดครั้งที่สองภายใน 5 วินาทีจึงลบจริง */
+        if (b.getAttribute('data-arm') !== '1') {
+          b.setAttribute('data-arm', '1');
+          b.innerHTML = ICON_TRASH + '<span style="margin-left:6px;font-size:12.5px;font-weight:600">กดอีกครั้งเพื่อลบ</span>';
+          b.style.width = 'auto'; b.style.padding = '6px 12px';
+          b.style.color = '#c0392b'; b.style.borderColor = '#e3b4ae'; b.style.background = '#fdf3f2';
+          armT = setTimeout(disarm, 5000);
+          return;
+        }
+        disarm();
+        var i = parseInt(b.getAttribute('data-rm'), 10);
+        var gone = JSON.parse(JSON.stringify(form.trucks[i]));
+        form.trucks.splice(i, 1);
+        viewEntry();
+        toastAct('ลบคู่รถที่ ' + (i + 1) + ' แล้ว', 'เรียกคืน', function () {
+          form.trucks.splice(Math.min(i, form.trucks.length), 0, gone);
+          viewEntry();
+          toast('เรียกคืนคู่รถแล้ว');
+        });
       });
     });
     if (el('inc')) {
@@ -1763,8 +1816,219 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
   /* ================= หน้า 4 · ตั้งค่าอัตรา ================= */
 
+  /* ================= ร่างการแก้ในหน้าตั้งค่าอัตรา =================
+     เดิมแก้ช่องไหนบันทึกทันที ตอนนี้เก็บไว้เป็นร่างก่อน
+     ช่องที่แก้จะถูกทำเครื่องหมายไว้ และต้องกดบันทึกจึงจะมีผลกับทุกหน้า */
+  var RD = { rates: null, names: null, nav: '' };
+
+  function rView() { return RD.rates || S.rates; }
+  function rNames() { return RD.names || S.names; }
+  function rEditR() { if (!RD.rates) { RD.rates = JSON.parse(JSON.stringify(S.rates)); } return RD.rates; }
+  function rEditN() { if (!RD.names) { RD.names = JSON.parse(JSON.stringify(S.names)); } return RD.names; }
+  function rClear() { RD.rates = null; RD.names = null; }
+
+  /* ชื่อช่องที่อ่านจากหน้าจอจริง จะได้ตรงกับที่ผู้ใช้เห็น และมีชื่อหัวข้อนำหน้ากันสับสน */
+  function rLabel(sel, fallback) {
+    var inp = document.querySelector(sel);
+    if (!inp) { return fallback; }
+    var lab = inp.id ? document.querySelector('label[for="' + inp.id + '"]') : null;
+    var sec = inp.closest ? inp.closest('section') : null;
+    var h = sec ? sec.querySelector('h2') : null;
+    var t = fallback;
+    if (lab) {
+      var cl = lab.cloneNode(true);
+      Array.prototype.forEach.call(cl.querySelectorAll('.editTag'), function (x) { x.parentNode.removeChild(x); });
+      t = cl.textContent.replace(/\s+/g, ' ').trim();
+    }
+    var head = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
+    if (head.length > 30) { head = head.slice(0, 29) + '\u2026'; }
+    return (head ? head + ' · ' : '') + t;
+  }
+
+  var TIER_NAME = { pLao: 'ปูนผง ฝั่งลาว', pThai: 'ปูนผง ฝั่งไทย',
+                    bLao: 'ปูนถุง ฝั่งลาว', bThai: 'ปูนถุง ฝั่งไทย' };
+  var BASIS_TH = { truck: 'เหมาต่อคัน', ton: 'คิดตามน้ำหนัก' };
+  var COUNT_TH = { type: 'แยกตามประเภทปูน', lane: 'นับรวมทั้งวัน' };
+
+  /* รายการจุดที่แก้ เทียบร่างกับค่าที่บันทึกไว้ */
+  function rDiff() {
+    var out = [];
+    if (RD.names) {
+      Object.keys(RD.names).forEach(function (k) {
+        if (String(RD.names[k]) !== String(S.names[k])) {
+          out.push({ label: rLabel('[data-name="' + k + '"]', k), old: S.names[k], now: RD.names[k] });
+        }
+      });
+    }
+    if (RD.rates) {
+      Object.keys(RD.rates).forEach(function (k) {
+        if (k === 'tiers') { return; }
+        var a = S.rates[k], b = RD.rates[k];
+        if (typeof a === 'object' || String(a) === String(b)) { return; }
+        var lab, oldT = a, newT = b;
+        if (k === 'thaiBasis') { lab = 'ค่าชิปปิ้งไทย · วิธีคิด'; oldT = BASIS_TH[a] || a; newT = BASIS_TH[b] || b; }
+        else if (k === 'tierCount') { lab = 'ขั้นราคาชิปปิ้งลาว · วิธีนับจำนวนรถ'; oldT = COUNT_TH[a] || a; newT = COUNT_TH[b] || b; }
+        else if (k === 'capAt5') { lab = 'ขั้นราคาชิปปิ้งลาว · คิดสูงสุดที่ 5 คัน'; oldT = a ? 'เปิด' : 'ปิด'; newT = b ? 'เปิด' : 'ปิด'; }
+        else { lab = rLabel('[data-rate="' + k + '"]', k); oldT = m2(a); newT = m2(b); }
+        out.push({ label: lab, old: oldT, now: newT });
+      });
+      if (RD.rates.tiers) {
+        Object.keys(RD.rates.tiers).forEach(function (k) {
+          RD.rates.tiers[k].forEach(function (v, i) {
+            if (String(v) !== String(S.rates.tiers[k][i])) {
+              out.push({ label: 'ขั้นราคาชิปปิ้งลาว · ' + (TIER_NAME[k] || k) + ' ขั้น ' + (i + 1),
+                         old: m2(S.rates.tiers[k][i]), now: m2(v) });
+            }
+          });
+        });
+      }
+    }
+    return out;
+  }
+
+  function rDirty() { return rDiff().length > 0; }
+
+  /* ทำเครื่องหมายช่องที่แก้ไว้ ให้เห็นว่าจุดไหนเปลี่ยน */
+  function rMark() {
+    var changed = {};
+    if (RD.rates) {
+      Object.keys(RD.rates).forEach(function (k) {
+        if (k !== 'tiers' && typeof RD.rates[k] !== 'object' && String(RD.rates[k]) !== String(S.rates[k])) {
+          changed['[data-rate="' + k + '"]'] = 1;
+        }
+      });
+      if (RD.rates.tiers) {
+        Object.keys(RD.rates.tiers).forEach(function (k) {
+          RD.rates.tiers[k].forEach(function (v, i) {
+            if (String(v) !== String(S.rates.tiers[k][i])) { changed['[data-tier="' + k + ':' + i + '"]'] = 1; }
+          });
+        });
+      }
+    }
+    if (RD.names) {
+      Object.keys(RD.names).forEach(function (k) {
+        if (String(RD.names[k]) !== String(S.names[k])) { changed['[data-name="' + k + '"]'] = 1; }
+      });
+    }
+    Object.keys(changed).forEach(function (sel) {
+      var inp = document.querySelector(sel);
+      if (!inp) { return; }
+      inp.style.borderColor = '#d9a441';
+      inp.style.background = '#fffbf2';
+      inp.style.boxShadow = '0 0 0 3px rgba(217,164,65,.16)';
+      var lab = inp.id ? document.querySelector('label[for="' + inp.id + '"]') : null;
+      if (lab && !lab.querySelector('.editTag')) {
+        var tag = document.createElement('span');
+        tag.className = 'editTag';
+        tag.textContent = 'แก้แล้ว';
+        tag.style.cssText = 'margin-left:7px;font-size:10.5px;font-weight:700;color:#8a5a00;background:#fdf0d6;' +
+          'border:1px solid #e9cf9a;border-radius:999px;padding:1px 7px;vertical-align:middle';
+        lab.appendChild(tag);
+      }
+    });
+  }
+
+  /* แถบลอยล่างจอ ขึ้นเมื่อมีการแก้ค้างอยู่ */
+  function rBar() {
+    var n = rDiff().length;
+    if (!n) { return ''; }
+    return '<div id="rBar" style="position:fixed;left:50%;transform:translateX(-50%);' +
+      'bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:70;width:min(760px,calc(100vw - 32px));' +
+      'background:var(--card);border:1px solid #e9cf9a;border-left:5px solid #d9a441;border-radius:14px;' +
+      'box-shadow:0 18px 44px rgba(14,12,60,.22);padding:13px 16px">' +
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+        '<div style="flex:1 1 240px;min-width:0">' +
+          '<b style="font-size:13.5px;color:var(--head)">แก้ไขไว้ ' + n + ' จุด ยังไม่ได้บันทึก</b>' +
+          '<p class="note" style="margin:2px 0 0">ช่องที่แก้ถูกทำเครื่องหมายสีเหลืองไว้ให้แล้ว</p>' +
+        '</div>' +
+        '<button type="button" class="btn sm" id="rShow">ดูจุดที่แก้</button>' +
+        '<button type="button" class="btn sm" id="rUndo">ย้อนกลับเป็นค่าเดิม</button>' +
+        '<button type="button" class="btn pri sm" id="rSave">บันทึกการแก้ไข</button>' +
+      '</div></div>';
+  }
+
+  function rSaveNow() {
+    var list = rDiff();
+    if (!list.length) { rClear(); return; }
+    if (RD.rates) { S.rates = RD.rates; }
+    if (RD.names) { Object.keys(RD.names).forEach(function (k) { S.names[k] = RD.names[k]; }); }
+    rClear();
+    save();
+    list.forEach(function (c) { logIt('แก้ค่าในหน้าตั้งค่าอัตรา', c.label + ': ' + c.old + ' → ' + c.now); });
+    viewRates();
+    toast('บันทึกแล้ว ' + list.length + ' จุด · ทุกหน้าคำนวณด้วยค่าใหม่');
+  }
+
+  /* กล่องรายการจุดที่แก้ ใช้ทั้งตอนกดดู และตอนจะออกจากหน้าทั้งที่ยังไม่บันทึก */
+  function rAsk(leaving) {
+    var list = rDiff();
+    if (!list.length) { return; }
+    var rows = list.map(function (c) {
+      return '<div style="display:flex;align-items:baseline;gap:10px;padding:9px 0;border-top:1px solid var(--line-soft)">' +
+        '<span style="flex:1 1 auto;font-size:13px;color:var(--ink)">' + esc(c.label) + '</span>' +
+        '<span style="font-family:var(--num,ui-monospace),ui-monospace,monospace;font-size:13px;color:var(--muted);' +
+        'text-decoration:line-through">' + esc(String(c.old)) + '</span>' +
+        '<span style="color:var(--muted)">→</span>' +
+        '<span style="font-family:var(--num,ui-monospace),ui-monospace,monospace;font-size:13px;font-weight:700;' +
+        'color:#8a5a00">' + esc(String(c.now)) + '</span></div>';
+    }).join('');
+
+    var ov = document.createElement('div');
+    ov.id = 'rAsk';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-label', leaving ? 'ยังไม่ได้บันทึกการแก้ไข' : 'จุดที่แก้ไว้');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(14,12,60,.42);' +
+      'display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML = '<div style="width:min(560px,100%);max-height:86vh;overflow:auto;background:var(--card);' +
+      'border-radius:16px;box-shadow:0 26px 60px rgba(14,12,60,.34);padding:20px 22px">' +
+      '<h2 style="margin:0 0 4px;font-size:17px;color:var(--head)">' +
+        (leaving ? 'ยังไม่ได้บันทึกการแก้ไข' : 'จุดที่แก้ไว้ ' + list.length + ' จุด') + '</h2>' +
+      '<p class="note" style="margin:0 0 12px">' +
+        (leaving ? 'คุณแก้ไว้ ' + list.length + ' จุด ถ้าออกจากหน้านี้ตอนนี้ค่าที่แก้จะหายไป'
+                 : 'ค่าเดิมทางซ้าย ค่าใหม่ทางขวา ยังไม่มีผลจนกว่าจะกดบันทึก') + '</p>' +
+      '<div style="background:var(--page);border:1px solid var(--line);border-radius:11px;padding:4px 13px 10px">' +
+        rows + '</div>' +
+      '<div class="actions" style="margin-top:16px;justify-content:flex-end">' +
+        (leaving
+          ? '<button type="button" class="btn" id="rStay">อยู่หน้านี้ต่อ</button>' +
+            '<button type="button" class="btn" id="rDrop" style="color:#c0392b;border-color:#e3b4ae;' +
+            'background:#fdf3f2">ออกโดยไม่บันทึก</button>' +
+            '<button type="button" class="btn pri" id="rKeep">บันทึกแล้วไปต่อ</button>'
+          : '<button type="button" class="btn" id="rStay">ปิด</button>' +
+            '<button type="button" class="btn pri" id="rKeep">บันทึกการแก้ไข</button>') +
+      '</div></div>';
+    document.body.appendChild(ov);
+
+    function close() { ov.remove(); }
+    el('rStay').addEventListener('click', function () { close(); RD.nav = ''; });
+    el('rKeep').addEventListener('click', function () {
+      close(); rSaveNow();
+      if (leaving && RD.nav) { var g = RD.nav; RD.nav = ''; location.hash = '#' + g; }
+    });
+    if (el('rDrop')) {
+      el('rDrop').addEventListener('click', function () {
+        close(); rClear();
+        var g = RD.nav; RD.nav = '';
+        toast('ไม่ได้บันทึก ค่ากลับเป็นของเดิม');
+        if (g) { location.hash = '#' + g; } else { viewRates(); }
+      });
+    }
+  }
+
+  function bindRBar() {
+    if (el('rSave')) { el('rSave').addEventListener('click', rSaveNow); }
+    if (el('rShow')) { el('rShow').addEventListener('click', function () { rAsk(false); }); }
+    if (el('rUndo')) {
+      el('rUndo').addEventListener('click', function () {
+        rClear(); viewRates(); toast('ย้อนกลับเป็นค่าที่บันทึกไว้แล้ว');
+      });
+    }
+    rMark();
+  }
+
   function viewRates() {
-    var r = S.rates;
+    var r = rView();
+    var nm = rNames();
 
     function namef(key, val, label, hint) {
       return '<div><label class="fl" for="nm-' + key + '">' + esc(label) + '</label>' +
@@ -1908,6 +2172,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '</div>' +
           '<p class="hint" style="margin-top:8px">ตั้งแล้วจะมีแถบเตือนขึ้นบนหน้าแรกเมื่อเครดิตต่ำกว่าที่กำหนด</p>') +
 
+        rBar() +
       '</div>';
 
     if (el('lkDo')) {
@@ -1936,15 +2201,16 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       });
     }
     bindSB();
+    bindRBar();
 
     Array.prototype.forEach.call(el('v-rates').querySelectorAll('[data-name]'), function (inp) {
       inp.addEventListener('change', function () {
         var key = inp.getAttribute('data-name'), v = inp.value.trim();
-        if (!v) { inp.value = nm[key]; return; }
-        if (v === nm[key]) { return; }
-        var old = nm[key]; nm[key] = v; save();
-        logIt('แก้ชื่อคู่ค้า', key + ': ' + old + ' → ' + v);
-        viewRates(); toast('เปลี่ยนชื่อแล้ว ทุกหน้าใช้ชื่อใหม่');
+        var cur = rNames()[key];
+        if (!v) { inp.value = cur; return; }
+        if (v === cur) { return; }
+        rEditN()[key] = v;
+        viewRates();
       });
       inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); inp.blur(); } });
     });
@@ -1952,9 +2218,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       inp.addEventListener('change', function () {
         var v = parseFloat(String(inp.value).replace(/,/g, ''));
         if (!isNaN(v)) {
-          var rk = inp.getAttribute('data-rate'), ov = S.rates[rk];
-          S.rates[rk] = v; save(); logIt('แก้อัตรา', rk + ': ' + m2(ov) + ' → ' + m2(v));
-          viewRates(); toast('อัปเดตอัตราแล้ว');
+          var rk = inp.getAttribute('data-rate');
+          rEditR()[rk] = v;
+          viewRates();
         }
       });
     });
@@ -1963,10 +2229,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         var pp = inp.getAttribute('data-tier').split(':');
         var v = parseFloat(String(inp.value).replace(/,/g, ''));
         if (!isNaN(v)) {
-          var ot = S.rates.tiers[pp[0]][parseInt(pp[1], 10)];
-          S.rates.tiers[pp[0]][parseInt(pp[1], 10)] = v; save();
-          logIt('แก้ขั้นราคาชิปปิ้งลาว', pp[0] + ' ขั้น ' + (parseInt(pp[1], 10) + 1) + ': ' + m2(ot) + ' → ' + m2(v));
-          viewRates(); toast('อัปเดตขั้นราคาแล้ว');
+          rEditR().tiers[pp[0]][parseInt(pp[1], 10)] = v;
+          viewRates();
         }
       });
     });
@@ -2008,22 +2272,24 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     }
     Array.prototype.forEach.call(el('v-rates').querySelectorAll('[data-tb]'), function (inp) {
       inp.addEventListener('change', function () {
-        S.rates.thaiBasis = inp.getAttribute('data-tb'); save();
-        logIt('เปลี่ยนวิธีคิดค่าชิปปิ้งไทย', S.rates.thaiBasis === 'ton' ? 'คิดตามน้ำหนัก' : 'เหมาต่อคัน');
-        viewRates(); toast('เปลี่ยนวิธีคิดค่าชิปปิ้งไทยแล้ว');
+        rEditR().thaiBasis = inp.getAttribute('data-tb');
+        viewRates();
       });
     });
     Array.prototype.forEach.call(el('v-rates').querySelectorAll('[data-tc]'), function (inp) {
       inp.addEventListener('change', function () {
-        S.rates.tierCount = inp.getAttribute('data-tc'); save();
-        logIt('เปลี่ยนวิธีนับจำนวนรถ', S.rates.tierCount);
-        viewRates(); toast('เปลี่ยนวิธีนับขั้นราคาแล้ว');
+        rEditR().tierCount = inp.getAttribute('data-tc');
+        viewRates();
       });
     });
-    el('capAt5').addEventListener('change', function () { S.rates.capAt5 = this.checked; save(); });
+    el('capAt5').addEventListener('change', function () {
+      rEditR().capAt5 = this.checked;
+      viewRates();
+    });
     el('resetRates').addEventListener('click', function () {
+      rClear();
       S.rates = JSON.parse(JSON.stringify(DEFAULT_RATES));
-      Object.keys(DEFAULT_NAMES).forEach(function (k) { nm[k] = DEFAULT_NAMES[k]; });
+      Object.keys(DEFAULT_NAMES).forEach(function (k) { S.names[k] = DEFAULT_NAMES[k]; });
       save(); viewRates(); toast('คืนค่าตั้งต้นแล้ว');
     });
   }
@@ -3827,9 +4093,19 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   var VIEWS = { ledger: viewLedger, entry: viewEntry, shipping: viewShipping,
                 rates: viewRates, export: viewExport };
 
+  var curView = '';
+
   function render() {
     var name = (location.hash || '#ledger').replace('#', '');
     if (!VIEWS[name]) { name = 'ledger'; }
+    /* ออกจากหน้าตั้งค่าอัตราทั้งที่ยังแก้ค้าง ให้ถามก่อน */
+    if (curView === 'rates' && name !== 'rates' && rDirty() && !el('rAsk')) {
+      RD.nav = name;
+      location.hash = '#rates';
+      rAsk(true);
+      return;
+    }
+    curView = name;
     Object.keys(VIEWS).forEach(function (k) { el('v-' + k).hidden = (k !== name); });
     Array.prototype.forEach.call(el('nav').querySelectorAll('a'), function (a) {
       if (a.getAttribute('href') === '#' + name) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); }
@@ -3839,6 +4115,14 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   }
 
   window.addEventListener('hashchange', render);
+
+  /* ปิดแท็บหรือรีเฟรชทั้งที่ยังแก้ค้าง ให้เบราว์เซอร์ถามก่อน */
+  window.addEventListener('beforeunload', function (ev) {
+    if (!rDirty()) { return; }
+    ev.preventDefault();
+    ev.returnValue = '';
+    return '';
+  });
 
   renderWho();
   render();
