@@ -2379,6 +2379,40 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   }
 
   /* ================= โปรไฟล์บนแถบบน ================= */
+  /* ---- ย่อรูปโปรไฟล์ ----
+     รูปจากกล้องมือถือมักใหญ่หลายเมกะไบต์ ถ้าเก็บทั้งไฟล์จะกินพื้นที่ในเบราว์เซอร์จนเต็ม
+     หน้าเว็บแสดงรูปนี้ใหญ่สุด 48 จุด ย่อด้านยาวเหลือ 320 จุดจึงเกินพอแม้บนจอความละเอียดสูง */
+  var PIC_MAX = 320;       /* ด้านยาวสุดหลังย่อ หน่วยเป็นจุดภาพ */
+  var PIC_BYTES = 120000;  /* ขนาดที่ยอมให้เก็บหลังย่อ ประมาณ 120 KB */
+
+  function shrinkPic(file, done) {
+    var fr = new FileReader();
+    fr.onerror = function () { done(new Error('อ่านไฟล์ไม่สำเร็จ')); };
+    fr.onload = function () {
+      var img = new Image();
+      img.onerror = function () { done(new Error('ไฟล์นี้เปิดเป็นรูปภาพไม่ได้')); };
+      img.onload = function () {
+        var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if (!w || !h) { done(new Error('อ่านขนาดรูปไม่ได้')); return; }
+        var k = Math.min(1, PIC_MAX / Math.max(w, h));
+        var cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+        var cv = document.createElement('canvas');
+        cv.width = cw; cv.height = ch;
+        var cx = cv.getContext('2d');
+        /* ลงพื้นขาวก่อน กัน PNG พื้นโปร่งใสกลายเป็นพื้นดำตอนแปลงเป็น JPEG */
+        cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cw, ch);
+        cx.drawImage(img, 0, 0, cw, ch);
+        var q = 0.82, out = cv.toDataURL('image/jpeg', q);
+        while (out.length * 0.75 > PIC_BYTES && q > 0.4) {
+          q -= 0.12; out = cv.toDataURL('image/jpeg', q);
+        }
+        done(null, { url: out, w: cw, h: ch, ow: w, oh: h, bytes: Math.round(out.length * 0.75) });
+      };
+      img.src = String(fr.result);
+    };
+    fr.readAsDataURL(file);
+  }
+
   function avatarHTML(size) {
     var p = S.profile;
     if (p.photo) {
@@ -2414,7 +2448,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<div><label class="fl" for="ppMail">อีเมลที่ใช้เข้าระบบ</label>' +
         '<input id="ppMail" type="text" value="' + esc(p.email) + '"></div>' +
       '</div>' +
-      '<p class="hint">รูปเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ได้อัปโหลดไปที่ใด</p>' +
+      '<p class="hint">ระบบย่อรูปให้อัตโนมัติ เลือกไฟล์ใหญ่แค่ไหนก็ได้ · รูปเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ได้อัปโหลดไปที่ใด</p>' +
       (SB.client
         ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)">' +
           '<p class="hint" style="margin:0 0 7px">เข้าสู่ระบบด้วย ' + esc(SB.email || 'บัญชีที่ผูกไว้') + '</p>' +
@@ -2456,10 +2490,17 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     el('ppPhoto').addEventListener('change', function () {
       var f = this.files && this.files[0];
       if (!f) { return; }
-      if (f.size > 2 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 2 MB'); return; }
-      var fr = new FileReader();
-      fr.onload = function () { S.profile.photo = String(fr.result); save(); renderWho(); toast('เปลี่ยนรูปแล้ว'); };
-      fr.readAsDataURL(f);
+      if ((f.type || '').indexOf('image/') !== 0) { toast('เลือกได้เฉพาะไฟล์รูปภาพ'); return; }
+      if (f.size > 25 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 25 MB เปิดไม่ไหว ลองรูปอื่น'); return; }
+      toast('กำลังย่อรูป...');
+      shrinkPic(f, function (err, r) {
+        if (err) { toast(err.message); return; }
+        S.profile.photo = r.url; save(); renderWho();
+        toast(r.ow > r.w
+          ? 'เปลี่ยนรูปแล้ว · ย่อจาก ' + r.ow + '×' + r.oh + ' เหลือ ' + r.w + '×' + r.h +
+            ' (' + Math.round(r.bytes / 1024) + ' KB)'
+          : 'เปลี่ยนรูปแล้ว');
+      });
     });
     if (el('ppClear')) {
       el('ppClear').addEventListener('click', function () {

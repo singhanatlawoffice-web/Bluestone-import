@@ -124,6 +124,54 @@ body.lc .top{background:linear-gradient(105deg,#1a1538 0%,#3a3080 48%,#7b5ad0 10
 .kpi b{font-family:var(--num);font-size:1.8vw;font-weight:700;display:block;line-height:1.2}
 .kpi.g b{color:var(--go)} .kpi.a b{color:var(--accent)} .kpi.w b{color:var(--wait)}
 .pager{font-size:.88vw;opacity:.8;margin-left:.6vw;padding-left:.6vw;border-left:.1vw solid rgba(255,255,255,.3)}
+
+/* ---------- ปรับตามขนาดจอ ----------
+   บอกขนาดจอครั้งเดียวด้วย board.html?tv=32 (หรือ 43, 55, 65, 75)
+   จอเล็กจะแสดงน้อยคันแต่ตัวใหญ่ จอใหญ่จะแสดงมากคันและเห็นรายละเอียดครบ
+   เบราว์เซอร์อ่านขนาดจอจริงเป็นนิ้วไม่ได้ จึงต้องบอกเองครั้งแรก แล้วเครื่องนั้นจะจำไว้ */
+
+/* จอเล็ก ไม่เกิน 40 นิ้ว · 3 คัน · ตัวโตขึ้นราว 1.7 เท่า · เหลือเฉพาะข้อมูลหลัก */
+body.sm .hrow,body.sm .row{grid-template-columns:6vw 15.5vw 15.5vw 12vw 1fr 16vw;gap:.8vw}
+body.sm .hrow{font-size:1.32vw}
+body.sm .ttl b{font-size:2.2vw} body.sm .ttl span{font-size:1.15vw}
+body.sm .mark{width:4.4vw;height:4.4vw;font-size:1.7vw}
+body.sm .clock b{font-size:2.4vw} body.sm .clock p{font-size:1vw}
+body.sm .no{font-size:3.6vw}
+body.sm .plate{font-size:2.8vw}
+body.sm .wt b{font-size:3vw} body.sm .wt span{font-size:1.25vw}
+body.sm .dest b{font-size:2.4vw}
+body.sm .pill{font-size:1.8vw;padding:.4vw 1.2vw}
+body.sm .kpi b{font-size:2.4vw} body.sm .kpi p{font-size:1.2vw}
+body.sm .when,body.sm .drv,body.sm .flag,body.sm .brand,body.sm .eta,
+body.sm .dest span,body.sm .dest .due{display:none}
+
+/* จอกลาง 41-50 นิ้ว · 4 คัน · ตัวโตขึ้นราว 1.3 เท่า · เก็บเวลาออกโรงงานและรับปูนไว้ */
+body.md .hrow,body.md .row{grid-template-columns:5vw 18.5vw 18.5vw 13vw 1fr 14vw;gap:.6vw}
+body.md .hrow{font-size:1.1vw}
+body.md .ttl b{font-size:2vw} body.md .ttl span{font-size:1.05vw}
+body.md .mark{width:4vw;height:4vw;font-size:1.5vw}
+body.md .clock b{font-size:2.2vw} body.md .clock p{font-size:.9vw}
+body.md .no{font-size:2.9vw}
+body.md .flag{font-size:.95vw}
+body.md .plate{font-size:2.1vw}
+body.md .wt b{font-size:2.3vw} body.md .wt span{font-size:1vw}
+body.md .when i{font-size:.9vw} body.md .when em{font-size:1.1vw}
+body.md .dest b{font-size:1.8vw}
+body.md .dest span{font-size:1.1vw}
+body.md .pill{font-size:1.36vw;padding:.38vw 1.1vw}
+body.md .kpi b{font-size:2.2vw} body.md .kpi p{font-size:1vw}
+body.md .row{padding:.5vw 1vw}
+body.md .flag,body.md .brand,body.md .eta,body.md .dest .due{display:none}
+
+/* จอใหญ่ 69 นิ้วขึ้นไป · 6 คัน · ตัวเล็กลงเล็กน้อยเพื่อให้เห็นได้มากขึ้น */
+body.xl .hrow,body.xl .row{grid-template-columns:3.8vw 14.5vw 14.5vw 10vw 1fr 10.5vw;gap:.6vw}
+body.xl .hrow{font-size:.84vw}
+body.xl .no{font-size:2vw}
+body.xl .plate{font-size:1.42vw}
+body.xl .wt b{font-size:1.56vw}
+body.xl .dest b{font-size:1.21vw}
+body.xl .pill{font-size:.92vw;padding:.3vw .85vw}
+body.xl .row{padding:.55vw 1vw}
 </style>
 
 
@@ -162,8 +210,18 @@ body.lc .top{background:linear-gradient(105deg,#1a1538 0%,#3a3080 48%,#7b5ad0 10
   'use strict';
 
   var CFG = window.BS_CONFIG || {};
-  var PER = 5;          /* แสดงพร้อมกันกี่แถว */
-  var STEP = 6000;      /* เลื่อนขึ้นหนึ่งแถวทุกกี่มิลลิวินาที */
+  /* ขนาดจอ บอกครั้งเดียวด้วย board.html?tv=32 (หรือ 43, 55, 65, 75)
+     เบราว์เซอร์อ่านขนาดจอจริงเป็นนิ้วไม่ได้ จึงต้องบอกเอง แล้วเครื่องนั้นจะจำไว้
+     จอเล็กแสดงน้อยคันแต่ตัวใหญ่ จอใหญ่แสดงมากคันและเห็นรายละเอียดครบ */
+  var TV = (function () {
+    var m = /[?&]tv=(\d{2,3})/.exec(location.search), v = m ? parseInt(m[1], 10) : 0;
+    if (v > 0) { try { localStorage.setItem('bsTv', String(v)); } catch (e1) { /* ข้าม */ } return v; }
+    try { v = parseInt(localStorage.getItem('bsTv') || '0', 10); } catch (e2) { v = 0; }
+    return v > 0 ? v : 0;
+  })();
+  var SIZE = !TV ? '' : (TV <= 40 ? 'sm' : (TV <= 50 ? 'md' : (TV <= 68 ? '' : 'xl')));
+  var PER = SIZE === 'sm' ? 3 : (SIZE === 'md' ? 4 : (SIZE === 'xl' ? 6 : 5)); /* แสดงพร้อมกันกี่แถว */
+  var STEP = SIZE === 'sm' ? 5000 : 6000; /* เลื่อนขึ้นหนึ่งแถวทุกกี่มิลลิวินาที */
   var RELOAD = 60000;   /* ดึงข้อมูลใหม่ทุกกี่มิลลิวินาที */
 
   var DATA = [];
@@ -393,6 +451,7 @@ body.lc .top{background:linear-gradient(105deg,#1a1538 0%,#3a3080 48%,#7b5ad0 10
   }
 
   /* ---------- เริ่มทำงาน ---------- */
+  if (SIZE) { document.body.classList.add(SIZE); }
   vp = document.querySelector('.vp');
   track = el('rows');
   clock();
