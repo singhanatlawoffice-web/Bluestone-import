@@ -2651,6 +2651,193 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   var PIC_MAX = 320;       /* ด้านยาวสุดหลังย่อ หน่วยเป็นจุดภาพ */
   var PIC_BYTES = 120000;  /* ขนาดที่ยอมให้เก็บหลังย่อ ประมาณ 120 KB */
 
+  /* ---- กล่องจัดตำแหน่งรูปโปรไฟล์ ----
+     เดิมเลือกไฟล์แล้วตัดกลางภาพทันที รูปแนวตั้งจึงโดนตัดหัว
+     ตอนนี้เปิดกล่องให้ลากเลื่อนและย่อขยายก่อน เห็นกรอบวงกลมจริงว่าจะถูกตัดตรงไหน
+     ภาพที่เห็นกับภาพที่บันทึกใช้สูตรเดียวกัน ต่างแค่ตัวคูณขนาด จึงได้ตรงกับที่เห็น */
+  function cropPic(file, done) {
+    var fr = new FileReader();
+    fr.onerror = function () { toast('อ่านไฟล์ไม่สำเร็จ'); };
+    fr.onload = function () {
+      var img = new Image();
+      img.onerror = function () { toast('ไฟล์นี้เปิดเป็นรูปภาพไม่ได้'); };
+      img.onload = function () { cropUI(img, done); };
+      img.src = String(fr.result);
+    };
+    fr.readAsDataURL(file);
+  }
+
+  function cropUI(img, done) {
+    var V = 320;                       /* ขนาดผืนที่ใช้วาดบนจอ */
+    var st = { s: 1, ox: 0, oy: 0, rot: 0 };
+    var old = el('cropOv');
+    if (old) { old.remove(); }
+
+    var ov = document.createElement('div');
+    ov.id = 'cropOv';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-label', 'จัดตำแหน่งรูปโปรไฟล์');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:95;background:rgba(14,12,60,.45);' +
+      'display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML = '<div style="width:min(430px,100%);max-height:92vh;overflow:auto;background:var(--card);' +
+      'border-radius:16px;box-shadow:0 26px 60px rgba(14,12,60,.34);padding:18px 20px 20px">' +
+      '<h2 style="margin:0 0 3px;font-size:16px;color:var(--head)">จัดตำแหน่งรูป</h2>' +
+      '<p class="note" style="margin:0 0 13px">ลากรูปให้ได้ตำแหน่งที่ต้องการ แล้วเลื่อนแถบเพื่อย่อขยาย</p>' +
+      '<canvas id="cropCv" width="' + V + '" height="' + V + '" ' +
+        'style="display:block;width:100%;aspect-ratio:1/1;border-radius:12px;background:#20233f;' +
+        'touch-action:none;cursor:grab"></canvas>' +
+      '<div style="display:flex;align-items:center;gap:11px;margin-top:14px">' +
+        '<span style="font-size:17px;color:var(--muted)">−</span>' +
+        '<input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" ' +
+          'aria-label="ย่อขยายรูป" style="flex:1 1 auto;accent-color:var(--brand)">' +
+        '<span style="font-size:17px;color:var(--muted)">+</span>' +
+        '<button type="button" class="btn sm" id="cropRot" title="หมุน 90 องศา">หมุน</button>' +
+      '</div>' +
+      '<p class="hint" style="margin-top:10px">บันทึกเป็นรูปสี่เหลี่ยมจัตุรัส 320 จุด ระบบย่อและตัดขอบให้เอง</p>' +
+      '<div class="actions" style="margin-top:14px;justify-content:flex-end">' +
+        '<button type="button" class="btn" id="cropOther">เลือกรูปอื่น</button>' +
+        '<button type="button" class="btn" id="cropNo">ยกเลิก</button>' +
+        '<button type="button" class="btn pri" id="cropOk">ใช้รูปนี้</button>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+
+    var cv = el('cropCv'), cx = cv.getContext('2d');
+
+    function dims() {
+      var side = (st.rot % 180 === 0);
+      return { sw: side ? img.width : img.height, sh: side ? img.height : img.width };
+    }
+    function paint() {
+      var d = dims();
+      var k = Math.max(V / d.sw, V / d.sh) * st.s;
+      var mx = Math.max(0, (d.sw * k - V) / 2), my = Math.max(0, (d.sh * k - V) / 2);
+      st.ox = Math.min(mx, Math.max(-mx, st.ox));
+      st.oy = Math.min(my, Math.max(-my, st.oy));
+      cx.save();
+      cx.fillStyle = '#20233f'; cx.fillRect(0, 0, V, V);
+      cx.translate(V / 2 + st.ox, V / 2 + st.oy);
+      cx.rotate(st.rot * Math.PI / 180);
+      cx.drawImage(img, -img.width * k / 2, -img.height * k / 2, img.width * k, img.height * k);
+      cx.restore();
+      /* หน้ากากวงกลมบอกขอบเขตที่จะถูกตัด ไม่ได้ติดไปกับไฟล์ที่บันทึก */
+      cx.save();
+      cx.fillStyle = 'rgba(16,18,42,.55)';
+      cx.beginPath();
+      cx.rect(0, 0, V, V);
+      cx.arc(V / 2, V / 2, V / 2 - 2, 0, Math.PI * 2, true);
+      cx.fill('evenodd');
+      cx.strokeStyle = 'rgba(255,255,255,.92)'; cx.lineWidth = 2;
+      cx.beginPath(); cx.arc(V / 2, V / 2, V / 2 - 2, 0, Math.PI * 2); cx.stroke();
+      cx.restore();
+    }
+
+    var drag = null;
+    function pos(ev) {
+      var r = cv.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) * (V / r.width), y: (ev.clientY - r.top) * (V / r.height) };
+    }
+    cv.addEventListener('pointerdown', function (ev) {
+      drag = pos(ev); cv.setPointerCapture(ev.pointerId); cv.style.cursor = 'grabbing';
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      if (!drag) { return; }
+      var q = pos(ev);
+      st.ox += q.x - drag.x; st.oy += q.y - drag.y;
+      drag = q; paint();
+    });
+    function stop() { drag = null; cv.style.cursor = 'grab'; }
+    cv.addEventListener('pointerup', stop);
+    cv.addEventListener('pointercancel', stop);
+    cv.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      st.s = Math.min(3, Math.max(1, st.s + (ev.deltaY < 0 ? 0.08 : -0.08)));
+      el('cropZoom').value = st.s; paint();
+    }, { passive: false });
+
+    el('cropZoom').addEventListener('input', function () { st.s = parseFloat(this.value) || 1; paint(); });
+    el('cropRot').addEventListener('click', function () {
+      st.rot = (st.rot + 90) % 360; st.ox = 0; st.oy = 0; paint();
+    });
+    el('cropNo').addEventListener('click', function () { ov.remove(); });
+    el('cropOther').addEventListener('click', function () {
+      ov.remove();
+      if (el('ppPhoto')) { el('ppPhoto').click(); }
+    });
+    el('cropOk').addEventListener('click', function () {
+      var OUT = 320, r = OUT / V, d = dims();
+      var k = Math.max(OUT / d.sw, OUT / d.sh) * st.s;
+      var c2 = document.createElement('canvas');
+      c2.width = OUT; c2.height = OUT;
+      var x2 = c2.getContext('2d');
+      x2.fillStyle = '#ffffff'; x2.fillRect(0, 0, OUT, OUT);
+      x2.translate(OUT / 2 + st.ox * r, OUT / 2 + st.oy * r);
+      x2.rotate(st.rot * Math.PI / 180);
+      x2.drawImage(img, -img.width * k / 2, -img.height * k / 2, img.width * k, img.height * k);
+      var q = 0.85, u = c2.toDataURL('image/jpeg', q);
+      while (u.length * 0.75 > PIC_BYTES && q > 0.4) { q -= 0.12; u = c2.toDataURL('image/jpeg', q); }
+      ov.remove();
+      done(u, Math.round(u.length * 0.75));
+    });
+
+    paint();
+  }
+
+  /* ---- เปลี่ยนรหัสผ่านของตัวเอง ----
+     ยืนยันรหัสเดิมก่อนเสมอ กันคนอื่นมาเปลี่ยนรหัสจากเครื่องที่เปิดค้างไว้ */
+  function pwChangeUI() {
+    if (!SB.client) { toast('ยังไม่ได้เชื่อมฐานข้อมูล จึงเปลี่ยนรหัสผ่านไม่ได้'); return; }
+    var old = el('pwOv');
+    if (old) { old.remove(); }
+    var ov = document.createElement('div');
+    ov.id = 'pwOv';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-label', 'เปลี่ยนรหัสผ่าน');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:95;background:rgba(14,12,60,.45);' +
+      'display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML = '<div style="width:min(420px,100%);background:var(--card);border-radius:16px;' +
+      'box-shadow:0 26px 60px rgba(14,12,60,.34);padding:18px 20px 20px">' +
+      '<h2 style="margin:0 0 3px;font-size:16px;color:var(--head)">เปลี่ยนรหัสผ่าน</h2>' +
+      '<p class="note" style="margin:0 0 13px">สำหรับ ' + esc(SB.email || 'บัญชีที่เข้าอยู่') + '</p>' +
+      '<div class="stack" style="gap:9px">' +
+        '<div><label class="fl" for="pwOld">รหัสผ่านเดิม</label>' +
+        '<input id="pwOld" type="password" autocomplete="current-password"></div>' +
+        '<div><label class="fl" for="pwNew">รหัสผ่านใหม่</label>' +
+        '<input id="pwNew" type="password" autocomplete="new-password">' +
+        '<p class="hint">อย่างน้อย 8 ตัว ผสมตัวอักษรกับตัวเลข</p></div>' +
+        '<div><label class="fl" for="pwNew2">พิมพ์รหัสใหม่อีกครั้ง</label>' +
+        '<input id="pwNew2" type="password" autocomplete="new-password"></div>' +
+      '</div>' +
+      '<p class="note" id="pwMsg" style="margin-top:10px"></p>' +
+      '<div class="actions" style="margin-top:12px;justify-content:flex-end">' +
+        '<button type="button" class="btn" id="pwNo">ยกเลิก</button>' +
+        '<button type="button" class="btn pri" id="pwGo">บันทึกรหัสใหม่</button>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+
+    function msg(t) { el('pwMsg').textContent = t; }
+    el('pwNo').addEventListener('click', function () { ov.remove(); });
+    el('pwGo').addEventListener('click', function () {
+      var o = el('pwOld').value, a = el('pwNew').value, b2 = el('pwNew2').value;
+      if (!o) { msg('กรอกรหัสผ่านเดิมก่อน'); return; }
+      if (a.length < 8) { msg('รหัสใหม่สั้นเกินไป ใส่อย่างน้อย 8 ตัว'); return; }
+      if (a !== b2) { msg('รหัสใหม่สองช่องไม่ตรงกัน'); return; }
+      if (a === o) { msg('รหัสใหม่ซ้ำกับรหัสเดิม'); return; }
+      el('pwGo').disabled = true;
+      msg('กำลังตรวจสอบรหัสเดิม...');
+      SB.client.auth.signInWithPassword({ email: SB.email, password: o }).then(function (r1) {
+        if (r1.error) { el('pwGo').disabled = false; msg('รหัสผ่านเดิมไม่ถูกต้อง'); return; }
+        SB.client.auth.updateUser({ password: a }).then(function (r2) {
+          el('pwGo').disabled = false;
+          if (r2.error) { msg('เปลี่ยนไม่สำเร็จ: ' + r2.error.message); return; }
+          ov.remove();
+          logIt('เปลี่ยนรหัสผ่านเข้าระบบ', SB.email || '');
+          toast('เปลี่ยนรหัสผ่านแล้ว ครั้งหน้าใช้รหัสใหม่เข้าระบบ');
+        }, function (e2) { el('pwGo').disabled = false; msg('เปลี่ยนไม่สำเร็จ: ' + e2.message); });
+      }, function (e1) { el('pwGo').disabled = false; msg('ตรวจสอบไม่สำเร็จ: ' + e1.message); });
+    });
+    setTimeout(function () { if (el('pwOld')) { el('pwOld').focus(); } }, 30);
+  }
+
   function shrinkPic(file, done) {
     var fr = new FileReader();
     fr.onerror = function () { done(new Error('อ่านไฟล์ไม่สำเร็จ')); };
@@ -2718,7 +2905,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       (SB.client
         ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)">' +
           '<p class="hint" style="margin:0 0 7px">เข้าสู่ระบบด้วย ' + esc(SB.email || 'บัญชีที่ผูกไว้') + '</p>' +
-          '<button type="button" class="btn" id="ppOut" style="width:100%">ออกจากระบบ</button></div>'
+          '<button type="button" class="btn" id="ppPw" style="width:100%;margin-bottom:7px">เปลี่ยนรหัสผ่าน</button>' +
+          '<button type="button" class="btn" id="ppOut" style="width:100%">ออกจากระบบ</button>' +
+          '<p class="hint" style="margin-top:7px">ลืมรหัสผ่าน ให้ออกจากระบบแล้วกด "ลืมรหัสผ่าน" ที่หน้าเข้าสู่ระบบ ' +
+          'ระบบจะส่งลิงก์ตั้งรหัสใหม่ไปที่อีเมลของคุณ</p></div>'
         : '') +
       '<div class="actions" style="justify-content:flex-end;margin-top:10px">' +
         '<button type="button" class="btn" id="ppClose">ปิด</button>' +
@@ -2758,20 +2948,18 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       if (!f) { return; }
       if ((f.type || '').indexOf('image/') !== 0) { toast('เลือกได้เฉพาะไฟล์รูปภาพ'); return; }
       if (f.size > 25 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 25 MB เปิดไม่ไหว ลองรูปอื่น'); return; }
-      toast('กำลังย่อรูป...');
-      shrinkPic(f, function (err, r) {
-        if (err) { toast(err.message); return; }
-        S.profile.photo = r.url; save(); renderWho();
-        toast(r.ow > r.w
-          ? 'เปลี่ยนรูปแล้ว · ย่อจาก ' + r.ow + '×' + r.oh + ' เหลือ ' + r.w + '×' + r.h +
-            ' (' + Math.round(r.bytes / 1024) + ' KB)'
-          : 'เปลี่ยนรูปแล้ว');
+      cropPic(f, function (url, bytes) {
+        S.profile.photo = url; save(); renderWho();
+        toast('เปลี่ยนรูปแล้ว · ' + Math.round(bytes / 1024) + ' KB');
       });
     });
     if (el('ppClear')) {
       el('ppClear').addEventListener('click', function () {
         S.profile.photo = ''; save(); renderWho(); toast('เอารูปออกแล้ว');
       });
+    }
+    if (el('ppPw')) {
+      el('ppPw').addEventListener('click', pwChangeUI);
     }
     if (el('ppOut')) {
       el('ppOut').addEventListener('click', function () {
@@ -3129,6 +3317,31 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       'border-radius:var(--r-lg,14px);box-shadow:0 26px 70px rgba(14,12,60,.4);overflow:hidden">' + inner + '</div></div>';
   }
 
+  /* รายชื่อลูกค้าที่ตรงกับคำค้น
+     แยกออกมาเป็นฟังก์ชัน เพื่อให้ตอนพิมพ์วาดใหม่เฉพาะรายการ ไม่ต้องสร้างช่องค้นหาใหม่
+     ถ้าสร้างใหม่ทั้งกล่อง โฟกัสจะหลุดและพิมพ์ภาษาไทยต่อไม่ได้ */
+  function cusHits() {
+    var q = (cusM.q || '').trim().toLowerCase();
+    if (!q) { return S.customers.slice(); }
+    var words = q.split(/\s+/);
+    return S.customers.filter(function (c) {
+      var hay = (c.name + ' ' + cusAddr(c) + ' ' + (c.taxId || '') + ' ' + (c.phone || '')).toLowerCase();
+      for (var i = 0; i < words.length; i += 1) {
+        if (hay.indexOf(words[i]) < 0) { return false; }
+      }
+      return true;
+    });
+  }
+
+  function cusListHTML() {
+    var hits = cusHits();
+    if (hits.length) { return hits.map(cusRow).join(''); }
+    return '<p class="note" style="padding:20px;text-align:center">' +
+      ((cusM.q || '').trim()
+        ? 'ไม่พบลูกค้าที่ตรงกับ “' + esc(cusM.q.trim()) + '” · กดปุ่มด้านล่างเพื่อเพิ่มเป็นรายใหม่'
+        : 'ยังไม่มีลูกค้าที่บันทึกไว้') + '</p>';
+  }
+
   function cusRow(c) {
     return '<button type="button" data-pick="' + esc(c.id) + '" ' +
       'style="display:block;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);' +
@@ -3426,17 +3639,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '<button type="button" class="btn pri" id="mCopy" style="min-width:150px;justify-content:center">คัดลอก</button>' +
         '</div></div>';
     } else if (cusM.mode === 'list') {
-      var hits = S.customers.filter(function (c) {
-        if (!q) { return true; }
-        return (c.name + ' ' + cusAddr(c) + ' ' + (c.taxId || '')).indexOf(q) >= 0;
-      });
       body = '<div class="card-b stack">' +
         '<div><label class="fl" for="cq">ค้นหาลูกค้าที่บันทึกไว้</label>' +
-        '<input id="cq" type="text" value="' + esc(cusM.q) + '" placeholder="พิมพ์ชื่อลูกค้า ที่อยู่ หรือเลขนิติบุคคล"></div>' +
-        '<div style="max-height:300px;overflow:auto">' +
-        (hits.length ? hits.map(cusRow).join('')
-          : '<p class="note" style="padding:20px;text-align:center">ยังไม่มีลูกค้าที่ตรงกับคำค้น</p>') +
-        '</div>' +
+        '<input id="cq" type="text" autocomplete="off" value="' + esc(cusM.q) + '" ' +
+        'placeholder="พิมพ์ชื่อลูกค้า ที่อยู่ เบอร์โทร หรือเลขนิติบุคคล"></div>' +
+        '<div id="cList" style="max-height:300px;overflow:auto">' + cusListHTML() + '</div>' +
         '<button type="button" class="btn pri" id="cNew" style="width:100%">+ เพิ่มลูกค้าปลายทางรายใหม่</button>' +
         '</div>';
     } else {
@@ -3527,17 +3734,42 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     }
 
     if (cusM.mode === 'list') {
-      el('cq').addEventListener('input', function () { cusM.q = this.value; soonModals(); });
-      el('cNew').addEventListener('click', function () { cusM.mode = 'form'; cusM.draft = newDraft(); renderModals(); });
-      Array.prototype.forEach.call(modalHost().querySelectorAll('[data-pick]'), function (b) {
-        b.addEventListener('click', function () {
-          var c = cusById(b.getAttribute('data-pick'));
-          if (!c) { return; }
-          cusM.draft = JSON.parse(JSON.stringify(c));
-          cusM.mode = 'form';
-          renderModals();
+      var bindPicks = function () {
+        Array.prototype.forEach.call(modalHost().querySelectorAll('[data-pick]'), function (b) {
+          b.addEventListener('click', function () {
+            var c = cusById(b.getAttribute('data-pick'));
+            if (!c) { return; }
+            cusM.draft = JSON.parse(JSON.stringify(c));
+            cusM.mode = 'form';
+            renderModals();
+          });
         });
+      };
+      var paint = function () {
+        var box = el('cList');
+        if (!box) { soonModals(); return; }
+        box.innerHTML = cusListHTML();
+        bindPicks();
+      };
+      /* วาดใหม่เฉพาะรายการ ช่องค้นหาตัวเดิมจึงยังอยู่ โฟกัสไม่หลุด พิมพ์ไทยต่อได้ */
+      el('cq').addEventListener('input', function () { cusM.q = this.value; paint(); });
+      el('cq').addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          var first = modalHost().querySelector('[data-pick]');
+          if (first) { first.click(); }
+        }
       });
+      el('cNew').addEventListener('click', function () {
+        cusM.mode = 'form';
+        cusM.draft = newDraft();
+        /* พิมพ์ค้นแล้วไม่เจอ กดเพิ่มรายใหม่ ให้เอาคำที่พิมพ์มาเป็นชื่อตั้งต้น */
+        cusM.draft.name = (cusM.q || '').trim();
+        renderModals();
+      });
+      bindPicks();
+      /* ให้เคอร์เซอร์อยู่ในช่องค้นหาทันทีที่เปิดกล่อง */
+      if (!cusM.q) { setTimeout(function () { if (el('cq')) { el('cq').focus(); } }, 30); }
       return;
     }
 

@@ -260,9 +260,67 @@ input:focus{outline-color:var(--lg3);border-color:var(--lg3)}
     go.addEventListener('click', function () { location.href = NEXT; });
   } else {
     var sb = window.supabase.createClient(URL_, KEY_);
-    sb.auth.getSession().then(function (r) {
-      if (r && r.data && r.data.session) { location.replace(NEXT); }
+
+    /* กลับมาจากลิงก์ตั้งรหัสผ่านใหม่ในอีเมล
+       Supabase จะล็อกอินให้ทันทีที่เปิดลิงก์ ถ้าปล่อยไว้หน้านี้จะเด้งเข้าระบบ
+       แล้วรหัสผ่านก็ยังเป็นตัวเดิม จึงต้องดักไว้ให้ตั้งรหัสใหม่ก่อน */
+    var RECOVER = /type=recovery/.test(location.hash) || /[?&]reset=1/.test(location.search);
+
+    function showReset() {
+      if (document.getElementById('rsNew')) { return; }
+      var f = document.getElementById('f');
+      f.innerHTML =
+        '<h1>ตั้งรหัสผ่านใหม่</h1>' +
+        '<p class="lede" id="rsWho">ลิงก์นี้ใช้ได้ครั้งเดียว ตั้งเสร็จแล้วระบบจะพาเข้าหน้าหลักให้เอง</p>' +
+        '<div><label for="rsNew">รหัสผ่านใหม่</label>' +
+        '<div class="fieldwrap"><input id="rsNew" type="password" autocomplete="new-password" ' +
+        'placeholder="อย่างน้อย 8 ตัว"></div></div>' +
+        '<div><label for="rsNew2">พิมพ์รหัสใหม่อีกครั้ง</label>' +
+        '<div class="fieldwrap"><input id="rsNew2" type="password" autocomplete="new-password" ' +
+        'placeholder="ให้ตรงกับช่องบน"></div></div>' +
+        '<button class="go" type="button" id="rsGo">บันทึกรหัสผ่านใหม่</button>' +
+        '<p class="msg" id="msg" role="status"></p>';
+      msg = document.getElementById('msg');   /* say() อ้างตัวแปรนี้ ต้องชี้มาที่กล่องใหม่ */
+
+      sb.auth.getUser().then(function (u) {
+        var em = u && u.data && u.data.user ? u.data.user.email : '';
+        if (em) { document.getElementById('rsWho').textContent =
+          'สำหรับ ' + em + ' · ลิงก์นี้ใช้ได้ครั้งเดียว ตั้งเสร็จแล้วระบบจะพาเข้าหน้าหลักให้เอง'; }
+      }, function () {});
+
+      document.getElementById('rsGo').addEventListener('click', function () {
+        var a = document.getElementById('rsNew').value;
+        var b = document.getElementById('rsNew2').value;
+        if (a.length < 8) { say('รหัสใหม่สั้นเกินไป ใส่อย่างน้อย 8 ตัว'); return; }
+        if (a !== b) { say('รหัสใหม่สองช่องไม่ตรงกัน'); return; }
+        var btn = document.getElementById('rsGo');
+        btn.disabled = true; say('กำลังบันทึก...', 'ok');
+        sb.auth.updateUser({ password: a }).then(function (r) {
+          btn.disabled = false;
+          if (r.error) {
+            say(/same/i.test(r.error.message || '')
+              ? 'รหัสใหม่ซ้ำกับรหัสเดิม ตั้งรหัสอื่น'
+              : ('บันทึกไม่สำเร็จ: ' + r.error.message));
+            return;
+          }
+          say('ตั้งรหัสผ่านใหม่แล้ว กำลังเปิดระบบ...', 'ok');
+          setTimeout(function () { location.replace(NEXT); }, 900);
+        }, function (e) { btn.disabled = false; say('บันทึกไม่สำเร็จ: ' + e.message); });
+      });
+    }
+
+    sb.auth.onAuthStateChange(function (ev) {
+      if (ev === 'PASSWORD_RECOVERY') { RECOVER = true; showReset(); }
     });
+
+    if (RECOVER) {
+      showReset();
+    } else {
+      sb.auth.getSession().then(function (r) {
+        if (RECOVER) { return; }
+        if (r && r.data && r.data.session) { location.replace(NEXT); }
+      });
+    }
     document.getElementById('f').addEventListener('submit', function (e) {
       e.preventDefault();
       var em = document.getElementById('em').value.trim();
@@ -285,21 +343,25 @@ input:focus{outline-color:var(--lg3);border-color:var(--lg3)}
     });
   }
 
-  document.getElementById('forgot').addEventListener('click', function (e) {
+  /* อยู่จอตั้งรหัสผ่านใหม่ ปุ่มนี้ถูกแทนที่ไปแล้ว ต้องกันไม่ให้สคริปต์พัง */
+  (document.getElementById('forgot') || { addEventListener: function () {} })
+    .addEventListener('click', function (e) {
     e.preventDefault();
     var em = document.getElementById('em').value.trim();
     if (!ready) { say('ยังไม่ได้ตั้งค่าฐานข้อมูล จึงรีเซ็ตรหัสผ่านไม่ได้'); return; }
     if (!em) { say('กรอกอีเมลก่อน แล้วกดลืมรหัสผ่านอีกครั้ง'); return; }
     window.supabase.createClient(URL_, KEY_).auth
-      .resetPasswordForEmail(em, { redirectTo: location.href })
+      .resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname + '?reset=1' })
       .then(function (r) {
         say(r.error ? ('ส่งอีเมลไม่สำเร็จ: ' + r.error.message)
-                    : 'ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' + em + ' แล้ว', r.error ? 'bad' : 'ok');
+                    : 'ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' + em + ' แล้ว เปิดอีเมลแล้วกดลิงก์ภายใน 1 ชั่วโมง ' +
+                      '(ถ้าไม่เห็น ลองดูในโฟลเดอร์สแปม)', r.error ? 'bad' : 'ok');
       });
   });
 
   /* ---------- ติดตั้งเป็นแอป ---------- */
   var deferred = null, btn = document.getElementById('install');
+  if (!btn) { btn = document.createElement('button'); }   /* จอตั้งรหัสใหม่ไม่มีปุ่มนี้ */
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault(); deferred = e; btn.style.display = 'flex';
   });
