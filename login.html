@@ -69,16 +69,18 @@
 html,body{margin:0;padding:0}
 body{min-height:100vh;background:var(--page);color:var(--ink);
   font-family:var(--ui);font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
-.wrap{min-height:100vh;background:var(--page)}
-
-/* ---------- หัวไล่สีคลุมเต็มกว้าง การ์ดฟอร์มซ้อนขึ้นมา เว็บกับมือถือหน้าตาเดียวกัน ---------- */
-.band{position:relative;overflow:hidden;background:var(--grad);color:#fff;text-align:center;
-  padding:34px 20px 72px;display:flex;flex-direction:column;align-items:center}
-.band::after{content:"";position:absolute;right:-80px;top:-90px;width:260px;height:260px;
+/* ---------- พื้นไล่สีเต็มจอ เนื้อหาอยู่กึ่งกลางแนวตั้ง จอยาวแค่ไหนก็ไม่เหลือพื้นที่ว่างข้างล่าง ---------- */
+.wrap{min-height:100vh;min-height:100dvh;background:var(--grad);position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:24px 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.wrap::after{content:"";position:absolute;right:-90px;top:-100px;width:300px;height:300px;
   border-radius:50%;background:rgba(255,255,255,.07)}
-.band::before{content:"";position:absolute;left:-90px;bottom:-120px;width:260px;height:260px;
+.wrap::before{content:"";position:absolute;left:-100px;bottom:-130px;width:300px;height:300px;
   border-radius:50%;background:rgba(255,255,255,.05)}
-.band>*{position:relative;z-index:1}
+
+/* ---------- หัวแบรนด์ การ์ดฟอร์มซ้อนขึ้นมา เว็บกับมือถือหน้าตาเดียวกัน ---------- */
+.band{position:relative;z-index:1;background:transparent;color:#fff;text-align:center;
+  padding:6px 20px 58px;display:flex;flex-direction:column;align-items:center}
 /* โลโก้วงกลม มีวงม่วงอีกชั้น สีเดียวกับวงรอบไอคอนแอป BS Import บนมือถือ */
 .ringwrap{width:88px;height:88px;border-radius:50%;border:4px solid var(--ring-logo);
   display:flex;align-items:center;justify-content:center;box-shadow:0 14px 34px rgba(11,28,87,.34)}
@@ -89,16 +91,18 @@ body{min-height:100vh;background:var(--page);color:var(--ink);
 .tile{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.14);
   border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;color:#fff}
 
-.pane{max-width:470px;margin:-46px auto 0;padding:0 16px 36px;position:relative;z-index:2}
+.pane{max-width:470px;width:100%;margin:-46px auto 0;padding:0 16px;position:relative;z-index:2}
+.sig{position:relative;z-index:2;text-align:center;color:#cfd8f4;font-size:11px;letter-spacing:.2em;
+  margin:18px 0 0}
 .card{background:var(--card);border-radius:20px;padding:24px 20px;
   box-shadow:0 20px 46px rgba(5,10,40,.20)}
 @media (min-width:720px){
-  .band{padding:46px 20px 90px}
+  .band{padding:10px 20px 74px}
   .ringwrap{width:106px;height:106px}
   .logo{width:88px;height:88px;padding:6px}
   .bname{font-size:21px}
   .bthai{font-size:12px}
-  .pane{margin-top:-56px;padding-bottom:52px}
+  .pane{margin-top:-56px}
   .card{padding:32px 38px}
 }
 .form{width:100%;max-width:392px}
@@ -259,6 +263,7 @@ h1{font-size:21px}
     </form>
     </div>
   </main>
+  <p class="sig">BLUE STONE TRADING CO., LTD.</p>
 </div>
 
 <script>
