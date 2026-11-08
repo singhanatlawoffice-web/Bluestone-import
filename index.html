@@ -140,7 +140,7 @@ p{margin:0}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 
 .fl{display:block;margin-bottom:5px;font-size:12.5px;font-weight:600;color:var(--muted)}
-input[type=text],input[type=date],select,textarea{width:100%;min-height:44px;padding:0 11px;border:1px solid var(--line);
+input[type=text],input[type=password],input[type=date],select,textarea{width:100%;min-height:44px;padding:0 11px;border:1px solid var(--line);
   border-radius:var(--r-md);background:var(--card);color:var(--ink);font-family:inherit;font-size:13.5px}
 textarea{padding:10px 11px;min-height:70px;line-height:1.6;resize:vertical}
 input.n{background:var(--field);border-color:var(--line-field);text-align:right;font-family:var(--num);
@@ -824,6 +824,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           }).join('') +
         '</select>' +
         '<a class="btn sec" href="photos.html">รูปจากคนขับ</a>' +
+        '<a class="btn sec" href="board.html" target="_blank" rel="noopener" ' +
+        'title="เปิดจอแสดงคู่รถและปลายทาง สำหรับต่อทีวีหรือจอ LED">จอคู่รถ</a>' +
         '<a class="btn sec" href="#export">ส่งออกข้อมูล</a>' +
         '<button type="button" class="btn pri" id="openMoney">+ บันทึกเงินเข้า</button>' +
       '</div></div>' +
@@ -1885,6 +1887,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '<button type="button" class="btn" id="logClear">ล้างประวัติทั้งหมด</button></div>' +
           '<p class="note" style="margin-top:10px">ประวัติเก็บ 500 รายการล่าสุดไว้ในเครื่องนี้ · ' +
           'ข้อมูลทั้งระบบยังเก็บแยกตามเครื่องของแต่ละคน ยังไม่ได้ใช้ฐานข้อมูลกลางร่วมกัน</p>') +
+        sbSection() +
         section(8, 'ปิดงวดและเตือนเครดิต', 'ปิดงวดแล้วรายการถึงวันนั้นจะตรึงอัตราไว้ แก้อัตราวันนี้ไม่กระทบยอดเก่าอีกต่อไป',
           '<div class="grid g2">' +
             '<div><label class="fl" for="lkDate">ปิดงวดถึงวันที่</label>' +
@@ -1905,7 +1908,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '</div>' +
           '<p class="hint" style="margin-top:8px">ตั้งแล้วจะมีแถบเตือนขึ้นบนหน้าแรกเมื่อเครดิตต่ำกว่าที่กำหนด</p>') +
 
-        sbSection() +
       '</div>';
 
     if (el('lkDo')) {
@@ -1914,7 +1916,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         if (!d) { toast('เลือกวันที่ก่อน'); return; }
         var n = 0;
         S.entries.forEach(function (e) {
-          if (e.date <= d && !e.rates) { e.rates = JSON.parse(JSON.stringify(S.rates)); n += 1; }
+          if (e.date <= d && !e.rates) {
+            e.rates = JSON.parse(JSON.stringify(S.rates));
+            delete e.rates.lkH; delete e.rates.lkS;
+            n += 1;
+          }
         });
         S.lockUpto = d;
         save(); logIt('ปิดงวด', 'ถึงวันที่ ' + d + ' · ตรึงอัตราให้ ' + n + ' รายการ');
@@ -3461,6 +3467,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         if (st.rates && Object.keys(st.rates).length) {
           Object.keys(st.rates).forEach(function (k) { S.rates[k] = st.rates[k]; });
         }
+        /* ฐานข้อมูลเป็นตัวตั้งเรื่องรหัสล็อก ถ้าที่นั่นยกเลิกแล้ว เครื่องนี้ต้องยกเลิกตาม */
+        if (st.rates && !st.rates.lkH) { delete S.rates.lkH; delete S.rates.lkS; }
         if (st.names && Object.keys(st.names).length) {
           Object.keys(st.names).forEach(function (k) { S.names[k] = st.names[k]; });
         }
@@ -3582,7 +3590,139 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     }
   }
 
+  /* ---- ล็อกหัวข้อ 7 ด้วยรหัส ----
+     เก็บเฉพาะค่าแฮชทางเดียว (SHA-256 + salt) ไว้ใน S.rates.lkH / lkS
+     ซึ่งซิงก์ขึ้นฐานข้อมูลพร้อมกับอัตราอื่น ทุกเครื่องจึงล็อกตามกันเอง
+     นี่เป็นการกันการแก้โดยไม่ตั้งใจ ไม่ใช่ระบบความปลอดภัยเต็มรูปแบบ */
+  var SBU = { open: false, armed: false };
+
+  function sbLockOn() { return !!(S.rates && S.rates.lkH); }
+
+  function sbSalt() {
+    var a = 'abcdefghijklmnopqrstuvwxyz0123456789', s = '', i;
+    for (i = 0; i < 12; i += 1) { s += a.charAt(Math.floor(Math.random() * a.length)); }
+    return s;
+  }
+
+  function sbHashWeak(txt) {
+    var h1 = 2166136261, h2 = 16777619, i, c;
+    for (i = 0; i < txt.length; i += 1) {
+      c = txt.charCodeAt(i);
+      h1 = ((h1 ^ c) * 16777619) >>> 0;
+      h2 = ((h2 + c * (i + 7)) * 2654435761) >>> 0;
+    }
+    return 'w1:' + ('00000000' + h1.toString(16)).slice(-8) + ('00000000' + h2.toString(16)).slice(-8);
+  }
+
+  function sbHash(pw, salt) {
+    var txt = 'bluestone|' + salt + '|' + pw;
+    if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+      try {
+        return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt))
+          .then(function (buf) {
+            var a = Array.prototype.slice.call(new Uint8Array(buf));
+            return 's2:' + a.map(function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+          }, function () { return sbHashWeak(txt); });
+      } catch (err) { /* เบราว์เซอร์ไม่รองรับ ใช้วิธีสำรอง */ }
+    }
+    return Promise.resolve(sbHashWeak(txt));
+  }
+
+  function sbLockBar() {
+    var on = sbLockOn();
+    return '<hr style="border:0;border-top:1px solid var(--line-soft);margin:14px 0">' +
+      '<div class="grid g2">' +
+        '<div><label class="fl" for="sbNewPw">' + (on ? 'เปลี่ยนรหัสล็อกหัวข้อนี้' : 'ตั้งรหัสล็อกหัวข้อนี้') + '</label>' +
+        '<input id="sbNewPw" type="password" autocomplete="new-password" placeholder="รหัสใหม่ อย่างน้อย 4 ตัว"></div>' +
+        '<div><label class="fl" for="sbNewPw2">พิมพ์รหัสใหม่อีกครั้ง</label>' +
+        '<input id="sbNewPw2" type="password" autocomplete="new-password" placeholder="ให้ตรงกับช่องซ้าย"></div>' +
+      '</div>' +
+      '<div class="actions" style="margin-top:12px">' +
+        '<button type="button" class="btn pri" id="sbLockSet">' + (on ? 'เปลี่ยนรหัส' : 'ตั้งรหัสและล็อก') + '</button>' +
+        (on ? '<button type="button" class="btn" id="sbLockNow">ล็อกทันที</button>' +
+              '<button type="button" class="btn" id="sbLockOff">ยกเลิกการล็อก</button>' : '') +
+      '</div>' +
+      '<p class="hint" style="margin-top:8px">' + (on
+        ? 'หัวข้อนี้ล็อกอยู่ · เก็บเฉพาะค่าแฮชของรหัส ไม่ได้เก็บตัวรหัสจริง และซิงก์ให้ทุกเครื่องเมื่อส่งข้อมูลขึ้น'
+        : 'ตั้งรหัสแล้วเครื่องที่ดึงข้อมูลลงจะล็อกหัวข้อนี้ตามด้วย · พนักงานทั่วไปจะไม่เห็นค่าเชื่อมต่อและไม่มีปุ่มบันทึกทับ') + '</p>' +
+      '<p class="hint" style="margin-top:4px">การล็อกนี้กันการกดแก้โดยไม่ตั้งใจและกันคนในที่ไม่เกี่ยวข้อง ไม่ใช่ระบบความปลอดภัยเต็มรูปแบบ · ' +
+      'คนที่เปิดเครื่องมือพัฒนาของเบราว์เซอร์ยังอ่านค่าที่เก็บในเครื่องได้ · ' +
+      'ด่านกันคนนอกจริง ๆ คือการเข้าสู่ระบบและ Row Level Security บนฐานข้อมูล</p>';
+  }
+
+  function bindSBLock() {
+    if (el('sbUnlock')) {
+      var go = function () {
+        var pw = el('sbPw').value;
+        if (!pw) { toast('กรอกรหัสก่อน'); return; }
+        sbHash(pw, S.rates.lkS || '').then(function (h) {
+          if (h === S.rates.lkH) {
+            SBU.open = true; viewRates(); toast('ปลดล็อกหัวข้อฐานข้อมูลแล้ว');
+          } else {
+            el('sbPw').value = ''; el('sbPw').focus(); toast('รหัสไม่ถูกต้อง');
+          }
+        });
+      };
+      el('sbUnlock').addEventListener('click', go);
+      el('sbPw').addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); go(); }
+      });
+    }
+    if (el('sbLockSet')) {
+      el('sbLockSet').addEventListener('click', function () {
+        var p1 = el('sbNewPw').value, p2 = el('sbNewPw2').value;
+        if (p1.length < 4) { toast('รหัสสั้นเกินไป ใส่อย่างน้อย 4 ตัว'); return; }
+        if (p1 !== p2) { toast('รหัสสองช่องไม่ตรงกัน'); return; }
+        var salt = sbSalt(), first = !sbLockOn();
+        sbHash(p1, salt).then(function (h) {
+          S.rates.lkS = salt; S.rates.lkH = h;
+          SBU.open = true; SBU.armed = false;
+          save(); logIt(first ? 'ตั้งรหัสล็อกหัวข้อฐานข้อมูล' : 'เปลี่ยนรหัสล็อกหัวข้อฐานข้อมูล', 'หัวข้อ 7 ฐานข้อมูลกลาง');
+          viewRates();
+          toast(first ? 'ตั้งรหัสแล้ว · เปิดหน้านี้ใหม่จะต้องใส่รหัสก่อน' : 'เปลี่ยนรหัสแล้ว');
+        });
+      });
+    }
+    if (el('sbLockNow')) {
+      el('sbLockNow').addEventListener('click', function () {
+        SBU.open = false; SBU.armed = false; viewRates(); toast('ล็อกหัวข้อฐานข้อมูลแล้ว');
+      });
+    }
+    if (el('sbLockOff')) {
+      el('sbLockOff').addEventListener('click', function () {
+        var b = el('sbLockOff');
+        if (!SBU.armed) {
+          SBU.armed = true;
+          b.textContent = 'กดอีกครั้งเพื่อยืนยันการยกเลิก';
+          b.classList.add('pri');
+          toast('ยกเลิกแล้วทุกคนที่เปิดหน้านี้จะแก้ค่าเชื่อมต่อได้ · กดอีกครั้งถ้าแน่ใจ');
+          return;
+        }
+        delete S.rates.lkH; delete S.rates.lkS;
+        SBU.open = true; SBU.armed = false;
+        save(); logIt('ยกเลิกรหัสล็อกหัวข้อฐานข้อมูล', 'หัวข้อ 7 ฐานข้อมูลกลาง');
+        viewRates(); toast('ยกเลิกการล็อกแล้ว');
+      });
+    }
+  }
+
   function sbSection() {
+    if (sbLockOn() && !SBU.open) {
+      return section(7, 'ฐานข้อมูลกลาง Supabase', 'หัวข้อนี้ล็อกไว้ด้วยรหัส เฉพาะผู้ดูแลระบบที่รู้รหัสจึงเปิดดูและแก้ค่าเชื่อมต่อได้',
+        '<div class="grid g2">' +
+          '<div><label class="fl" for="sbPw">รหัสผู้ดูแลระบบ</label>' +
+          '<input id="sbPw" type="password" autocomplete="off" placeholder="กรอกรหัสเพื่อเปิดหัวข้อนี้"></div>' +
+          '<div style="align-self:end"><div class="actions">' +
+            '<button type="button" class="btn pri" id="sbUnlock">ปลดล็อก</button>' +
+            '<span class="badge b-n" id="sbHead" style="align-self:center">ออฟไลน์</span>' +
+          '</div></div>' +
+        '</div>' +
+        '<p class="note" id="sbStatus" style="margin-top:9px">' + esc(SB.status) + '</p>' +
+        '<p class="hint" style="margin-top:6px">การส่งขึ้นและดึงข้อมูลลงอัตโนมัติยังทำงานตามปกติแม้หัวข้อนี้จะล็อกอยู่ · ' +
+        'ปลดล็อกแล้วจะเปิดไว้จนกดล็อกทันทีหรือปิดหน้าเว็บ · ' +
+        'ถ้าลืมรหัส ให้เปิดเว็บ Supabase ไปที่ Table editor ตาราง app_settings แถว default ' +
+        'แล้วลบคีย์ lkH กับ lkS ออกจากช่อง rates จากนั้นกลับมากดดึงข้อมูลลงที่เครื่องนี้</p>');
+    }
     return section(7, 'ฐานข้อมูลกลาง Supabase', 'เชื่อมต่อแล้วข้อมูลจะถูกเก็บบนฐานข้อมูล ทุกเครื่องที่เปิดเว็บนี้เห็นชุดเดียวกัน',
       '<div class="grid g2">' +
         '<div><label class="fl" for="sbUrl">Project URL</label>' +
@@ -3601,10 +3741,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<p class="hint" style="margin-top:6px">ใช้ publishable key (sb_publishable_...) หรือ anon public key เท่านั้น ห้ามใส่ service_role หรือ secret key เด็ดขาด · ' +
       'ค่าที่กรอกเก็บไว้ในเบราว์เซอร์เครื่องนี้ ไม่ได้ฝังลงในโค้ด · ' +
       'ถ้ามีคนอื่นแก้ข้อมูลหลังจากคุณดึงล่าสุด ระบบจะไม่ส่งทับให้เอง · ' +
-      'สคริปต์สร้างตารางอยู่ในไฟล์ supabase/schema.sql ของโปรเจกต์</p>');
+      'สคริปต์สร้างตารางอยู่ในไฟล์ supabase/schema.sql ของโปรเจกต์</p>' + sbLockBar());
   }
 
   function bindSB() {
+    bindSBLock();
     if (!el('sbSave')) { return; }
     el('sbSave').addEventListener('click', function () {
       SB.url = el('sbUrl').value.trim();
@@ -3682,6 +3823,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     });
   }
 })();
+
 </script>
 
 </body>
