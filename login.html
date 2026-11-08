@@ -96,6 +96,49 @@ body{min-height:100vh;background:var(--page);color:var(--ink);
   margin:18px 0 0}
 .card{background:var(--card);border-radius:20px;padding:24px 20px;
   box-shadow:0 20px 46px rgba(5,10,40,.20)}
+/* ---------- มือถือ ทำการ์ดเป็นแผ่นขาวยืดเต็มส่วนที่เหลือของจอ ----------
+   แบบเดียวกับหน้าล็อกอินของเว็บหลัก คือแถบแบรนด์อยู่บน แล้วแผ่นขาวลากยาวลงจนสุดจอ
+   ไม่ว่าจอจะสูงเท่าไหร่ก็ไม่เหลือพื้นว่างแปลก ๆ ข้างล่าง */
+@media (max-width:719px){
+  .wrap{justify-content:flex-start;padding:0}
+  .band{padding:26px 20px 24px}
+  .pane{flex:1;display:flex;max-width:none;margin:0;padding:0}
+  .card{flex:1;width:100%;border-radius:26px 26px 0 0;padding:26px 20px calc(26px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -10px 30px rgba(5,10,40,.18)}
+  h1,.lede{text-align:center}
+  .lede{margin-bottom:20px}
+  .sig{display:none}
+}
+
+/* ---------- จอเตี้ย บีบระยะห่างลงให้เนื้อหาพอดีจอ ไม่ต้องเลื่อน ---------- */
+@media (max-height:1000px){
+  .wrap{padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px))}
+  .band{padding:0 20px 44px}
+  .ringwrap{width:76px;height:76px;border-width:3px}
+  .logo{width:62px;height:62px;padding:4px}
+  .bname{font-size:17px;margin-top:9px}
+  .bthai{font-size:10px}
+  .tiles{margin-top:10px}
+  .tile{width:42px;height:42px;border-radius:12px}
+  .pane{margin-top:-40px}
+  .card{padding:18px}
+  .lede{margin-bottom:13px}
+  .fw{margin-bottom:12px}
+  .or{margin:12px 0}
+  .row{margin-bottom:14px}
+  .foot{margin-top:16px;padding-top:13px}
+  .roles{margin-top:9px}
+  .sig{margin-top:12px}
+}
+/* ---------- จอเตี้ยมาก เช่นถือแนวนอน บีบเพิ่มและซ่อนส่วนที่ไม่จำเป็น ---------- */
+@media (max-height:820px){
+  .tiles{display:none}
+  .bthai{display:none}
+  .foot{display:none}
+  .ringwrap{width:64px;height:64px}
+  .logo{width:52px;height:52px}
+}
+
 @media (min-width:720px){
   .band{padding:10px 20px 74px}
   .ringwrap{width:106px;height:106px}
