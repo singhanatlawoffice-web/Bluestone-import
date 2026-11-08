@@ -68,7 +68,13 @@ body.lc .top{background:linear-gradient(105deg,#1a1538 0%,#3a3080 48%,#7b5ad0 10
   display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3vw;letter-spacing:.04em}
 .ttl b{display:block;font-size:1.7vw;line-height:1.15;letter-spacing:.01em}
 .ttl span{display:block;font-size:.95vw;opacity:.82;margin-top:.15vw}
-.clock{margin-left:auto;display:flex;gap:.8vw;align-items:stretch;text-align:center}
+/* ปุ่มกลับ เล็กและจางไว้ ไม่ให้แย่งสายตาตอนขึ้นจอทีวี */
+.back{margin-left:auto;align-self:center;display:flex;gap:.5vw}
+.back a{color:#fff;text-decoration:none;opacity:.7;font-size:.92vw;font-weight:600;white-space:nowrap;
+  background:rgba(255,255,255,.14);border:.1vw solid rgba(255,255,255,.22);border-radius:.6vw;padding:.42vw .9vw}
+.back a:hover,.back a:focus{opacity:1;background:rgba(255,255,255,.3)}
+.top .clock{margin-left:.9vw;display:flex;gap:.8vw;align-items:stretch;text-align:center}
+.clock{display:flex;gap:.8vw;align-items:stretch;text-align:center}
 .clock div{background:rgba(255,255,255,.14);border-radius:.7vw;padding:.45vw 1.1vw;min-width:8vw}
 .clock p{font-size:.78vw;opacity:.78;letter-spacing:.06em}
 .clock b{font-family:var(--num);font-size:1.9vw;line-height:1.1;display:block}
@@ -136,6 +142,7 @@ body.sm .hrow{font-size:1.32vw}
 body.sm .ttl b{font-size:2.2vw} body.sm .ttl span{font-size:1.15vw}
 body.sm .mark{width:4.4vw;height:4.4vw;font-size:1.7vw}
 body.sm .clock b{font-size:2.4vw} body.sm .clock p{font-size:1vw}
+body.sm .back a{font-size:1.2vw} body.md .back a{font-size:1.05vw}
 body.sm .no{font-size:3.6vw}
 body.sm .plate{font-size:2.8vw}
 body.sm .wt b{font-size:3vw} body.sm .wt span{font-size:1.25vw}
@@ -182,6 +189,10 @@ body.xl .row{padding:.55vw 1vw}
     <span class="mark">BS</span>
     <div class="ttl"><b>คู่รถและปลายทางประจำวัน</b>
       <span>BLUE STONE TRADING CO., LTD. · ด่านเชียงของ — พะเยา<i class="pager" id="pg" style="font-style:normal"></i></span></div>
+    <div class="back">
+      <a href="index.html">← หน้าระบบ</a>
+      <a href="photos.html">รูปจากคนขับ</a>
+    </div>
     <div class="clock">
       <div><p>วันที่ DATE</p><b id="d">—</b></div>
       <div><p>เวลา TIME</p><b id="t">—</b></div>
