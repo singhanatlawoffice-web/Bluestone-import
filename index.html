@@ -230,6 +230,15 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   z-index:40;background:var(--deep);color:#fff;padding:11px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:600;
   box-shadow:0 10px 28px rgba(14,12,60,.3)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* พิมพ์รายงาน ซ่อนเมนูและปุ่ม เหลือเฉพาะเนื้อรายงาน */
+@media print{
+  .no-print,nav,#nav,.topbar,.toast{display:none !important}
+  .only-print{display:block !important}
+  body{background:#fff}
+  .card{break-inside:avoid;box-shadow:none !important;border:1px solid #ccc !important}
+  table{font-size:10px}
+}
 </style>
 
 <header class="appbar">
@@ -606,6 +615,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           var tTon = num(r.truckTon) > 0 ? tTruck / num(r.truckTon) : 0;
           var tAmt = (r.thaiBasis === 'ton') ? tTon * tnT : tTruck;
           var item = { seq: k + 1, lao: t.lao, thai: t.thai, dest: t.dest || '',
+                       destId: t.destId || '', brand: t.brand || '',
                        plateLao: (t.lao.plate || '').trim(), plateThai: (t.thai.plate || '').trim(),
                        tons: tnL, tonsThai: tnT, loss: tnL - tnT,
                        type: ty, nation: na, lane: lane,
@@ -2027,6 +2037,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   }
 
   function viewRates() {
+    /* ชั้นที่ 2 ยังไม่ปลดล็อก ให้แสดงจอใส่ PIN แทนทั้งหน้า */
+    if (rlOn() && !RLK.open) { el('v-rates').innerHTML = rlScreen(); bindRL(); return; }
     var r = rView();
     var nm = rNames();
 
@@ -2172,6 +2184,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '</div>' +
           '<p class="hint" style="margin-top:8px">ตั้งแล้วจะมีแถบเตือนขึ้นบนหน้าแรกเมื่อเครดิตต่ำกว่าที่กำหนด</p>') +
 
+        rlSection() +
         rBar() +
       '</div>';
 
@@ -2184,6 +2197,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           if (e.date <= d && !e.rates) {
             e.rates = JSON.parse(JSON.stringify(S.rates));
             delete e.rates.lkH; delete e.rates.lkS;
+            delete e.rates.pnH; delete e.rates.pnS;
             n += 1;
           }
         });
@@ -2288,7 +2302,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     });
     el('resetRates').addEventListener('click', function () {
       rClear();
+      /* คืนค่าตั้งต้นแต่ไม่ปลดรหัสล็อก ไม่งั้นกดปุ่มเดียวก็ปลดล็อกทั้งสองชั้น */
+      var keep = { lkH: S.rates.lkH, lkS: S.rates.lkS, pnH: S.rates.pnH, pnS: S.rates.pnS };
       S.rates = JSON.parse(JSON.stringify(DEFAULT_RATES));
+      Object.keys(keep).forEach(function (k) { if (keep[k]) { S.rates[k] = keep[k]; } });
       Object.keys(DEFAULT_NAMES).forEach(function (k) { S.names[k] = DEFAULT_NAMES[k]; });
       save(); viewRates(); toast('คืนค่าตั้งต้นแล้ว');
     });
@@ -2465,183 +2482,525 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     }).join('\n\n');
   }
 
-  function viewExport() {
-    var a = analysis(), c = a.c;
-    var defs = [
-      ['balance', 'สรุปยอด', 'เงินคงเหลือสองบัญชี สต๊อก รายได้ ต้นทุน และกำไรขั้นต้น'],
-      ['analysis', 'วิเคราะห์เปรียบเทียบ', 'กำไรต่อตันแยกประเภท สัดส่วนลูกค้า และตัวชี้วัดหลัก'],
-      ['ledger', 'สมุดบัญชีคุมการตัดเงิน', 'ทุกรายการพร้อมอัตรา ยอดคงเหลือสองฝั่ง และสต๊อกหลังรายการ'],
-      ['sales', 'รายการขาย', 'แยกผู้ซื้อ ราคาขายจริง ต้นทุนต่อตัน และส่วนต่างรายรายการ'],
-      ['shipping', 'ค่าชิปปิ้ง ลาว + ไทย', 'ขั้นราคาที่ใช้ ทะเบียนรถทั้งสองฝั่ง ค่าเอกซเรย์ ชิปปิ้งไทย และยอดรวม'],
-      ['trucks', 'คู่รถลาว–รถไทยรายคัน', 'บริษัท ทะเบียน คนขับ เบอร์ และน้ำหนักทั้งสองฝั่ง พร้อมส่วนต่างจากการเป่าถ่าย']
-    ];
-    var fmts = [
-      ['tsv', 'Excel (คั่นแท็บ)', 'วางในเซลล์ A1 แล้วแยกคอลัมน์เอง'],
-      ['csv', 'CSV', 'เปิดด้วยโปรแกรมบัญชีหรือนำเข้าระบบอื่น'],
-      ['md', 'Markdown', 'วางในเอกสารหรือแชตให้เห็นเป็นตาราง'],
-      ['json', 'JSON', 'ส่งต่อให้โปรแกรมเมอร์หรือระบบอื่นอ่าน']
-    ];
+  /* ================= รายงานวิเคราะห์และส่งออกข้อมูล =================
+     ตัวกรองและหัวข้อที่เลือกไว้ ใช้ร่วมกันทั้งแดชบอร์ดบนจอและไฟล์ที่ดาวน์โหลด
+     ตัวเลขทุกตัวคำนวณจาก compute() ตัวเดียวกับหน้าอื่น ยอดจึงตรงกันทั้งระบบ */
+  var RP = {
+    range: '3m', from: '', to: '',
+    ty: { powder: true, bag: true },
+    cus: {}, prov: {}, car: {},          /* ว่างไว้ = เอาทั้งหมด */
+    sec: { dash: 1, pnl: 1, loss: 1, cust: 1, ship: 1, cash: 0, raw: 1 },
+    fmt: { xlsx: 1, csv: 0, pdf: 0, json: 0 },
+    view: 'setup'
+  };
 
-    function bar(label, pct, tone) {
-      var w = Math.max(0, Math.min(100, Math.round(pct * 100)));
-      return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:4px">' +
-        '<span class="note">' + esc(label) + '</span><b class="num" style="font-size:13px">' + w + '%</b></div>' +
-        '<div class="track"><i style="width:' + w + '%;background:' + (tone || 'var(--accent)') + '"></i></div></div>';
+  var RP_SEC = [
+    ['dash', 'แดชบอร์ดสรุป', 'ตัวเลขหลัก ตันนำเข้า คู่รถ ต้นทุน ยอดขาย และกราฟรายเดือน'],
+    ['pnl', 'ต้นทุนและยอดขายรายเดือน', 'ต้นทุนปูน ค่าชิปปิ้งสองฝั่ง ค่าเอกซเรย์ เทียบกับยอดขายในเดือนเดียวกัน'],
+    ['loss', 'น้ำหนักสูญเสียจากการถ่ายปูน', 'ส่วนต่างลาว-ไทยรายคู่รถ ค่าเฉลี่ย และคู่ที่สูญเสียสูงสุด'],
+    ['cust', 'แยกตามลูกค้า จังหวัด อำเภอ', 'จำนวนเที่ยวและตันที่ส่งให้แต่ละราย และแต่ละพื้นที่'],
+    ['ship', 'ค่าชิปปิ้งและผู้ขนส่ง', 'ค่าขนส่งรวมและต่อตันของแต่ละเจ้า ทั้งฝั่งลาวและฝั่งไทย'],
+    ['cash', 'เครดิตและกระแสเงินรายเดือน', 'โอนเข้า ตัดไป และคงเหลือ ทั้งฝั่งโรงงานและฝั่งผู้ซื้อ'],
+    ['raw', 'รายการดิบทุกเที่ยว', 'ทุกคู่รถ ทะเบียน น้ำหนักสองฝั่ง ปลายทาง และค่าใช้จ่ายรายคัน']
+  ];
+  var RP_FMT = [['xlsx', 'Excel (.xlsx)'], ['csv', 'CSV'], ['pdf', 'PDF'], ['json', 'JSON']];
+  var RP_RANGE = [['month', 'เดือนนี้'], ['prev', 'เดือนก่อน'], ['3m', '3 เดือนล่าสุด'],
+                  ['year', 'ปีนี้'], ['all', 'ทั้งหมด'], ['custom', 'กำหนดเอง']];
+
+  function rpPad(n) { return (n < 10 ? '0' : '') + n; }
+  function rpYmd(d) { return d.getFullYear() + '-' + rpPad(d.getMonth() + 1) + '-' + rpPad(d.getDate()); }
+
+  function rpBounds() {
+    var d = new Date(), y = d.getFullYear(), m = d.getMonth();
+    if (RP.range === 'custom') { return { from: RP.from || '0000-01-01', to: RP.to || '9999-12-31' }; }
+    if (RP.range === 'all') { return { from: '0000-01-01', to: '9999-12-31' }; }
+    if (RP.range === 'prev') { return { from: rpYmd(new Date(y, m - 1, 1)), to: rpYmd(new Date(y, m, 0)) }; }
+    if (RP.range === 'month') { return { from: rpYmd(new Date(y, m, 1)), to: rpYmd(d) }; }
+    if (RP.range === 'year') { return { from: rpYmd(new Date(y, 0, 1)), to: rpYmd(d) }; }
+    return { from: rpYmd(new Date(y, m - 2, 1)), to: rpYmd(d) };
+  }
+  function rpRangeLabel() {
+    var o = {};
+    RP_RANGE.forEach(function (x) { o[x[0]] = x[1]; });
+    var b = rpBounds();
+    if (RP.range === 'all') { return 'ทุกช่วงเวลา'; }
+    return (o[RP.range] || '') + ' · ' + b.from + ' ถึง ' + b.to;
+  }
+
+  /* ตัวเลือกที่มีอยู่จริงในข้อมูล เอาไว้สร้างปุ่มตัวกรอง */
+  function rpChoices() {
+    var cus = {}, prov = {}, car = {};
+    S.entries.forEach(function (e) {
+      if (e.kind !== 'import' || !e.trucks) { return; }
+      e.trucks.forEach(function (t) {
+        var c = t.destId ? cusById(t.destId) : null;
+        if (c) { cus[c.id] = c.name; if (c.province) { prov[c.province] = c.province; } }
+        else if (t.dest) { cus['~' + t.dest] = t.dest; }
+        if (t.lao && t.lao.company) { car[t.lao.company] = 'ลาว'; }
+        if (t.thai && t.thai.company) { car[t.thai.company] = 'ไทย'; }
+      });
+    });
+    return { cus: cus, prov: prov, car: car };
+  }
+  function rpOn(map, key) { return !Object.keys(map).length || !!map[key]; }
+
+  /* รวบรวมข้อมูลตามตัวกรอง คืนค่าเป็นก้อนเดียวให้ทั้งจอและไฟล์ใช้ */
+  function rpData() {
+    var bd = rpBounds(), c = compute();
+    var tr = [], mon = {}, cash = {}, byCus = {}, byProv = {}, byAmp = {}, byCar = {};
+    var tot = { tons: 0, tonsThai: 0, loss: 0, fAmt: 0, ship: 0, shipThai: 0, scan: 0, rev: 0, trucks: 0 };
+
+    function M(ym) {
+      if (!mon[ym]) {
+        mon[ym] = { ym: ym, tons: 0, tonsThai: 0, loss: 0, fAmt: 0, ship: 0, shipThai: 0, scan: 0, rev: 0, trucks: 0 };
+      }
+      return mon[ym];
     }
-    function cmp(t, o) {
-      return '<div class="card" style="border-radius:var(--r-md);box-shadow:none"><div class="card-b">' +
-        '<h3 style="margin-bottom:10px">' + esc(t) + ' · ขายแล้ว ' + t2(o.tons) + ' ตัน</h3>' +
-        '<dl class="dl" style="grid-template-columns:1fr;margin-top:0">' +
-          kv('ราคาขายต่อตัน', m0(o.price)) +
-          kv('ต้นทุนต่อตัน (ราคาที่โรงงาน)', '−' + m0(o.cost)) +
-          kv('ค่าชิปปิ้งเฉลี่ยต่อตัน (ลาว+ไทย)', '−' + m2(a.avgShip)) +
-        '</dl>' +
-        '<p class="foot-line" style="display:flex;justify-content:space-between;gap:10px;color:' + (o.after >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' +
-        '<span>กำไรต่อตัน</span><span class="num" style="font-size:15px">' + m2(o.after) + '</span></p>' +
-        '</div></div>';
+    function C(ym) {
+      if (!cash[ym]) { cash[ym] = { ym: ym, fIn: 0, fCut: 0, jIn: 0, jCut: 0 }; }
+      return cash[ym];
     }
+
+    c.rows.forEach(function (w) {
+      var e = w.e;
+      if (e.date < bd.from || e.date > bd.to) { return; }
+      var ym = String(e.date).slice(0, 7);
+
+      if (e.kind === 'import') {
+        (w.items || []).forEach(function (it) {
+          if (!RP.ty[it.type]) { return; }
+          var cu = it.destId ? cusById(it.destId) : null;
+          var cid = cu ? cu.id : (it.dest ? '~' + it.dest : '~ยังไม่ระบุ');
+          var cname = cu ? cu.name : (it.dest || 'ยังไม่ระบุปลายทาง');
+          var pv = cu && cu.province ? cu.province : 'ไม่ระบุจังหวัด';
+          var am = cu && cu.amphoe ? cu.amphoe : 'ไม่ระบุอำเภอ';
+          var laoCo = (it.lao && it.lao.company) || 'ไม่ระบุ';
+          var thaiCo = (it.thai && it.thai.company) || 'ไม่ระบุ';
+          if (!rpOn(RP.cus, cid)) { return; }
+          if (!rpOn(RP.prov, pv)) { return; }
+          if (!rpOn(RP.car, laoCo) && !rpOn(RP.car, thaiCo)) { return; }
+
+          var cost = it.fAmt + it.shipAmt + it.thaiAmt + it.scan;
+          var row = {
+            date: e.date, ym: ym, type: it.type, typeTH: it.type === 'bag' ? 'ปูนถุง' : 'ปูนผง',
+            brand: it.brand || '', laoCo: laoCo, laoPlate: it.plateLao || '',
+            thaiCo: thaiCo, thaiPlate: it.plateThai || '',
+            driver: (it.thai && it.thai.driver) || '',
+            tons: it.tons, tonsThai: it.tonsThai, loss: it.loss,
+            cus: cname, prov: pv, amp: am,
+            fAmt: it.fAmt, ship: it.shipAmt, shipThai: it.thaiAmt, scan: it.scan, cost: cost
+          };
+          tr.push(row);
+
+          var m = M(ym);
+          m.tons += it.tons; m.tonsThai += it.tonsThai; m.loss += it.loss;
+          m.fAmt += it.fAmt; m.ship += it.shipAmt; m.shipThai += it.thaiAmt; m.scan += it.scan; m.trucks += 1;
+          tot.tons += it.tons; tot.tonsThai += it.tonsThai; tot.loss += it.loss;
+          tot.fAmt += it.fAmt; tot.ship += it.shipAmt; tot.shipThai += it.thaiAmt; tot.scan += it.scan; tot.trucks += 1;
+
+          function acc(box, key, label) {
+            if (!box[key]) { box[key] = { key: key, label: label, trucks: 0, tons: 0, tonsThai: 0, amt: 0 }; }
+            box[key].trucks += 1; box[key].tons += it.tons; box[key].tonsThai += it.tonsThai;
+          }
+          acc(byCus, cid, cname); acc(byProv, pv, pv); acc(byAmp, am + ' · ' + pv, am + ' · ' + pv);
+          if (!byCar[laoCo + '|ลาว']) { byCar[laoCo + '|ลาว'] = { co: laoCo, side: 'ลาว', trucks: 0, tons: 0, amt: 0 }; }
+          byCar[laoCo + '|ลาว'].trucks += 1;
+          byCar[laoCo + '|ลาว'].tons += it.tons;
+          byCar[laoCo + '|ลาว'].amt += it.shipAmt;
+          if (!byCar[thaiCo + '|ไทย']) { byCar[thaiCo + '|ไทย'] = { co: thaiCo, side: 'ไทย', trucks: 0, tons: 0, amt: 0 }; }
+          byCar[thaiCo + '|ไทย'].trucks += 1;
+          byCar[thaiCo + '|ไทย'].tons += it.tonsThai;
+          byCar[thaiCo + '|ไทย'].amt += it.thaiAmt;
+        });
+      }
+
+      if (e.kind === 'saleBuyer' || e.kind === 'saleOther') {
+        M(ym).rev += w.rev; tot.rev += w.rev;
+      }
+      var cc = C(ym);
+      cc.fIn += w.fIn; cc.fCut += w.fAmt; cc.jIn += w.jIn; cc.jCut += w.jAmt;
+    });
+
+    function sorted(box, by) {
+      return Object.keys(box).map(function (k) { return box[k]; })
+        .sort(function (a, b) { return (b[by] || 0) - (a[by] || 0); });
+    }
+    return {
+      bounds: bd, rows: tr, tot: tot,
+      months: Object.keys(mon).sort().map(function (k) { return mon[k]; }),
+      cash: Object.keys(cash).sort().map(function (k) { return cash[k]; }),
+      cus: sorted(byCus, 'tonsThai'), prov: sorted(byProv, 'tonsThai'),
+      amp: sorted(byAmp, 'tonsThai'), car: sorted(byCar, 'tons'),
+      loss: tr.slice().sort(function (a, b) { return b.loss - a.loss; })
+    };
+  }
+
+  /* แปลงข้อมูลเป็นชุดตาราง ใช้ทั้งแสดงบนจอ ทำไฟล์ และพิมพ์ */
+  function rpSheets(d) {
+    var out = [];
+    function num(v) { return Math.round(v * 100) / 100; }
+
+    if (RP.sec.pnl) {
+      out.push({ key: 'pnl', title: 'ต้นทุนและยอดขายรายเดือน',
+        head: ['เดือน', 'คู่รถ', 'ตันฝั่งลาว', 'ตันฝั่งไทย', 'ค่าปูนที่โรงงาน', 'ชิปปิ้งลาว', 'ชิปปิ้งไทย', 'เอกซเรย์', 'รวมต้นทุน', 'ยอดขายในเดือน', 'ส่วนต่าง'],
+        rows: d.months.map(function (m) {
+          var cost = m.fAmt + m.ship + m.shipThai + m.scan;
+          return [monthTH(m.ym), m.trucks, num(m.tons), num(m.tonsThai), num(m.fAmt), num(m.ship),
+                  num(m.shipThai), num(m.scan), num(cost), num(m.rev), num(m.rev - cost)];
+        }) });
+    }
+    if (RP.sec.loss) {
+      out.push({ key: 'loss', title: 'น้ำหนักสูญเสียจากการถ่ายปูน',
+        head: ['วันที่', 'ชนิดปูน', 'ทะเบียนลาว', 'ทะเบียนไทย', 'ตันฝั่งลาว', 'ตันฝั่งไทย', 'ส่วนต่าง (ตัน)'],
+        rows: d.loss.slice(0, 50).map(function (r) {
+          return [r.date, r.typeTH, r.laoPlate || '—', r.thaiPlate || '—', num(r.tons), num(r.tonsThai), num(r.loss)];
+        }) });
+    }
+    if (RP.sec.cust) {
+      out.push({ key: 'cust', title: 'แยกตามลูกค้าปลายทาง',
+        head: ['ลูกค้า', 'เที่ยว', 'ตันฝั่งไทย'],
+        rows: d.cus.map(function (x) { return [x.label, x.trucks, num(x.tonsThai)]; }) });
+      out.push({ key: 'area', title: 'แยกตามจังหวัดและอำเภอ',
+        head: ['พื้นที่', 'เที่ยว', 'ตันฝั่งไทย'],
+        rows: d.prov.map(function (x) { return ['จ.' + x.label, x.trucks, num(x.tonsThai)]; })
+          .concat(d.amp.map(function (x) { return ['อ.' + x.label, x.trucks, num(x.tonsThai)]; })) });
+    }
+    if (RP.sec.ship) {
+      out.push({ key: 'ship', title: 'ค่าชิปปิ้งแยกตามผู้ขนส่ง',
+        head: ['ผู้ขนส่ง', 'ฝั่ง', 'เที่ยว', 'ตัน', 'ค่าขนส่งรวม', 'บาทต่อตัน'],
+        rows: d.car.map(function (x) {
+          return [x.co, x.side, x.trucks, num(x.tons), num(x.amt), x.tons ? num(x.amt / x.tons) : 0];
+        }) });
+    }
+    if (RP.sec.cash) {
+      out.push({ key: 'cash', title: 'เครดิตและกระแสเงินรายเดือน',
+        head: ['เดือน', 'โอนให้โรงงาน', 'ตัดค่าปูน', 'ผู้ซื้อโอนเข้า', 'ตัดตอนส่งมอบ'],
+        rows: d.cash.map(function (m) { return [monthTH(m.ym), num(m.fIn), num(m.fCut), num(m.jIn), num(m.jCut)]; }) });
+    }
+    if (RP.sec.raw) {
+      out.push({ key: 'raw', title: 'รายการดิบทุกเที่ยว',
+        head: ['วันที่', 'ชนิดปูน', 'ยี่ห้อ', 'ผู้ขนส่งลาว', 'ทะเบียนลาว', 'ตันลาว', 'ผู้ขนส่งไทย', 'ทะเบียนไทย',
+               'ตันไทย', 'ส่วนต่าง', 'พนักงานขับรถ', 'ลูกค้าปลายทาง', 'อำเภอ', 'จังหวัด',
+               'ค่าปูน', 'ชิปปิ้งลาว', 'ชิปปิ้งไทย', 'เอกซเรย์', 'รวมต้นทุนคันนี้'],
+        rows: d.rows.map(function (r) {
+          return [r.date, r.typeTH, r.brand, r.laoCo, r.laoPlate, num(r.tons), r.thaiCo, r.thaiPlate,
+                  num(r.tonsThai), num(r.loss), r.driver, r.cus, r.amp, r.prov,
+                  num(r.fAmt), num(r.ship), num(r.shipThai), num(r.scan), num(r.cost)];
+        }) });
+    }
+    return out;
+  }
+
+  /* ---------- หน้าตั้งค่ารายงาน ---------- */
+  function rpChip(group, key, label, on) {
+    return '<label class="chk" data-rp="' + group + ':' + esc(key) + '" style="margin:0;padding:7px 12px;border:1px solid ' +
+      (on ? 'var(--accent)' : 'var(--line)') + ';border-radius:9px;background:' +
+      (on ? 'var(--tint-weak)' : 'transparent') + '">' +
+      '<input type="checkbox"' + (on ? ' checked' : '') + ' style="margin-top:0">' +
+      '<span style="font-size:12.5px;font-weight:600">' + esc(label) + '</span></label>';
+  }
+  function rpGroup(title, quick, inner) {
+    return '<div style="margin-bottom:14px">' +
+      '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">' +
+        '<b style="font-size:12.5px;color:var(--head)">' + esc(title) + '</b>' +
+        (quick ? '<button type="button" class="btn sm" data-rpall="' + quick[0] + '" ' +
+          'style="padding:2px 9px;font-size:11.5px">' + esc(quick[1]) + '</button>' : '') +
+        '<span style="flex:1 1 auto;height:1px;background:var(--line-soft)"></span>' +
+      '</div><div style="display:flex;flex-wrap:wrap;gap:8px">' + inner + '</div></div>';
+  }
+
+  function viewExportSetup() {
+    var ch = rpChoices(), d = rpData();
+    var cusChips = Object.keys(ch.cus).map(function (k) { return rpChip('cus', k, ch.cus[k], rpOn(RP.cus, k)); }).join('');
+    var provChips = Object.keys(ch.prov).map(function (k) { return rpChip('prov', k, k, rpOn(RP.prov, k)); }).join('');
+    var carChips = Object.keys(ch.car).map(function (k) {
+      return rpChip('car', k, k + ' · ' + ch.car[k], rpOn(RP.car, k));
+    }).join('');
 
     el('v-export').innerHTML =
-      '<div class="head-row"><div><h1>ส่งออกและวิเคราะห์</h1>' +
-      '<p class="lede">เลือกชุดข้อมูลและรูปแบบไฟล์ แล้วคัดลอกไปใช้ต่อ ด้านล่างมีสรุปเปรียบเทียบกำไรต่อตันให้ดูก่อนส่งออก</p></div>' +
+      '<div class="head-row"><div><h1>ส่งออกข้อมูลและรายงานวิเคราะห์</h1>' +
+      '<p class="lede">เลือกช่วงเวลา ขอบเขต และหัวข้อที่ต้องการ จะดูบนจอก่อนหรือดาวน์โหลดเป็นไฟล์เลยก็ได้</p></div>' +
       '<div class="actions"><a class="btn" href="#ledger">กลับหน้าภาพรวม</a></div></div>' +
 
-      '<section class="card" style="margin-bottom:14px"><div class="card-h"><div><h2>วิเคราะห์เปรียบเทียบ</h2>' +
-      '<p class="note">คิดจากตันที่ขายแล้ว และเฉลี่ยค่าชิปปิ้งทั้งงวด (ลาว + ไทย) ต่อตันที่นำเข้า</p></div></div>' +
-      '<div class="card-b"><div class="grid g2" style="margin-bottom:16px">' + cmp('ปูนผง', a.powder) + cmp('ปูนถุง', a.bag) + '</div>' +
-      '<div class="grid g2">' +
-        '<div>' +
-          bar('สัดส่วนรายได้จาก ' + nm.buyer, a.shareBuyer) +
-          bar('สัดส่วนรายได้จากลูกค้าอื่น', a.shareOther, 'var(--mid)') +
-          bar('ขายไปแล้วเทียบกับที่นำเข้า', a.turn, 'var(--ok)') +
-        '</div>' +
-        '<div>' +
-          bar('ต้นทุนสินค้าต่อรายได้', a.costShare, 'var(--warn)') +
-          bar('ค่าชิปปิ้งต่อรายได้', a.shipShare, 'var(--warn)') +
-          bar('อัตรากำไรขั้นต้น', Math.max(0, a.marginPct), 'var(--ok)') +
-        '</div>' +
-      '</div>' +
-      '<p class="note" style="margin-top:12px">กำไรขั้นต้นโดยประมาณ ' + m2(c.gross) + ' บาท จากรายได้ ' + m2(c.revenue) + ' บาท · ยังไม่ถอดภาษีมูลค่าเพิ่ม</p>' +
+      '<section class="card"><div class="card-b" style="padding-bottom:4px">' +
+        rpGroup('ช่วงเวลา', null, RP_RANGE.map(function (x) {
+          return rpChip('range', x[0], x[1], RP.range === x[0]);
+        }).join('')) +
+        (RP.range === 'custom'
+          ? '<div class="grid g2" style="margin:-4px 0 14px">' +
+            '<div><label class="fl" for="rpFrom">ตั้งแต่วันที่</label>' +
+            '<input id="rpFrom" type="date" value="' + esc(RP.from) + '"></div>' +
+            '<div><label class="fl" for="rpTo">ถึงวันที่</label>' +
+            '<input id="rpTo" type="date" value="' + esc(RP.to) + '"></div></div>'
+          : '') +
+        rpGroup('ชนิดปูน', null, rpChip('ty', 'powder', 'ปูนผง', RP.ty.powder) + rpChip('ty', 'bag', 'ปูนถุง', RP.ty.bag)) +
+        (cusChips ? rpGroup('ลูกค้าปลายทาง', ['cus', Object.keys(RP.cus).length ? 'เลือกทั้งหมด' : 'ไม่เลือกเลย'], cusChips) : '') +
+        (provChips ? rpGroup('จังหวัดปลายทาง', ['prov', Object.keys(RP.prov).length ? 'เลือกทั้งหมด' : 'ไม่เลือกเลย'], provChips) : '') +
+        (carChips ? rpGroup('ผู้ประกอบการขนส่ง', ['car', Object.keys(RP.car).length ? 'เลือกทั้งหมด' : 'ไม่เลือกเลย'], carChips) : '') +
+        '<p class="hint" style="margin:0 0 12px">ตัวกรองลูกค้า จังหวัด และผู้ขนส่ง ใช้กับข้อมูลรายคู่รถ ' +
+        'ส่วนยอดขายกับเครดิตคิดตามช่วงเวลาอย่างเดียว เพราะรายการขายไม่ได้ผูกกับคู่รถรายคัน</p>' +
       '</div></section>' +
 
-      '<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px" id="expGrid">' +
-        '<section class="card"><div class="card-h"><div><h2>ชุดข้อมูลและรูปแบบ</h2><p class="note">เลือกได้หลายชุด</p></div></div>' +
-        '<div class="card-b stack" style="gap:8px">' +
-        '<fieldset><legend>รูปแบบไฟล์</legend><div class="seg">' +
-        fmts.map(function (f) {
-          return '<label><input type="radio" name="fmt" value="' + f[0] + '"' + (expFmt === f[0] ? ' checked' : '') +
-            ' data-fmt="' + f[0] + '"><span>' + esc(f[1]) + '</span></label>';
-        }).join('') + '</div>' +
-        '<p class="hint">' + esc((fmts.filter(function (f) { return f[0] === expFmt; })[0] || fmts[0])[2]) + '</p></fieldset>' +
-        defs.map(function (d) {
-          return '<label class="chk"><input type="checkbox"' + (pick[d[0]] ? ' checked' : '') + ' data-pick="' + d[0] + '">' +
-            '<span><b>' + esc(d[1]) + '</b><em>' + esc(d[2]) + '</em></span></label>';
+      '<section class="card"><div class="card-h"><div><h2>หัวข้อในรายงาน</h2>' +
+      '<p class="note">ติ๊กเฉพาะที่อยากได้ ยิ่งน้อยยิ่งอ่านง่าย</p></div></div>' +
+      '<div class="card-b stack" style="gap:9px">' +
+        RP_SEC.map(function (s) {
+          var on = !!RP.sec[s[0]];
+          return '<label class="chk" data-rp="sec:' + s[0] + '" style="margin:0;align-items:flex-start;padding:11px 13px;' +
+            'border:1px solid ' + (on ? 'var(--accent)' : 'var(--line)') + ';border-radius:11px;background:' +
+            (on ? 'var(--tint-weak)' : 'transparent') + ';width:100%">' +
+            '<input type="checkbox"' + (on ? ' checked' : '') + '>' +
+            '<span><b style="font-size:13px;color:var(--head)">' + esc(s[1]) + '</b>' +
+            '<em style="display:block;font-style:normal;font-size:11.5px;color:var(--muted);margin-top:2px;' +
+            'line-height:1.6">' + esc(s[2]) + '</em></span></label>';
         }).join('') +
-        '<p class="note" style="margin-top:6px">ไฟล์ที่คัดลอกมีอัตราและราคาขายจริงของแต่ละรายการติดไปด้วย ตรวจย้อนได้แม้ภายหลังจะแก้อัตรา</p>' +
-        '</div></section>' +
+      '</div></section>' +
 
-        '<section class="card"><div class="card-h"><div><h2 id="expCount" style="font-size:14px"></h2>' +
-        '<p class="note">ข้อมูลจริงที่จะได้ ตรวจดูก่อนคัดลอกได้เลย</p></div>' +
-        '<button type="button" class="btn pri" id="copyBtn">คัดลอกทั้งหมด</button></div>' +
-        '<div class="card-b stack"><pre class="out" id="expOut" tabindex="0" aria-label="ข้อมูลที่จะคัดลอก" ' +
-        'style="max-height:460px"></pre>' +
-        '<p class="note">ถ้าปุ่มคัดลอกไม่ทำงานในอุปกรณ์ของคุณ ให้เลือกข้อความในกล่องแล้วคัดลอกเอง</p></div></section>' +
+      '<section class="card"><div class="card-h"><div><h2>รูปแบบไฟล์</h2>' +
+      '<p class="note">เลือกได้มากกว่าหนึ่งแบบ กดดาวน์โหลดทีเดียวได้ครบ</p></div></div>' +
+      '<div class="card-b"><div style="display:flex;flex-wrap:wrap;gap:9px">' +
+        RP_FMT.map(function (f) { return rpChip('fmt', f[0], f[1], !!RP.fmt[f[0]]); }).join('') +
       '</div>' +
+      '<p class="hint" style="margin-top:9px">Excel ต้องต่ออินเทอร์เน็ตตอนกดดาวน์โหลด ถ้าโหลดไม่ได้ระบบจะเปลี่ยนเป็น CSV ให้เอง · ' +
+      'PDF ใช้หน้าพิมพ์ของเบราว์เซอร์ แล้วเลือกปลายทางเป็น บันทึกเป็น PDF</p>' +
+      '<div class="actions" style="margin-top:16px;align-items:center">' +
+        '<p class="note" style="margin:0;flex:1 1 auto">' + esc(rpRangeLabel()) + ' · ' +
+          d.rows.length + ' คู่รถ · ' + d.cus.length + ' ลูกค้า · ' +
+          Object.keys(RP.sec).filter(function (k) { return RP.sec[k]; }).length + ' หัวข้อ</p>' +
+        '<button type="button" class="btn" id="rpDash">ดูแดชบอร์ดบนจอ</button>' +
+        '<button type="button" class="btn pri" id="rpDown">ดาวน์โหลดไฟล์</button>' +
+      '</div></div></section>';
 
-      '<section class="card" style="margin-top:14px"><div class="card-h"><div>' +
-      '<h2>สำรองและย้ายข้อมูลทั้งระบบ</h2>' +
-      '<p class="note">ใช้ตอนย้ายไปเครื่องอื่น ย้ายขึ้นเว็บจริง หรือเก็บสำรองกันพลาด · ' +
-      'ข้อมูลทุกอย่างรวมเป็นข้อความชุดเดียว ทั้งอัตรา รายการ ลูกค้า ผู้ใช้ และประวัติ</p></div></div>' +
-      '<div class="card-b stack">' +
-        '<div class="actions">' +
-          '<button type="button" class="btn pri" id="bkCopy">คัดลอกข้อมูลทั้งระบบ</button>' +
-          '<button type="button" class="btn" id="bkShow">ดูข้อความ</button>' +
-          '<span class="note" id="bkInfo" style="align-self:center"></span>' +
+    bindExport();
+  }
+
+  /* ---------- แดชบอร์ดบนจอ ---------- */
+  function rpKpi(lab, val, sub, col) {
+    return '<div class="card" style="box-shadow:none;margin:0"><div class="card-b">' +
+      '<p class="note" style="margin:0 0 4px">' + esc(lab) + '</p>' +
+      '<b class="num" style="font-size:24px;font-weight:700;color:' + (col || 'var(--head)') + '">' + val + '</b>' +
+      '<p class="hint" style="margin-top:3px">' + sub + '</p></div></div>';
+  }
+  function rpChart(months) {
+    if (!months.length) { return '<p class="note">ยังไม่มีข้อมูลในช่วงนี้</p>'; }
+    var W = 660, H = 190, pad = 26, n = months.length;
+    var max = 0;
+    months.forEach(function (m) {
+      var cost = m.fAmt + m.ship + m.shipThai + m.scan;
+      max = Math.max(max, cost, m.rev);
+    });
+    if (max <= 0) { max = 1; }
+    /* เดือนน้อยอย่าให้แท่งอ้วนจนเต็มจอ จำกัดความกว้างแล้วจัดกึ่งกลางแทน */
+    var bw = Math.min(96, (W - pad * 2) / n);
+    var left = (W - bw * n) / 2;
+    var bars = months.map(function (m, i) {
+      var cost = m.fAmt + m.ship + m.shipThai + m.scan;
+      var x = left + i * bw;
+      var hr = (m.rev / max) * (H - 46), hc = (cost / max) * (H - 46);
+      return '<rect x="' + (x + 6) + '" y="' + (H - 26 - hr) + '" width="' + Math.max(4, bw / 2 - 8) +
+        '" height="' + hr + '" rx="3" fill="var(--brand)"></rect>' +
+        '<rect x="' + (x + bw / 2 + 2) + '" y="' + (H - 26 - hc) + '" width="' + Math.max(4, bw / 2 - 8) +
+        '" height="' + hc + '" rx="3" fill="var(--line)"></rect>' +
+        '<text x="' + (x + bw / 2) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="11" ' +
+        'fill="var(--muted)">' + esc(monthTH(m.ym).replace(/ \d+$/, '')) + '</text>';
+    }).join('');
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto" role="img" ' +
+      'aria-label="กราฟยอดขายเทียบต้นทุนรายเดือน">' + bars + '</svg>';
+  }
+  function rpTable(s) {
+    if (!s.rows.length) {
+      return '<p class="note" style="padding:14px 0">ไม่มีข้อมูลในหัวข้อนี้ตามตัวกรองที่เลือก</p>';
+    }
+    return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' +
+      '<thead><tr>' + s.head.map(function (h, i) {
+        return '<th style="padding:8px 10px;font-size:11.5px;text-align:' + (i ? 'right' : 'left') +
+          ';background:var(--brand);color:#fff;white-space:nowrap">' + esc(h) + '</th>';
+      }).join('') + '</tr></thead><tbody>' +
+      s.rows.slice(0, 300).map(function (r, ri) {
+        return '<tr style="background:' + (ri % 2 ? 'var(--page)' : 'transparent') + '">' +
+          r.map(function (v, i) {
+            var txt = typeof v === 'number' ? m2(v) : String(v == null ? '' : v);
+            /* ไฟล์เก็บวันที่แบบ ปี-เดือน-วัน เพื่อให้เรียงลำดับใน Excel ได้ แต่บนจอแสดงเป็นวันที่ไทย */
+            if (/^\d{4}-\d{2}-\d{2}$/.test(txt)) { txt = dtTH(txt); }
+            return '<td style="padding:7px 10px;font-size:12.5px;white-space:nowrap;text-align:' +
+              (i ? 'right' : 'left') + '">' + esc(txt) + '</td>';
+          }).join('') + '</tr>';
+      }).join('') + '</tbody></table>' +
+      (s.rows.length > 300 ? '<p class="hint" style="margin-top:8px">แสดง 300 บรรทัดแรกจาก ' +
+        s.rows.length + ' บรรทัด ไฟล์ที่ดาวน์โหลดได้ครบทุกบรรทัด</p>' : '') + '</div>';
+  }
+
+  function viewExportDash() {
+    var d = rpData(), sheets = rpSheets(d), a = analysis();
+    var cost = d.tot.fAmt + d.tot.ship + d.tot.shipThai + d.tot.scan;
+    el('v-export').innerHTML =
+      '<div class="head-row no-print"><div><h1>แดชบอร์ดสรุป</h1>' +
+      '<p class="lede">' + esc(rpRangeLabel()) + ' · ' + d.rows.length + ' คู่รถ · ' + d.cus.length + ' ลูกค้า</p></div>' +
+      '<div class="actions">' +
+        '<button type="button" class="btn" id="rpBack">แก้ตัวกรอง</button>' +
+        '<button type="button" class="btn" id="rpPrint">พิมพ์ / บันทึก PDF</button>' +
+        '<button type="button" class="btn pri" id="rpDown">ดาวน์โหลดไฟล์</button>' +
+      '</div></div>' +
+      '<h2 class="only-print" style="display:none">แดชบอร์ดสรุป · ' + esc(rpRangeLabel()) + '</h2>' +
+
+      (RP.sec.dash
+        ? '<div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px">' +
+          rpKpi('ตันนำเข้า ฝั่งลาว', t2(d.tot.tons), 'รับเข้าไทยจริง ' + t2(d.tot.tonsThai) + ' ตัน · ' + d.tot.trucks + ' คู่รถ') +
+          rpKpi('ยอดขายในช่วงนี้', m0(d.tot.rev), 'จากรายการขายที่บันทึกไว้') +
+          rpKpi('ต้นทุนปูนเข้าในช่วงนี้', m0(cost), 'ค่าปูน ' + m0(d.tot.fAmt) + ' · ชิปปิ้ง ' +
+            m0(d.tot.ship + d.tot.shipThai) + ' · เอกซเรย์ ' + m0(d.tot.scan), 'var(--muted)') +
+          rpKpi('กำไรขั้นต้นทั้งระบบ', m0(a.c.gross),
+            'คิดจากตันที่ขายแล้ว ' + (a.marginPct * 100).toFixed(1) + '% ของยอดขาย',
+            a.c.gross >= 0 ? 'var(--ok)' : 'var(--bad)') +
         '</div>' +
-        '<pre class="out" id="bkOut" hidden style="max-height:220px"></pre>' +
-        '<hr style="border:0;border-top:1px solid var(--line-soft);margin:4px 0">' +
-        '<div><label class="fl" for="bkIn">นำเข้าข้อมูล · วางข้อความที่คัดลอกมาจากเครื่องอื่น</label>' +
-        '<textarea id="bkIn" rows="4" placeholder="วางข้อความสำรองข้อมูลตรงนี้"></textarea></div>' +
-        '<div class="actions"><button type="button" class="btn pri" id="bkLoad">นำเข้าทับข้อมูลเดิม</button></div>' +
-        '<p class="hint w">การนำเข้าจะทับข้อมูลทั้งหมดในเครื่องนี้ ควรกดคัดลอกของเดิมเก็บไว้ก่อน ' +
-        'ถ้าเชื่อมฐานข้อมูลกลางอยู่ ข้อมูลชุดใหม่จะถูกส่งขึ้นฐานข้อมูลแทนของเดิมด้วย</p>' +
-      '</div></section>';
+        '<section class="card" style="margin-bottom:14px"><div class="card-h"><div>' +
+        '<h2>ยอดขายเทียบต้นทุนรายเดือน</h2>' +
+        '<p class="note">แท่งเข้ม = ยอดขายในเดือน · แท่งอ่อน = ต้นทุนปูนเข้าที่เกิดในเดือน</p></div></div>' +
+        '<div class="card-b">' + rpChart(d.months) + '</div></section>'
+        : '') +
 
-    function out() { return formatSets(buildSets(), expFmt); }
-    function refresh() {
-      var txt = out();
-      el('expOut').textContent = txt || 'ยังไม่ได้เลือกชุดข้อมูล';
-      var n = Object.keys(pick).filter(function (k) { return pick[k]; }).length;
-      el('expCount').textContent = n ? (n + ' ชุดข้อมูล · ' + txt.split('\n').length + ' บรรทัด · รูปแบบ ' + expFmt.toUpperCase()) : 'เลือกชุดข้อมูลอย่างน้อยหนึ่งชุด';
-      el('copyBtn').disabled = !n;
+      (RP.sec.loss
+        ? '<section class="card" style="margin-bottom:14px"><div class="card-h"><div>' +
+          '<h2>น้ำหนักสูญเสียจากการถ่ายปูน</h2>' +
+          '<p class="note">รวม ' + t2(d.tot.loss) + ' ตัน · เฉลี่ย ' +
+          (d.rows.length ? t2(d.tot.loss / d.rows.length) : '0.00') + ' ตันต่อคู่รถ</p></div></div>' +
+          '<div class="card-b">' + rpTable(sheets.filter(function (s) { return s.key === 'loss'; })[0] ||
+            { head: [], rows: [] }) + '</div></section>'
+        : '') +
+
+      sheets.filter(function (s) { return s.key !== 'loss'; }).map(function (s) {
+        return '<section class="card" style="margin-bottom:14px"><div class="card-h"><div>' +
+          '<h2>' + esc(s.title) + '</h2></div></div>' +
+          '<div class="card-b">' + rpTable(s) + '</div></section>';
+      }).join('');
+
+    bindExport();
+    window.scrollTo(0, 0);
+  }
+
+  function viewExport() {
+    if (RP.view === 'dash') { viewExportDash(); } else { viewExportSetup(); }
+  }
+
+  /* ---------- ทำไฟล์ ---------- */
+  function rpCsvCell(v) {
+    var s = String(v == null ? '' : v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function rpSave(name, text, mime) {
+    var blob = (text instanceof Blob) ? text : new Blob(['﻿' + text], { type: mime || 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+  function rpStamp() {
+    var d = new Date();
+    return d.getFullYear() + rpPad(d.getMonth() + 1) + rpPad(d.getDate()) + '-' + rpPad(d.getHours()) + rpPad(d.getMinutes());
+  }
+  function rpCsvText(sheets) {
+    return sheets.map(function (s) {
+      return [s.title].concat([s.head.map(rpCsvCell).join(',')])
+        .concat(s.rows.map(function (r) { return r.map(rpCsvCell).join(','); })).join('\n');
+    }).join('\n\n');
+  }
+  function rpXlsx(sheets, done) {
+    function build() {
+      var XLSX = window.XLSX;
+      if (!XLSX) { done(false); return; }
+      var wb = XLSX.utils.book_new();
+      sheets.forEach(function (s, i) {
+        var aoa = [[s.title]].concat([s.head]).concat(s.rows);
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        var nm2 = (s.title || ('ชุด' + (i + 1))).slice(0, 28).replace(/[\\\/\?\*\[\]:]/g, ' ');
+        XLSX.utils.book_append_sheet(wb, ws, nm2 || ('ชุด' + (i + 1)));
+      });
+      XLSX.writeFile(wb, 'bluestone-report-' + rpStamp() + '.xlsx');
+      done(true);
     }
-    Array.prototype.forEach.call(el('v-export').querySelectorAll('[data-pick]'), function (inp) {
-      inp.addEventListener('change', function () { pick[inp.getAttribute('data-pick')] = inp.checked; refresh(); });
-    });
-    Array.prototype.forEach.call(el('v-export').querySelectorAll('[data-fmt]'), function (inp) {
-      inp.addEventListener('change', function () { expFmt = inp.getAttribute('data-fmt'); viewExport(); });
-    });
-    function selectOut() {
-      var pre = el('expOut'), rng = document.createRange();
-      rng.selectNodeContents(pre);
-      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rng);
-      toast('เลือกข้อความให้แล้ว กดคัดลอกได้เลย');
+    if (window.XLSX) { build(); return; }
+    var sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    sc.onload = build;
+    sc.onerror = function () { done(false); };
+    document.head.appendChild(sc);
+  }
+  function rpPrint() {
+    if (RP.view !== 'dash') { RP.view = 'dash'; viewExport(); }
+    setTimeout(function () { window.print(); }, 350);
+  }
+  function rpDownload() {
+    var d = rpData(), sheets = rpSheets(d);
+    if (!sheets.length) { toast('ยังไม่ได้เลือกหัวข้อที่จะส่งออก'); return; }
+    var any = false;
+    if (RP.fmt.json) {
+      any = true;
+      rpSave('bluestone-report-' + rpStamp() + '.json',
+        JSON.stringify({ ช่วงเวลา: rpRangeLabel(), สร้างเมื่อ: new Date().toISOString(), ชุดข้อมูล: sheets }, null, 2),
+        'application/json;charset=utf-8');
     }
-    el('copyBtn').addEventListener('click', function () {
-      var txt = out();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(txt).then(function () { toast('คัดลอกแล้ว นำไปวางได้เลย'); }, selectOut);
-      } else { selectOut(); }
-    });
-    if (window.matchMedia('(max-width: 900px)').matches) { el('expGrid').style.gridTemplateColumns = 'minmax(0,1fr)'; }
-    function bkText() {
-      return JSON.stringify({ bsBackup: 2, at: new Date().toISOString(), data: S });
+    if (RP.fmt.csv) {
+      any = true;
+      rpSave('bluestone-report-' + rpStamp() + '.csv', rpCsvText(sheets), 'text/csv;charset=utf-8');
     }
-    function bkApply(txt) {
-      var o = JSON.parse(txt);
-      var d = (o && o.data) ? o.data : o;
-      if (!d || typeof d !== 'object') { throw new Error('อ่านข้อมูลไม่ออก'); }
-      if (!d.rates || !Array.isArray(d.entries)) { throw new Error('ไม่พบอัตราหรือรายการในข้อความนี้'); }
-      Object.keys(S.rates).forEach(function (k) { delete S.rates[k]; });
-      Object.keys(d.rates).forEach(function (k) { S.rates[k] = d.rates[k]; });
-      if (d.names) { Object.keys(d.names).forEach(function (k) { nm[k] = d.names[k]; }); }
-      if (d.profile) { Object.keys(d.profile).forEach(function (k) { S.profile[k] = d.profile[k]; }); }
-      S.entries = d.entries;
-      S.customers = Array.isArray(d.customers) ? d.customers : [];
-      if (Array.isArray(d.users)) { S.users = d.users; }
-      if (Array.isArray(d.log)) { S.log = d.log; }
-      if (typeof d.jobSeq === 'number') { S.jobSeq = d.jobSeq; }
-      S.demo = false;
-      return d;
+    if (RP.fmt.xlsx) {
+      any = true;
+      toast('กำลังสร้างไฟล์ Excel...');
+      rpXlsx(sheets, function (ok) {
+        if (ok) { toast('ดาวน์โหลดไฟล์ Excel แล้ว'); return; }
+        rpSave('bluestone-report-' + rpStamp() + '.csv', rpCsvText(sheets), 'text/csv;charset=utf-8');
+        toast('โหลดตัวทำไฟล์ Excel ไม่สำเร็จ ส่งออกเป็น CSV ให้แทน');
+      });
     }
-    el('bkInfo').textContent = S.entries.length + ' รายการ · ลูกค้า ' + S.customers.length + ' ราย';
-    el('bkCopy').addEventListener('click', function () {
-      var txt = bkText();
-      function fallback() {
-        var pre = el('bkOut'); pre.hidden = false; pre.textContent = txt;
-        var rng = document.createRange(); rng.selectNodeContents(pre);
-        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rng);
-        toast('เลือกข้อความให้แล้ว กดคัดลอกได้เลย');
-      }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(txt).then(function () { toast('คัดลอกข้อมูลทั้งระบบแล้ว'); }, fallback);
-      } else { fallback(); }
+    if (RP.fmt.pdf) { any = true; rpPrint(); }
+    if (!any) { toast('ยังไม่ได้เลือกรูปแบบไฟล์'); }
+    else { logIt('ส่งออกรายงาน', rpRangeLabel() + ' · ' + sheets.length + ' ชุดข้อมูล'); }
+  }
+
+  function bindExport() {
+    Array.prototype.forEach.call(el('v-export').querySelectorAll('[data-rp]'), function (lb) {
+      lb.addEventListener('click', function (ev) {
+        if (ev.target && ev.target.tagName === 'INPUT') { return; }
+        ev.preventDefault();
+        lb.querySelector('input').click();
+      });
+      lb.querySelector('input').addEventListener('change', function () {
+        var pp = lb.getAttribute('data-rp').split(':');
+        var g = pp[0], k = pp.slice(1).join(':');
+        if (g === 'range') { RP.range = k; }
+        else if (g === 'ty') { RP.ty[k] = this.checked; }
+        else if (g === 'sec') { RP.sec[k] = this.checked ? 1 : 0; }
+        else if (g === 'fmt') { RP.fmt[k] = this.checked ? 1 : 0; }
+        else {
+          var box = g === 'cus' ? RP.cus : (g === 'prov' ? RP.prov : RP.car);
+          var all = rpChoices()[g];
+          if (!Object.keys(box).length) { Object.keys(all).forEach(function (x) { box[x] = 1; }); }
+          if (this.checked) { box[k] = 1; } else { delete box[k]; }
+          if (Object.keys(box).length === Object.keys(all).length) { /* ครบแล้วถือว่าเลือกทั้งหมด */ }
+        }
+        viewExport();
+      });
     });
-    el('bkShow').addEventListener('click', function () {
-      var pre = el('bkOut');
-      if (pre.hidden) { pre.textContent = bkText(); pre.hidden = false; } else { pre.hidden = true; }
+    Array.prototype.forEach.call(el('v-export').querySelectorAll('[data-rpall]'), function (b) {
+      b.addEventListener('click', function () {
+        var g = b.getAttribute('data-rpall');
+        var box = g === 'cus' ? RP.cus : (g === 'prov' ? RP.prov : RP.car);
+        if (Object.keys(box).length) { if (g === 'cus') { RP.cus = {}; } else if (g === 'prov') { RP.prov = {}; } else { RP.car = {}; } }
+        else {
+          var all = rpChoices()[g];
+          Object.keys(all).forEach(function (k) { box[k] = 1; });
+          delete box[Object.keys(all)[0]];
+        }
+        viewExport();
+      });
     });
-    el('bkLoad').addEventListener('click', function () {
-      var txt = el('bkIn').value.trim();
-      if (!txt) { toast('ยังไม่ได้วางข้อความ'); return; }
-      var d;
-      try { d = bkApply(txt); } catch (eBk) { toast('นำเข้าไม่สำเร็จ: ' + eBk.message); return; }
-      save();
-      logIt('นำเข้าข้อมูลทั้งระบบ', d.entries.length + ' รายการ · ลูกค้า ' + S.customers.length + ' ราย');
-      render();
-      toast('นำเข้าข้อมูลแล้ว ' + d.entries.length + ' รายการ');
-    });
-    refresh();
+    if (el('rpFrom')) { el('rpFrom').addEventListener('change', function () { RP.from = this.value; viewExport(); }); }
+    if (el('rpTo')) { el('rpTo').addEventListener('change', function () { RP.to = this.value; viewExport(); }); }
+    if (el('rpDash')) { el('rpDash').addEventListener('click', function () { RP.view = 'dash'; viewExport(); }); }
+    if (el('rpBack')) { el('rpBack').addEventListener('click', function () { RP.view = 'setup'; viewExport(); }); }
+    if (el('rpPrint')) { el('rpPrint').addEventListener('click', rpPrint); }
+    if (el('rpDown')) { el('rpDown').addEventListener('click', rpDownload); }
   }
 
   /* ================= โปรไฟล์บนแถบบน ================= */
@@ -4042,6 +4401,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         }
         /* ฐานข้อมูลเป็นตัวตั้งเรื่องรหัสล็อก ถ้าที่นั่นยกเลิกแล้ว เครื่องนี้ต้องยกเลิกตาม */
         if (st.rates && !st.rates.lkH) { delete S.rates.lkH; delete S.rates.lkS; }
+        if (st.rates && !st.rates.pnH) { delete S.rates.pnH; delete S.rates.pnS; }
         if (st.names && Object.keys(st.names).length) {
           Object.keys(st.names).forEach(function (k) { S.names[k] = st.names[k]; });
         }
@@ -4279,6 +4639,194 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     }
   }
 
+  /* ---- ชั้นที่ 2 ของหน้าตั้งค่าอัตราและขั้นราคา ----
+     ชั้นที่ 1 คือการเข้าสู่ระบบด้วยอีเมลหรือบัญชี Google
+     ชั้นที่ 2 คือ PIN 6 หลักที่ผู้บริหารถือไว้ ใส่ก่อนจึงจะเห็นและแก้หน้านี้ได้
+     เก็บเฉพาะค่าแฮช SHA-256 + salt ไว้ใน S.rates.pnH กับ pnS เหมือนรหัสล็อกหัวข้อ 7
+     จึงซิงก์ขึ้นฐานข้อมูลและล็อกตามกันทุกเครื่อง
+     ข้อจำกัดที่ต้องรู้ไว้ นี่กันคนในที่ไม่มีหน้าที่ ไม่ได้กันคนที่เปิดเครื่องมือพัฒนาของเบราว์เซอร์
+     ด่านที่กันคนนอกได้จริงคือการเข้าสู่ระบบกับ Row Level Security บนฐานข้อมูล */
+  var RLK = { open: false, pin: '', fail: 0, until: 0 };
+
+  function rlOn() { return !!(S.rates && S.rates.pnH); }
+
+  function rlWait() {
+    return RLK.until > Date.now() ? Math.ceil((RLK.until - Date.now()) / 60000) : 0;
+  }
+
+  function rlDots() {
+    var i, d = '';
+    for (i = 0; i < 6; i += 1) {
+      d += '<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:' +
+        (i < RLK.pin.length ? '#fff' : 'rgba(255,255,255,.22)') + '"></span>';
+    }
+    return '<div id="rlDots" style="display:flex;gap:12px;justify-content:center;margin:16px 0 6px">' + d + '</div>';
+  }
+
+  function rlNote() {
+    var w = rlWait();
+    if (w) { return 'ใส่ผิดครบ 5 ครั้ง ต้องรออีก ' + w + ' นาที'; }
+    if (RLK.fail) { return 'PIN ไม่ถูกต้อง เหลืออีก ' + (5 - RLK.fail) + ' ครั้ง'; }
+    return 'PIN 6 หลัก · ใส่ผิดครบ 5 ครั้ง ล็อก 15 นาที';
+  }
+
+  function rlScreen() {
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'B'];
+    var pad = keys.map(function (k) {
+      var lab = k === 'B' ? '&#9003;' : (k === 'C' ? 'ล้าง' : k);
+      var big = /[0-9]/.test(k);
+      return '<button type="button" data-pin="' + k + '" aria-label="' +
+        (k === 'B' ? 'ลบหนึ่งตัว' : (k === 'C' ? 'ล้างทั้งหมด' : k)) + '" ' +
+        'style="height:60px;border-radius:16px;cursor:pointer;color:#fff;font-family:inherit;' +
+        'background:' + (big ? 'rgba(255,255,255,.10)' : 'transparent') + ';' +
+        'border:1px solid rgba(255,255,255,.18);font-weight:600;' +
+        'font-size:' + (big ? '23px' : '14px') + '">' + lab + '</button>';
+    }).join('');
+
+    return '<div style="min-height:68vh;display:flex;align-items:center;justify-content:center;padding:16px 0">' +
+      '<div id="rlPad" style="width:100%;max-width:356px;border-radius:24px;padding:28px 22px 22px;' +
+      'background:var(--grad);color:#fff;text-align:center;box-shadow:0 24px 56px rgba(5,10,40,.30)">' +
+        '<div style="width:72px;height:72px;border-radius:50%;margin:0 auto;background:rgba(255,255,255,.14);' +
+        'border:3px solid #5a4fd6;display:flex;align-items:center;justify-content:center">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" width="30" height="30" aria-hidden="true">' +
+          '<rect x="4" y="10.5" width="16" height="10" rx="2.5"></rect>' +
+          '<path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"></path></svg></div>' +
+        '<h2 style="margin:14px 0 0;font-size:20px;color:#fff">ปลดล็อกชั้นที่ 2</h2>' +
+        '<p style="margin:7px auto 0;font-size:12.5px;color:#c9d8f6;max-width:30ch;line-height:1.75">' +
+        'ใส่ PIN ของผู้บริหาร เพื่อเปิดสิทธิ์ดูและแก้อัตราและขั้นราคา</p>' +
+        rlDots() +
+        '<p id="rlMsg" style="margin:4px 0 14px;font-size:11px;color:#9fb6e4">' + esc(rlNote()) + '</p>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">' + pad + '</div>' +
+        '<p style="margin:16px 0 0;font-size:12.5px">' +
+        '<button type="button" id="rlBack" style="background:none;border:0;color:#fff;font:inherit;' +
+        'font-weight:600;cursor:pointer;text-decoration:underline">กลับหน้าแรก</button></p>' +
+        '<p style="margin:10px 0 0;font-size:10.5px;color:#9fb6e4;line-height:1.7">' +
+        'ลืม PIN ให้เปิด Supabase ไปที่ตาราง app_settings แถว default แล้วลบคีย์ pnH กับ pnS ' +
+        'ออกจากช่อง rates จากนั้นกลับมากดดึงข้อมูลลง</p>' +
+      '</div></div>';
+  }
+
+  function rlPaint() {
+    var d = el('rlDots'), m = el('rlMsg');
+    if (d) { d.outerHTML = rlDots(); }
+    if (m) { m.textContent = rlNote(); }
+  }
+
+  function rlTry() {
+    var pin = RLK.pin;
+    sbHash(pin, S.rates.pnS || '').then(function (h) {
+      if (h === S.rates.pnH) {
+        RLK.open = true; RLK.pin = ''; RLK.fail = 0;
+        logIt('ปลดล็อกชั้นที่ 2 ของหน้าอัตรา', 'ผู้ใช้ ' + ((S.profile && S.profile.name) || ''));
+        viewRates();
+        toast('ปลดล็อกแล้ว · เปิดไว้จนกว่าจะกดล็อกทันทีหรือปิดหน้าเว็บ');
+        return;
+      }
+      RLK.pin = '';
+      RLK.fail += 1;
+      if (RLK.fail >= 5) {
+        RLK.fail = 0;
+        RLK.until = Date.now() + 15 * 60000;
+        toast('ใส่ PIN ผิดครบ 5 ครั้ง ล็อก 15 นาที');
+      } else {
+        toast('PIN ไม่ถูกต้อง เหลืออีก ' + (5 - RLK.fail) + ' ครั้ง');
+      }
+      rlPaint();
+    });
+  }
+
+  function rlKey(k) {
+    if (rlWait()) { rlPaint(); toast('ยังอยู่ในช่วงล็อก รออีก ' + rlWait() + ' นาที'); return; }
+    if (k === 'C') { RLK.pin = ''; rlPaint(); return; }
+    if (k === 'B') { RLK.pin = RLK.pin.slice(0, -1); rlPaint(); return; }
+    if (RLK.pin.length >= 6) { return; }
+    RLK.pin += k;
+    rlPaint();
+    if (RLK.pin.length === 6) { rlTry(); }
+  }
+
+  function rlSection() {
+    var on = rlOn();
+    return section(9, 'รหัสชั้นที่ 2 ของหน้านี้',
+      'PIN 6 หลักของผู้บริหาร ตั้งแล้วหน้าตั้งค่าอัตราและขั้นราคาจะถามก่อนทุกครั้ง',
+      '<div class="grid g2">' +
+        '<div><label class="fl" for="rlNew">' + (on ? 'เปลี่ยน PIN' : 'ตั้ง PIN') + '</label>' +
+        '<input id="rlNew" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" ' +
+        'placeholder="ตัวเลข 6 หลัก"></div>' +
+        '<div><label class="fl" for="rlNew2">พิมพ์ PIN อีกครั้ง</label>' +
+        '<input id="rlNew2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" ' +
+        'placeholder="ให้ตรงกับช่องซ้าย"></div>' +
+      '</div>' +
+      '<div class="actions" style="margin-top:12px">' +
+        '<button type="button" class="btn pri" id="rlSet">' + (on ? 'เปลี่ยน PIN' : 'ตั้ง PIN และเปิดใช้') + '</button>' +
+        (on ? '<button type="button" class="btn" id="rlNow">ล็อกทันที</button>' +
+              '<button type="button" class="btn" id="rlOff">ยกเลิกการล็อก</button>' : '') +
+      '</div>' +
+      '<p class="hint" style="margin-top:8px">' + (on
+        ? 'หน้านี้ล็อกอยู่ · เก็บเฉพาะค่าแฮชของ PIN ไม่ได้เก็บตัวเลขจริง และซิงก์ให้ทุกเครื่องเมื่อส่งข้อมูลขึ้น'
+        : 'ยังไม่ได้ตั้ง · ตอนนี้ใครที่เข้าระบบได้ก็เปิดหน้านี้และแก้ราคาได้') + '</p>' +
+      '<p class="hint" style="margin-top:4px">ช่องบทบาทในโปรไฟล์ผู้ใช้เลือกเองได้ จึงกันไม่ได้จริง ' +
+      'ตัวที่กันคือ PIN นี้ ให้ผู้บริหารถือไว้คนเดียว · ' +
+      'กันคนในที่ไม่มีหน้าที่ ไม่ได้กันคนที่เปิดเครื่องมือพัฒนาของเบราว์เซอร์ · ' +
+      'ด่านกันคนนอกจริง ๆ คือการเข้าสู่ระบบและ Row Level Security บนฐานข้อมูล</p>');
+  }
+
+  function bindRL() {
+    if (el('rlPad')) {
+      Array.prototype.forEach.call(el('rlPad').querySelectorAll('[data-pin]'), function (b) {
+        b.addEventListener('click', function () { rlKey(b.getAttribute('data-pin')); });
+      });
+      el('rlBack').addEventListener('click', function () { location.hash = '#ledger'; });
+      if (!RLK.keyed) {
+        RLK.keyed = true;
+        document.addEventListener('keydown', function (ev) {
+          if (!el('rlPad')) { return; }
+          if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); rlKey(ev.key); return; }
+          if (ev.key === 'Backspace') { ev.preventDefault(); rlKey('B'); return; }
+          if (ev.key === 'Escape') { ev.preventDefault(); rlKey('C'); }
+        });
+      }
+      return;
+    }
+    if (el('rlSet')) {
+      el('rlSet').addEventListener('click', function () {
+        var a = el('rlNew').value.trim(), b = el('rlNew2').value.trim();
+        if (!/^[0-9]{6}$/.test(a)) { toast('PIN ต้องเป็นตัวเลข 6 หลัก'); return; }
+        if (a !== b) { toast('PIN สองช่องไม่ตรงกัน'); return; }
+        var salt = sbSalt(), first = !rlOn();
+        sbHash(a, salt).then(function (h) {
+          S.rates.pnS = salt; S.rates.pnH = h;
+          RLK.open = true; RLK.armed = false; RLK.pin = ''; RLK.fail = 0;
+          save();
+          logIt(first ? 'ตั้ง PIN ชั้นที่ 2 ของหน้าอัตรา' : 'เปลี่ยน PIN ชั้นที่ 2 ของหน้าอัตรา', 'หน้าตั้งค่าอัตราและขั้นราคา');
+          viewRates();
+          toast(first ? 'ตั้ง PIN แล้ว · เปิดหน้านี้ครั้งหน้าจะต้องใส่ PIN ก่อน' : 'เปลี่ยน PIN แล้ว');
+        });
+      });
+    }
+    if (el('rlNow')) {
+      el('rlNow').addEventListener('click', function () {
+        RLK.open = false; RLK.pin = ''; viewRates(); toast('ล็อกหน้านี้แล้ว');
+      });
+    }
+    if (el('rlOff')) {
+      el('rlOff').addEventListener('click', function () {
+        var b = el('rlOff');
+        if (!RLK.armed) {
+          RLK.armed = true;
+          b.textContent = 'กดอีกครั้งเพื่อยืนยันการยกเลิก';
+          b.classList.add('pri');
+          toast('ยกเลิกแล้วทุกคนที่เข้าระบบได้จะแก้ราคาได้ · กดอีกครั้งถ้าแน่ใจ');
+          return;
+        }
+        delete S.rates.pnH; delete S.rates.pnS;
+        RLK.open = true; RLK.armed = false;
+        save(); logIt('ยกเลิก PIN ชั้นที่ 2 ของหน้าอัตรา', 'หน้าตั้งค่าอัตราและขั้นราคา');
+        viewRates(); toast('ยกเลิกการล็อกแล้ว');
+      });
+    }
+  }
+
   function sbSection() {
     if (sbLockOn() && !SBU.open) {
       return section(7, 'ฐานข้อมูลกลาง Supabase', 'หัวข้อนี้ล็อกไว้ด้วยรหัส เฉพาะผู้ดูแลระบบที่รู้รหัสจึงเปิดดูและแก้ค่าเชื่อมต่อได้',
@@ -4319,6 +4867,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
   function bindSB() {
     bindSBLock();
+    bindRL();
     if (!el('sbSave')) { return; }
     el('sbSave').addEventListener('click', function () {
       SB.url = el('sbUrl').value.trim();
