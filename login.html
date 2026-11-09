@@ -94,7 +94,9 @@ body{min-height:100vh;background:var(--page);color:var(--ink);
 .pane{max-width:470px;width:100%;margin:-46px auto 0;padding:0 16px;position:relative;z-index:2}
 .sig{position:relative;z-index:2;text-align:center;color:#cfd8f4;font-size:11px;letter-spacing:.2em;
   margin:18px 0 0}
-.tagline{display:none}
+.tagline{display:block;margin:12px 0 0;font-size:12.5px;color:#e4e9fb;
+  background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);
+  border-radius:999px;padding:6px 16px;line-height:1.5}
 .rings{display:none}
 .addr{margin:10px 0 0;font-size:11.5px;color:var(--faint);line-height:1.8}
 .card{background:var(--card);border-radius:20px;padding:24px 20px;
@@ -139,6 +141,7 @@ body{min-height:100vh;background:var(--page);color:var(--ink);
 /* ---------- จอเตี้ยมาก เช่นถือแนวนอน บีบเพิ่มและซ่อนส่วนที่ไม่จำเป็น ---------- */
 @media (max-height:820px){
   .tiles{display:none}
+  .tagline{font-size:11.5px;padding:5px 13px;margin-top:9px}
   .bthai{display:none}
   .foot{display:none}
   .ringwrap{width:64px;height:64px}
@@ -209,10 +212,10 @@ input:focus{outline:2px solid var(--ring);outline-offset:1px;border-color:var(--
 .chk input{width:17px;height:17px;min-height:0;padding:0;accent-color:var(--accent)}
 .link{font-size:14px;color:var(--head);text-decoration:none;font-weight:700}
 .link:hover{text-decoration:underline}
-.go{width:100%;min-height:56px;border:0;border-radius:var(--r-pill);background:var(--login-btn);color:#fff;
+.go{width:100%;min-height:56px;border:0;border-radius:var(--r-pill);background:linear-gradient(135deg,#1f2f7e 0%,#3b3fb0 55%,#6b4fd0 100%);color:#fff;
   font:inherit;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;
   justify-content:center;gap:12px;box-shadow:0 10px 24px rgba(15,47,134,.26)}
-.go:hover{background:var(--mid)}
+.go:hover{background:linear-gradient(135deg,#27389a 0%,#4a4ec4 55%,#7c5fe0 100%)}
 .go:disabled{opacity:.6;cursor:default}
 .msg{margin:16px 0 0;padding:11px 13px;border-radius:var(--r-md);font-size:13px;display:none}
 .msg.bad{display:block;background:var(--bad-bg);border:1px solid var(--bad-bd);color:var(--bad)}
@@ -235,8 +238,6 @@ input:focus{outline:2px solid var(--ring);outline-offset:1px;border-color:var(--
 }
 :root[data-theme="dark"]{ --login-btn:#16326f; --ring-logo:#6c9bf0 }
 .form{max-width:none}
-.go{background:var(--brand);box-shadow:0 8px 20px rgba(15,47,134,.22)}
-.go:hover{background:var(--mid)}
 .link{color:var(--accent)}
 .role{background:var(--tint);color:var(--head)}
 input:focus{outline-color:var(--ring);border-color:var(--ring)}
