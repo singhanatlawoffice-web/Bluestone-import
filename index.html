@@ -239,6 +239,46 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   .card{break-inside:avoid;box-shadow:none !important;border:1px solid #ccc !important}
   table{font-size:10px}
 }
+
+/* ---------- จอใส่ PIN ชั้นที่ 2 ----------
+   หน้านี้ตั้ง viewport ไว้ที่ 1180 จุด มือถือจึงย่อทั้งหน้าลงราวหนึ่งในสาม
+   ถ้าใช้ขนาดเดียวกับจอคอม ปุ่มบนมือถือจะเล็กจนกดยาก
+   จึงแยกขนาดด้วย pointer:coarse คือจอสัมผัส ให้ใหญ่ขึ้นประมาณสองเท่าครึ่ง */
+.rl-wrap{min-height:70vh;display:flex;align-items:center;justify-content:center;padding:18px 0}
+.rl-card{width:100%;max-width:356px;border-radius:24px;padding:28px 22px 22px;
+  background:var(--grad);color:#fff;text-align:center;box-shadow:0 24px 56px rgba(5,10,40,.30)}
+.rl-ico{width:72px;height:72px;border-radius:50%;margin:0 auto;background:rgba(255,255,255,.14);
+  border:3px solid #5a4fd6;display:flex;align-items:center;justify-content:center}
+.rl-ico svg{width:30px;height:30px}
+.rl-h{margin:14px 0 0;font-size:20px;color:#fff}
+.rl-sub{margin:7px auto 0;font-size:12.5px;color:#c9d8f6;max-width:30ch;line-height:1.75}
+.rl-dots{display:flex;gap:12px;justify-content:center;margin:16px 0 6px}
+.rl-dot{width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.22)}
+.rl-dot.on{background:#fff}
+.rl-note{margin:4px 0 14px;font-size:11px;color:#9fb6e4}
+.rl-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rl-key{height:60px;border-radius:16px;cursor:pointer;color:#fff;font-family:inherit;font-weight:600;
+  font-size:23px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18)}
+.rl-key.fn{background:transparent;font-size:14px}
+.rl-back{background:none;border:0;color:#fff;font:inherit;font-weight:600;cursor:pointer;text-decoration:underline}
+.rl-foot{margin:16px 0 0;font-size:12.5px}
+.rl-help{margin:10px 0 0;font-size:10.5px;color:#9fb6e4;line-height:1.7}
+@media (pointer:coarse){
+  .rl-wrap{min-height:80vh;padding:30px 0}
+  .rl-card{max-width:880px;border-radius:54px;padding:66px 52px 52px}
+  .rl-ico{width:176px;height:176px;border-width:7px}
+  .rl-ico svg{width:74px;height:74px}
+  .rl-h{margin-top:32px;font-size:48px}
+  .rl-sub{margin-top:18px;font-size:29px;max-width:26ch}
+  .rl-dots{gap:28px;margin:36px 0 14px}
+  .rl-dot{width:30px;height:30px}
+  .rl-note{margin-bottom:34px;font-size:25px}
+  .rl-pad{gap:24px}
+  .rl-key{height:136px;border-radius:36px;font-size:52px}
+  .rl-key.fn{font-size:31px}
+  .rl-foot{margin-top:36px;font-size:30px}
+  .rl-help{margin-top:24px;font-size:23px}
+}
 </style>
 
 <header class="appbar">
@@ -4657,10 +4697,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   function rlDots() {
     var i, d = '';
     for (i = 0; i < 6; i += 1) {
-      d += '<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:' +
-        (i < RLK.pin.length ? '#fff' : 'rgba(255,255,255,.22)') + '"></span>';
+      d += '<span class="rl-dot' + (i < RLK.pin.length ? ' on' : '') + '"></span>';
     }
-    return '<div id="rlDots" style="display:flex;gap:12px;justify-content:center;margin:16px 0 6px">' + d + '</div>';
+    return '<div id="rlDots" class="rl-dots">' + d + '</div>';
   }
 
   function rlNote() {
@@ -4675,34 +4714,25 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     var pad = keys.map(function (k) {
       var lab = k === 'B' ? '&#9003;' : (k === 'C' ? 'ล้าง' : k);
       var big = /[0-9]/.test(k);
-      return '<button type="button" data-pin="' + k + '" aria-label="' +
-        (k === 'B' ? 'ลบหนึ่งตัว' : (k === 'C' ? 'ล้างทั้งหมด' : k)) + '" ' +
-        'style="height:60px;border-radius:16px;cursor:pointer;color:#fff;font-family:inherit;' +
-        'background:' + (big ? 'rgba(255,255,255,.10)' : 'transparent') + ';' +
-        'border:1px solid rgba(255,255,255,.18);font-weight:600;' +
-        'font-size:' + (big ? '23px' : '14px') + '">' + lab + '</button>';
+      return '<button type="button" class="rl-key' + (big ? '' : ' fn') + '" data-pin="' + k +
+        '" aria-label="' + (k === 'B' ? 'ลบหนึ่งตัว' : (k === 'C' ? 'ล้างทั้งหมด' : k)) + '">' +
+        lab + '</button>';
     }).join('');
 
-    return '<div style="min-height:68vh;display:flex;align-items:center;justify-content:center;padding:16px 0">' +
-      '<div id="rlPad" style="width:100%;max-width:356px;border-radius:24px;padding:28px 22px 22px;' +
-      'background:var(--grad);color:#fff;text-align:center;box-shadow:0 24px 56px rgba(5,10,40,.30)">' +
-        '<div style="width:72px;height:72px;border-radius:50%;margin:0 auto;background:rgba(255,255,255,.14);' +
-        'border:3px solid #5a4fd6;display:flex;align-items:center;justify-content:center">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" width="30" height="30" aria-hidden="true">' +
+    return '<div class="rl-wrap">' +
+      '<div id="rlPad" class="rl-card">' +
+        '<div class="rl-ico">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" aria-hidden="true">' +
           '<rect x="4" y="10.5" width="16" height="10" rx="2.5"></rect>' +
           '<path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"></path></svg></div>' +
-        '<h2 style="margin:14px 0 0;font-size:20px;color:#fff">ปลดล็อกชั้นที่ 2</h2>' +
-        '<p style="margin:7px auto 0;font-size:12.5px;color:#c9d8f6;max-width:30ch;line-height:1.75">' +
-        'ใส่ PIN ของผู้บริหาร เพื่อเปิดสิทธิ์ดูและแก้อัตราและขั้นราคา</p>' +
+        '<h2 class="rl-h">ปลดล็อกชั้นที่ 2</h2>' +
+        '<p class="rl-sub">ใส่ PIN ของผู้บริหาร เพื่อเปิดสิทธิ์ดูและแก้อัตราและขั้นราคา</p>' +
         rlDots() +
-        '<p id="rlMsg" style="margin:4px 0 14px;font-size:11px;color:#9fb6e4">' + esc(rlNote()) + '</p>' +
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">' + pad + '</div>' +
-        '<p style="margin:16px 0 0;font-size:12.5px">' +
-        '<button type="button" id="rlBack" style="background:none;border:0;color:#fff;font:inherit;' +
-        'font-weight:600;cursor:pointer;text-decoration:underline">กลับหน้าแรก</button></p>' +
-        '<p style="margin:10px 0 0;font-size:10.5px;color:#9fb6e4;line-height:1.7">' +
-        'ลืม PIN ให้เปิด Supabase ไปที่ตาราง app_settings แถว default แล้วลบคีย์ pnH กับ pnS ' +
-        'ออกจากช่อง rates จากนั้นกลับมากดดึงข้อมูลลง</p>' +
+        '<p id="rlMsg" class="rl-note">' + esc(rlNote()) + '</p>' +
+        '<div class="rl-pad">' + pad + '</div>' +
+        '<p class="rl-foot"><button type="button" id="rlBack" class="rl-back">กลับหน้าแรก</button></p>' +
+        '<p class="rl-help">ลืม PIN ให้เปิด Supabase ไปที่ตาราง app_settings แถว default ' +
+        'แล้วลบคีย์ pnH กับ pnS ออกจากช่อง rates จากนั้นกลับมากดดึงข้อมูลลง</p>' +
       '</div></div>';
   }
 
