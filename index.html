@@ -1169,7 +1169,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   /* ================= หน้า 2 · บันทึกรายการ ================= */
   var form = { kind: 'import', date: '2026-11-03', cementType: 'powder', nation: 'thai',
                trucks: [{ type: 'powder', brand: '', nation: 'thai', scan: true, dest: '', destId: '', tLoad: '', tSend: '', tDeliver: '',
-                          wb: '', mf: '', round: '', wh: false,
+                          wb: '', mf: '', round: '', wh: false, sp: '',
                           lao: { company: '', plate: '', driver: '', phone: '', tons: '32.00' },
                           thai: { company: '', plate: '', driver: '', phone: '', tons: '31.80' } }],
                scanner: false, tons: '', price: '', priceP: '', priceB: '', who: '', amount: '', note: '' };
@@ -1639,7 +1639,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                            scan: last.scan === undefined ? true : !!last.scan,
                            dest: last.dest || '', destId: last.destId || '',
                            tLoad: last.tLoad || '', tSend: last.tSend || '', tDeliver: last.tDeliver || '',
-                           wb: '', mf: '', round: last.round || '', wh: !!last.wh,
+                           wb: '', mf: '', round: last.round || '', wh: !!last.wh, sp: last.sp || '',
                            lao: { company: (last.lao || {}).company || '', plate: '', driver: '', phone: '', tons: t2(S.rates.truckTon) },
                            thai: { company: (last.thai || {}).company || '', plate: '', driver: '', phone: '', tons: t2(S.rates.truckTon) } });
         viewEntry();
@@ -1672,7 +1672,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                      scan: t.scan === undefined ? true : !!t.scan, dest: (t.dest || '').trim(),
                      destId: t.destId || '', job: t.job || '', tok: t.tok || null,
                      tLoad: t.tLoad || '', tSend: t.tSend || '', tDeliver: t.tDeliver || '',
-                     wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh,
+                     wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh, sp: num(t.sp) || '',
                      lao: side(t.lao), thai: side(t.thai) };
           }) });
       } else if (isSale) {
@@ -4962,6 +4962,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         'placeholder="DOWP000103624" style="min-height:38px"></div>' +
         '<div style="min-width:0"><label class="fl" for="rdf' + i + '" style="font-size:11px">รอบนำเข้า (Invoice)</label>' +
         '<select id="rdf' + i + '" data-f="round:' + i + '" style="min-height:38px">' + opts + '</select></div>' +
+        '<div style="min-width:0"><label class="fl" for="spf' + i + '" style="font-size:11px">ราคาขาย/ตัน (รวมภาษี)</label>' +
+        '<input id="spf' + i + '" class="n" type="text" inputmode="decimal" value="' + esc(v.sp || '') + '" ' +
+        'data-f="sp:' + i + '" placeholder="1,450" style="min-height:38px"></div>' +
         '<div style="min-width:0;align-self:end">' +
         '<label for="whf' + i + '" style="display:flex;align-items:center;gap:8px;font-size:12px;' +
         'color:var(--muted);cursor:pointer;min-height:38px">' +
@@ -4971,8 +4974,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '</div>' +
       (v.wh
         ? '<p class="hint" style="margin:8px 0 0">คันนี้จะถูกนับเข้าสตอกโกดัง' +
-          (v.type === 'bag' ? ' ' + BAGS_TRUCK + ' ถุง' : 'ตามน้ำหนักชั่งฝั่งไทย') + '</p>'
-        : '') +
+          (v.type === 'bag' ? ' ' + BAGS_TRUCK + ' ถุง' : 'ตามน้ำหนักชั่งฝั่งไทย') + ' ' +
+          'ยอดขายจะไปเกิดตอนบันทึกจ่ายออกจากโกดัง ไม่ใช่ช่องราคาขายนี้</p>'
+        : '<p class="hint" style="margin:8px 0 0">กรอกราคาขาย/ตัน แล้วคันนี้จะถูกนับเป็นยอดขายของเดือนที่ผ่านด่าน · ' +
+          'ถ้ายังไม่รู้ราคา เว้นว่างไว้ได้ คันนี้จะค้างเป็นสตอกจนกว่าจะกลับมากรอก</p>') +
       '</div>';
   }
 
@@ -5025,7 +5030,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           tonsL: num(t.lao && t.lao.tons), tonsT: num(t.thai && t.thai.tons),
           load: dOnly(t.tLoad), cross: dOnly(t.tSend),
           wb: t.wb || '', mf: t.mf || '', round: t.round || '',
-          wh: !!t.wh, dest: t.dest || ''
+          wh: !!t.wh, dest: t.dest || '', sp: num(t.sp)
         });
       });
     });
@@ -5069,21 +5074,302 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                trips: mine };
     });
 
+    /* ตัวเลขย่อยที่สองการ์ดวงกลมด้านบนต้องใช้ */
+    var loaded = trips.filter(function (t) { return !!t.load; });
+    var crossed = loaded.filter(function (t) { return !!t.cross; });
+    var byType = { powder: { tr: 0, tons: 0 }, bag: { tr: 0, tons: 0 } };
+    transit.forEach(function (t) {
+      var k = t.type === 'bag' ? 'bag' : 'powder';
+      byType[k].tr += 1; byType[k].tons += t.tonsL;
+    });
+    var whIn = 0, whOut = 0, whAmt = 0;
+    moves.forEach(function (m) {
+      if (m.dir === 'in') { whIn += m.bags; } else { whOut += m.bags; whAmt += m.amount || 0; }
+    });
+
     return { trips: trips, transit: transit, moves: moves, bags: bal,
              tons: bal / BAGS_TON, rounds: rds,
+             loaded: loaded, crossed: crossed, byType: byType,
+             whIn: whIn, whOut: whOut, whAmt: whAmt,
+             loadedTons: loaded.reduce(function (s, t) { return s + t.tonsL; }, 0),
+             crossedTons: crossed.reduce(function (s, t) { return s + t.tonsT; }, 0),
              transitTons: transit.reduce(function (s, t) { return s + t.tonsL; }, 0) };
+  }
+
+
+  /* ================= สะสมรายเดือน แยกตามชนิดปูน ================= */
+  var MY = { year: '' };
+  var THM = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+             'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+  function ymOf(s) { return String(s || '').slice(0, 7); }
+  function ymTH(ym) {
+    var y = parseInt(ym.slice(0, 4), 10), m = parseInt(ym.slice(5, 7), 10);
+    if (!y || !m) { return ym; }
+    return THM[m - 1] + ' ' + String((y + 543) % 100);
+  }
+  function ymFull(ym) {
+    var y = parseInt(ym.slice(0, 4), 10), m = parseInt(ym.slice(5, 7), 10);
+    var full = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    if (!y || !m) { return ym; }
+    return full[m - 1] + ' ' + (y + 543);
+  }
+
+  /* หนึ่งเดือนมีสองชนิดปูน แต่ละชนิดนับแยกกันทั้งนำเข้า ขายออก และคงเหลือ
+     นำเข้านับตอนผ่านด่านไทย คันที่ยังไม่ผ่านด่านยังไม่ถือว่านำเข้า
+     ปูนผงนับเป็นตัน ปูนถุงนับเป็นถุง ยอดคงเหลือยกยอดข้ามเดือนต่อเนื่อง */
+  function stkMonths() {
+    var map = {};
+    function blank() { return { inCars: 0, inQty: 0, outQty: 0, outAmt: 0, bal: 0, noPrice: 0, noPriceQty: 0 }; }
+    function slot(ym, ty) {
+      if (!map[ym]) { map[ym] = { ym: ym, powder: blank(), bag: blank() }; }
+      return map[ym][ty === 'bag' ? 'bag' : 'powder'];
+    }
+    stkTrips().forEach(function (t) {
+      if (!t.cross) { return; }
+      var q = t.type === 'bag' ? BAGS_TRUCK : t.tonsT;
+      var s = slot(ymOf(t.cross), t.type);
+      s.inCars += 1;
+      s.inQty += q;
+      /* ส่งตรงลูกค้าแล้วแต่ยังไม่กรอกราคาขาย ยังไม่นับเป็นขายออก ให้ค้างเป็นสตอกไว้ก่อน */
+      if (!t.wh && num(t.sp) > 0) { s.outQty += q; s.outAmt += t.tonsT * num(t.sp); }
+      if (!t.wh && !(num(t.sp) > 0)) { s.noPrice += 1; s.noPriceQty += q; }
+    });
+    whList().forEach(function (e) {
+      var p = e.trucks || {}, ty = e.cementType || 'bag';
+      var bags = num(p.bags);
+      var s = slot(ymOf(e.date), ty);
+      s.outQty += ty === 'bag' ? bags : bags / BAGS_TON;
+      s.outAmt += num(e.price) * bags;
+    });
+    var keys = Object.keys(map).sort();
+    var bal = { powder: 0, bag: 0 };
+    return keys.map(function (k) {
+      var r = map[k];
+      ['powder', 'bag'].forEach(function (ty) {
+        bal[ty] += r[ty].inQty - r[ty].outQty;
+        r[ty].bal = bal[ty];
+      });
+      return r;
+    });
+  }
+
+  function myQty(ty, v) { return ty === 'bag' ? m0(v) + ' ถุง' : m2(v) + ' ตัน'; }
+
+  function myKpi(lab, big, unit, sub) {
+    return '<div style="flex:1 1 112px;min-width:106px">' +
+      '<p class="note" style="margin:0;font-size:11.5px">' + esc(lab) + '</p>' +
+      '<p class="num" style="margin:2px 0 0;font-size:24px;font-weight:700;color:var(--head)">' + big + '</p>' +
+      '<p class="u" style="margin:1px 0 4px;font-size:11px">' + esc(unit) + '</p>' + sub + '</div>';
+  }
+  function myDelta(a, b) {
+    if (!b) { return '<span class="hint">เดือนก่อนไม่มี</span>'; }
+    var p = (a - b) / b * 100;
+    return '<span class="badge ' + (p >= 0 ? 'b-s' : 'b-d') + '">' +
+      (p >= 0 ? '↑ ' : '↓ ') + m0(Math.abs(p)) + '%</span>';
+  }
+  function myCard(title, note, tone, ty, cur, prv) {
+    var unit = ty === 'bag' ? 'ถุง' : 'ตัน';
+    return '<div style="flex:1 1 520px;min-width:320px;border:1px solid var(--line);border-left:4px solid ' + tone + ';' +
+      'border-radius:14px;padding:14px 16px;background:var(--soft)">' +
+      '<p class="t" style="margin:0 0 9px">' + esc(title) + ' <span class="hint">· ' + esc(note) + '</span></p>' +
+      '<div style="display:flex;gap:11px;flex-wrap:wrap">' +
+      myKpi('นำเข้า', ty === 'bag' ? m0(cur.inQty) : m2(cur.inQty), unit + ' · ' + m0(cur.inCars) + ' คัน',
+            prv ? myDelta(cur.inQty, prv.inQty) : '<span class="hint">เดือนแรก</span>') +
+      myKpi('ขายออก', ty === 'bag' ? m0(cur.outQty) : m2(cur.outQty), unit,
+            prv ? myDelta(cur.outQty, prv.outQty) : '<span class="hint">เดือนแรก</span>') +
+      myKpi('ยอดขาย', m0(cur.outAmt), 'บาท (รวมภาษี)',
+            prv ? myDelta(cur.outAmt, prv.outAmt) : '<span class="hint">เดือนแรก</span>') +
+      myKpi('คงเหลือ', ty === 'bag' ? m0(cur.bal) : m2(cur.bal),
+            ty === 'bag' ? 'ถุง · ' + m2(cur.bal / BAGS_TON) + ' ตัน' : 'ตัน',
+            '<span class="hint">ยกไปเดือนหน้า</span>') +
+      '</div>' +
+      (cur.noPrice
+        ? '<p class="hint w" style="margin:9px 0 0">เดือนนี้มี ' + m0(cur.noPrice) + ' คันที่ผ่านด่านแล้ว ' +
+          'แต่ยังไม่กรอกราคาขาย · ยังไม่นับเป็นยอดขาย ค้างเป็นสตอก ' +
+          (ty === 'bag' ? m0(cur.noPriceQty) + ' ถุง' : m2(cur.noPriceQty) + ' ตัน') + '</p>'
+        : '') +
+      '</div>';
+  }
+
+
+  /* กล่องตามเก็บราคาขายของคันที่ผ่านด่านแล้วแต่ยังไม่ได้กรอกราคา
+     มีเพราะรายการปูนเข้าที่บันทึกไปแล้วยังแก้จากหน้าบันทึกไม่ได้ */
+  function stkNoPrice() {
+    return stkTrips().filter(function (t) {
+      return t.cross && !t.wh && !(num(t.sp) > 0);
+    }).sort(function (a, b) { return (a.cross || '').localeCompare(b.cross || ''); });
+  }
+
+  function stkFillBox() {
+    var list = stkNoPrice();
+    if (!list.length) { return ''; }
+    var rows = list.map(function (t) {
+      return '<tr><td class="str">' + esc(dtTH(t.cross)) + '</td>' +
+        '<td>' + esc(t.lao || '—') + '</td>' +
+        '<td>' + esc(t.thai || '—') + '</td>' +
+        '<td>' + typeTH(t.type) + '</td>' +
+        '<td class="n">' + m2(t.tonsT) + '</td>' +
+        '<td>' + esc(t.dest || '—') + '</td>' +
+        '<td class="c" style="min-width:132px"><input class="n" type="text" inputmode="decimal" ' +
+        'data-sp="' + esc(t.eid) + ':' + t.seq + '" placeholder="ราคา/ตัน" ' +
+        'aria-label="ราคาขายต่อตันของรถ ' + esc(t.lao || t.thai) + '" style="min-height:36px"></td></tr>';
+    }).join('');
+    return '<div style="border:1px solid var(--warn-bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">' +
+      '<p class="t" style="margin:0">รอกรอกราคาขาย ' + m0(list.length) + ' คัน</p>' +
+      '<p class="hint" style="margin:3px 0 10px">คันพวกนี้ผ่านด่านแล้วและส่งตรงให้ลูกค้า ' +
+      'แต่ยังไม่มีราคาขาย จึงยังค้างเป็นสตอกและยังไม่เข้ายอดขาย กรอกราคาแล้วกดบันทึกได้เลย</p>' +
+      '<div class="tbox"><table><thead><tr><th>วันผ่านด่าน</th><th>ทะเบียนลาว</th><th>ทะเบียนไทย</th>' +
+      '<th>ชนิด</th><th class="c">ตัน (ชั่งไทย)</th><th>ลูกค้า</th><th class="c">ราคาขาย/ตัน</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="actions" style="margin-top:10px">' +
+      '<button type="button" class="btn pri" id="spSave">บันทึกราคาขาย</button></div></div>';
+  }
+
+  function stkMonthSection() {
+    var rows = stkMonths();
+    if (!rows.length) {
+      return section(4, 'สะสมรายเดือน', 'นำเข้าเท่าไร ขายออกเท่าไร คงเหลือสิ้นเดือนเท่าไร แยกปูนผงกับปูนถุง',
+        '<p class="muted" style="padding:18px;text-align:center;margin:0">ยังไม่มีเที่ยวรถที่ผ่านด่าน จึงยังไม่มียอดสะสม</p>');
+    }
+    var years = [];
+    rows.forEach(function (r) {
+      var y = r.ym.slice(0, 4);
+      if (years.indexOf(y) < 0) { years.push(y); }
+    });
+    years.sort(); years.reverse();
+    if (!MY.year || years.indexOf(MY.year) < 0) { MY.year = years[0]; }
+    var ys = rows.filter(function (r) { return r.ym.slice(0, 4) === MY.year; });
+
+    var last = ys[ys.length - 1];
+    var li = rows.indexOf(last);
+    var prev = li > 0 ? rows[li - 1] : null;
+
+    var cards = '<div style="display:flex;gap:14px;flex-wrap:wrap">' +
+      myCard('ปูนผง', 'ส่งตรงให้ลูกค้า', '#1f2f7e', 'powder', last.powder, prev && prev.powder) +
+      myCard('ปูนถุง', 'ผ่านโกดัง อ.เชียงของ', '#2b7a4b', 'bag', last.bag, prev && prev.bag) +
+      '</div>';
+
+    function line(r, ty, first) {
+      var s = r[ty], unit = ty === 'bag' ? 'ถุง' : 'ตัน';
+      return '<tr' + (first ? '' : ' style="border-bottom:2px solid var(--line)"') + '>' +
+        (first ? '<td class="str" rowspan="2" style="font-weight:700;vertical-align:middle">' + esc(ymTH(r.ym)) + '</td>' : '') +
+        '<td><span class="badge ' + (ty === 'bag' ? 'b-s' : 'b-n') + '">' + typeTH(ty) + '</span></td>' +
+        '<td class="n">' + (s.inCars ? m0(s.inCars) : '—') + '</td>' +
+        '<td class="n">' + (s.inQty ? myQty(ty, s.inQty) : '—') + '</td>' +
+        '<td class="n">' + (s.outQty ? myQty(ty, s.outQty) : '—') + '</td>' +
+        '<td class="n" style="font-weight:700">' + (s.outAmt ? m0(s.outAmt) : '—') + '</td>' +
+        '<td class="n"' + (ty === 'bag' ? ' style="font-weight:700"' : '') + '>' + myQty(ty, s.bal) + '</td></tr>';
+    }
+    var body = ys.map(function (r) { return line(r, 'powder', true) + line(r, 'bag', false); }).join('');
+    var sum = { powder: { inCars: 0, inQty: 0, outQty: 0, outAmt: 0 }, bag: { inCars: 0, inQty: 0, outQty: 0, outAmt: 0 } };
+    ys.forEach(function (r) {
+      ['powder', 'bag'].forEach(function (ty) {
+        sum[ty].inCars += r[ty].inCars; sum[ty].inQty += r[ty].inQty;
+        sum[ty].outQty += r[ty].outQty; sum[ty].outAmt += r[ty].outAmt;
+      });
+    });
+    function totLine(ty, first) {
+      var s = sum[ty];
+      return '<tr style="background:var(--soft)">' +
+        (first ? '<td class="str" rowspan="2" style="font-weight:700;vertical-align:middle">รวมทั้งปี</td>' : '') +
+        '<td><span class="badge ' + (ty === 'bag' ? 'b-s' : 'b-n') + '">' + typeTH(ty) + '</span></td>' +
+        '<td class="n" style="font-weight:700">' + m0(s.inCars) + '</td>' +
+        '<td class="n" style="font-weight:700">' + myQty(ty, s.inQty) + '</td>' +
+        '<td class="n" style="font-weight:700">' + myQty(ty, s.outQty) + '</td>' +
+        '<td class="n" style="font-weight:700">' + m0(s.outAmt) + '</td>' +
+        '<td class="n">—</td></tr>';
+    }
+    body += totLine('powder', true) + totLine('bag', false);
+
+    var bar = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">' +
+      '<label class="fl" for="myYear" style="margin:0">ปี</label>' +
+      '<select id="myYear" style="min-height:38px;width:auto;min-width:118px">' +
+      years.map(function (y) {
+        return '<option value="' + esc(y) + '"' + (y === MY.year ? ' selected' : '') + '>' +
+          (parseInt(y, 10) + 543) + '</option>';
+      }).join('') + '</select>' +
+      '<span class="hint">แสดงเฉพาะเดือนที่มีความเคลื่อนไหว</span>' +
+      '<span style="flex:1 1 auto"></span>' +
+      '<button type="button" class="btn" id="myCsv">ส่งออกไฟล์ CSV</button></div>';
+
+    return section(4, 'สะสมรายเดือน', 'นำเข้าเท่าไร ขายออกเท่าไร คงเหลือสิ้นเดือนเท่าไร แยกปูนผงกับปูนถุง',
+      bar + cards + stkFillBox() +
+      '<p class="note" style="margin:16px 0 6px">' + esc(ymFull(last.ym).split(' ')[1] ? 'ทุกเดือนในปี ' + (parseInt(MY.year, 10) + 543) : 'ทุกเดือน') +
+      ' · แยกบรรทัดตามชนิดปูน</p>' +
+      '<div class="tbox"><table><thead><tr><th>เดือน</th><th>ชนิด</th><th class="c">นำเข้า (คัน)</th>' +
+      '<th class="c">นำเข้า</th><th class="c">ขายออก</th><th class="c">ยอดขาย (บาท)</th>' +
+      '<th class="c">คงเหลือสิ้นเดือน</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+      '<p class="hint" style="margin-top:9px">นับนำเข้าตอนรถผ่านด่านไทย คันที่ยังไม่ผ่านด่านยังไม่เข้ายอดนี้ · ' +
+      'คันที่ส่งตรงลูกค้าจะนับเป็นขายออกต่อเมื่อกรอกช่อง “ราคาขาย/ตัน” ในหน้าบันทึกปูนเข้าแล้ว ' +
+      'ยังไม่กรอกก็ค้างเป็นสตอกไว้ก่อน · ยอดขายจากโกดังคิดจากรายการจ่ายออก ' +
+      'ทั้งสองยอดเป็นราคารวมภาษีแล้ว</p>');
+  }
+
+  function stkMonthCsv() {
+    var rows = stkMonths().filter(function (r) { return r.ym.slice(0, 4) === MY.year; });
+    var out = [['เดือน', 'ชนิดปูน', 'นำเข้า (คัน)', 'นำเข้า', 'หน่วย', 'ขายออก', 'ยอดขาย (บาท)', 'คงเหลือสิ้นเดือน']];
+    rows.forEach(function (r) {
+      ['powder', 'bag'].forEach(function (ty) {
+        var s = r[ty], u = ty === 'bag' ? 'ถุง' : 'ตัน';
+        out.push([ymTH(r.ym), typeTH(ty), s.inCars,
+                  ty === 'bag' ? s.inQty : Math.round(s.inQty * 100) / 100, u,
+                  ty === 'bag' ? s.outQty : Math.round(s.outQty * 100) / 100,
+                  Math.round(s.outAmt),
+                  ty === 'bag' ? s.bal : Math.round(s.bal * 100) / 100]);
+      });
+    });
+    rpSave('สะสมรายเดือน-' + (parseInt(MY.year, 10) + 543) + '-' + rpStamp() + '.csv',
+      out.map(function (r) { return r.map(rpCsvCell).join(','); }).join('\n'), 'text/csv;charset=utf-8');
+    toast('ส่งออกไฟล์แล้ว');
   }
 
   /* ---- ฟอร์มเพิ่ม/แก้รอบนำเข้า และฟอร์มจ่ายออกจากโกดัง ---- */
   var RF = { open: false, id: null };
   var WF = { open: false };
 
-  function stkCard(label, big, sub, tone) {
-    return '<div class="card" style="box-shadow:none;border-left:4px solid ' + tone + '">' +
-      '<div class="card-b" style="padding:14px 16px">' +
-      '<p class="note" style="margin:0">' + esc(label) + '</p>' +
-      '<p style="margin:4px 0 0;font-size:23px;font-weight:700;color:var(--head)">' + big + '</p>' +
-      '<p class="hint" style="margin:3px 0 0">' + esc(sub) + '</p></div></div>';
+  /* วงกลมสัดส่วน ใช้โครงเดียวกับวงเครดิตในหน้าคุมการตัดเงิน
+     ต่างตรงที่ข้อความกลางวงเปลี่ยนได้ เพราะหน้านี้วัดคนละอย่าง */
+  function stkDonut(pct, mid, cap, cRest, cMain) {
+    var R = 52, C = 2 * Math.PI * R;
+    var p = Math.max(0, Math.min(1, pct || 0));
+    var dash = C * p;
+    return '<svg viewBox="0 0 140 140" style="width:100%;height:auto;display:block" role="img" ' +
+      'aria-label="' + esc(cap) + ' ' + Math.round(p * 100) + ' เปอร์เซ็นต์">' +
+      '<circle cx="70" cy="70" r="' + R + '" fill="none" stroke="' + cRest + '" stroke-width="18"></circle>' +
+      '<circle cx="70" cy="70" r="' + R + '" fill="none" stroke="' + cMain + '" stroke-width="18" ' +
+      'stroke-dasharray="' + dash.toFixed(1) + ' ' + (C - dash).toFixed(1) + '" ' +
+      'stroke-dashoffset="' + (C * 0.25).toFixed(1) + '" stroke-linecap="butt"></circle>' +
+      '<text x="70" y="66" text-anchor="middle" style="font-family:var(--num);font-size:21px;' +
+      'font-weight:700;fill:var(--head)">' + esc(mid) + '</text>' +
+      '<text x="70" y="86" text-anchor="middle" style="font-size:10px;fill:var(--muted)">' + esc(cap) + '</text>' +
+      '</svg>';
+  }
+
+  /* การ์ดหนึ่งใบ = วงกลม + ตัวเลขใหญ่ + รายการย่อย + ตารางแยกประเภท */
+  function stkBig(title, donut, big, bigTone, unit, lead, items, table, warn) {
+    return '<section class="card"' + (warn ? ' style="border-color:var(--warn-bd)"' : '') + '>' +
+      '<div class="card-b kpi">' +
+        '<p class="t">' + esc(title) + '</p>' +
+        '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:6px 0 2px">' +
+          '<div style="flex:0 0 132px;max-width:132px;min-width:110px">' + donut + '</div>' +
+          '<div style="flex:1 1 180px;min-width:0">' +
+            '<p class="v" style="color:' + bigTone + '">' + big + '</p>' +
+            '<p class="u" style="margin-bottom:8px">' + esc(unit) + '</p>' +
+            '<p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.8">' + lead + '</p>' +
+          '</div>' +
+        '</div>' +
+        '<dl class="dl" style="margin-top:12px">' +
+        items.map(function (it) {
+          var tone = it[2] === 'in' ? 'var(--ok)' : (it[2] === 'out' ? 'var(--bad)' : 'var(--head)');
+          return '<div><dt style="font-size:12.5px">' +
+            '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;' +
+            'background:' + tone + '"></span>' + esc(it[0]) + '</dt>' +
+            '<dd class="num" style="font-size:18px;font-weight:700;color:' + tone + '">' + it[1] + '</dd></div>';
+        }).join('') +
+        '</dl>' + (table || '') +
+      '</div></section>';
   }
 
   function rdForm() {
@@ -5160,17 +5446,63 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     var warnDays = num(S.rates && S.rates.transitWarn) || 3;
     var late = c.transit.filter(function (t) { return daysSince(t.load) >= warnDays; }).length;
 
-    var cards =
-      stkCard('ปูนระหว่างทาง ยังไม่ผ่านด่าน', c.transit.length + ' คัน',
-              m2(c.transitTons) + ' ตัน' + (late ? ' · เกินกำหนด ' + late + ' คัน' : ''),
-              late ? 'var(--bad)' : 'var(--brand)') +
-      stkCard('ปูนถุงคงเหลือในโกดัง', m0(c.bags) + ' ถุง', m2(c.tons) + ' ตัน',
-              c.bags < 0 ? 'var(--bad)' : 'var(--ok)') +
-      stkCard('รอบนำเข้าทั้งหมด', c.rounds.length + ' รอบ',
-              c.rounds.filter(function (r) { return r.plan && r.crossed < r.plan; }).length + ' รอบยังมารับไม่ครบ',
-              'var(--accent)') +
-      stkCard('เที่ยวรถที่บันทึกไว้', c.trips.length + ' เที่ยว',
-              c.trips.filter(function (t) { return t.wh; }).length + ' เที่ยวเข้าโกดัง', 'var(--mid)');
+    /* ---------- วงที่ 1 ปูนที่เบิกจากโรงงานลาว ผ่านด่านไปแล้วกี่ส่วน ---------- */
+    var nLoad = c.loaded.length, nCross = c.crossed.length;
+    var pct1 = nLoad > 0 ? nCross / nLoad : 0;
+    var typeRows = [['ปูนผง', c.byType.powder], ['ปูนถุง', c.byType.bag]].map(function (q) {
+      return '<tr><th scope="row" style="font-weight:500">' + q[0] + '</th>' +
+        '<td class="n str">' + m0(q[1].tr) + '</td>' +
+        '<td class="n str">' + m2(q[1].tons) + '</td>' +
+        '<td class="n muted">' + (q[1].tons ? m0(q[1].tons * (q[0] === 'ปูนถุง'
+          ? num(rView().fBag) : num(rView().fPowder))) : '0') + '</td></tr>';
+    }).join('');
+    var card1 = stkBig(
+      'ปูนที่เบิกจากโรงงานลาว',
+      stkDonut(pct1, Math.round(pct1 * 100) + '%', 'ผ่านด่านแล้ว', 'var(--warn-bd)', 'var(--ok)'),
+      m0(c.transit.length), c.transit.length ? 'var(--warn)' : 'var(--ok)',
+      'คันที่ยังไม่ผ่านด่าน · ' + m2(c.transitTons) + ' ตัน',
+      (late ? '<b style="color:var(--bad)">ค้างเกิน ' + warnDays + ' วัน ' + late + ' คัน</b> ต้องตามเรื่องกับฝั่งลาว'
+            : 'ไม่มีรถค้างเกิน ' + warnDays + ' วัน'),
+      [['เบิกจากโรงงานแล้ว', m0(nLoad) + ' คัน', ''],
+       ['ผ่านด่านไทยแล้ว', m0(nCross) + ' คัน', 'in'],
+       ['ยังไม่ผ่านด่าน', m0(c.transit.length) + ' คัน', 'out'],
+       ['น้ำหนักที่ผ่านด่าน', m2(c.crossedTons) + ' ตัน', '']],
+      '<div class="tbox" style="margin-top:10px"><table><thead><tr><th>ชนิดปูน</th>' +
+      '<th class="n">ค้างกี่คัน</th><th class="n">ตัน</th><th class="n">มูลค่าที่จ่ายไปแล้ว (บาท)</th>' +
+      '</tr></thead><tbody>' + typeRows + '</tbody></table></div>' +
+      '<p class="note" style="margin-top:7px">มูลค่าคิดจากน้ำหนักชั่งฝั่งลาวคูณราคาที่โรงงานในหน้าตั้งค่าอัตรา</p>',
+      late > 0);
+
+    /* ---------- วงที่ 2 ปูนถุงที่รับเข้าโกดัง ขายออกไปแล้วกี่ส่วน ---------- */
+    var pct2 = c.whIn > 0 ? c.bags / c.whIn : 0;
+    var lastOut = c.moves.filter(function (m) { return m.dir === 'out'; }).slice(-3).reverse();
+    var outRows = lastOut.length
+      ? lastOut.map(function (m) {
+          return '<tr><th scope="row" style="font-weight:500;white-space:nowrap">' + esc(dtTH(m.at)) + '</th>' +
+            '<td class="str">' + esc(m.who || '—') + '</td>' +
+            '<td class="n str">' + m0(m.bags) + '</td>' +
+            '<td class="n muted">' + (m.amount ? m2(m.amount) : '—') + '</td></tr>';
+        }).join('')
+      : '<tr><td colspan="4" class="muted" style="padding:14px;text-align:center">ยังไม่มีการขายออกจากโกดัง</td></tr>';
+    var card2 = stkBig(
+      'ปูนถุงในโกดัง อ.เชียงของ',
+      stkDonut(pct2, m0(c.bags), 'ถุงคงเหลือ', 'var(--line)', c.bags < 0 ? 'var(--bad)' : 'var(--brand)'),
+      m2(c.tons), c.bags < 0 ? 'var(--bad)' : 'var(--head)',
+      'ตันคงเหลือ · คิดที่ ' + BAGS_TON + ' ถุงต่อตัน',
+      (c.whIn
+        ? 'รับเข้าแล้ว ' + m0(c.whIn) + ' ถุง ขายออกไป ' + m0(c.whOut) + ' ถุง คิดเป็น ' +
+          Math.round((1 - pct2) * 100) + '% ของที่รับเข้ามา'
+        : 'ยังไม่มีเที่ยวรถที่ติ๊กว่าเข้าโกดัง'),
+      [['รับเข้าสะสม', m0(c.whIn) + ' ถุง', 'in'],
+       ['ขายออกสะสม', m0(c.whOut) + ' ถุง', 'out'],
+       ['คงเหลือ', m0(c.bags) + ' ถุง', ''],
+       ['ยอดขายสะสม', m2(c.whAmt) + ' ฿', '']],
+      '<div class="tbox" style="margin-top:10px"><table><thead><tr><th>ขายล่าสุด</th><th>ลูกค้า</th>' +
+      '<th class="n">ถุง</th><th class="n">เป็นเงิน</th></tr></thead><tbody>' + outRows + '</tbody></table></div>' +
+      '<p class="note" style="margin-top:7px">ราคาที่บันทึกเป็นราคารวมภาษีแล้ว ตัดสตอกตอนรถมารับจริง</p>',
+      c.bags < 0);
+
+    var cards = card1 + card2;
 
     var transitRows = c.transit.length
       ? c.transit.map(function (t) {
@@ -5230,8 +5562,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<div class="head-row"><div><h1>สตอกและรอบนำเข้า</h1>' +
       '<p class="lede">ดูว่ารถที่เบิกปูนจากโรงงานลาวผ่านด่านครบหรือยัง และปูนถุงในโกดังเหลือกี่ถุง ' +
       'ตัดสตอกตอนรถมารับจริง ไม่ใช่ตอนออกใบเสนอราคา</p></div></div>' +
-      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px">' +
-      cards + '</div>' +
+      '<div class="grid g2" style="margin-bottom:14px">' + cards + '</div>' +
       '<div class="stack">' +
         section(1, 'รถที่ยังไม่ผ่านด่าน', 'เบิกปูนจากโรงงานลาวแล้ว ตัดเครดิตไปแล้ว แต่ยังไม่มีวันเวลาส่งออกจากด่าน',
           '<div class="tbox"><table><thead><tr><th>วันรับปูน</th><th>ทะเบียนลาว</th><th>ชนิด</th>' +
@@ -5260,12 +5591,39 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '<th class="c">ผ่านด่าน/ตาม Form D</th><th>ใบขน</th><th class="c">น้ำหนักเอกสาร (กก.)</th>' +
           '<th class="c">ชั่งจริงฝั่งไทย (กก.)</th><th class="c">สมอ. เหลือ</th><th class="c">จัดการ</th>' +
           '</tr></thead><tbody>' + rdRows + '</tbody></table></div>') +
+
+        stkMonthSection() +
       '</div>';
 
     bindStock();
   }
 
   function bindStock() {
+    if (el('spSave')) {
+      el('spSave').addEventListener('click', function () {
+        var n = 0;
+        Array.prototype.forEach.call(document.querySelectorAll('[data-sp]'), function (inp) {
+          var v = num(inp.value);
+          if (!(v > 0)) { return; }
+          var parts = inp.getAttribute('data-sp').split(':');
+          var e = S.entries.filter(function (x) { return String(x.id) === parts[0]; })[0];
+          if (!e || !e.trucks) { return; }
+          var t = e.trucks[parseInt(parts[1], 10) - 1];
+          if (!t) { return; }
+          t.sp = v;
+          n += 1;
+        });
+        if (!n) { toast('ยังไม่ได้กรอกราคาสักคัน'); return; }
+        save(); logIt('กรอกราคาขายย้อนหลัง', n + ' คัน');
+        viewStock(); toast('บันทึกราคาขาย ' + n + ' คันแล้ว');
+      });
+    }
+    if (el('myYear')) {
+      el('myYear').addEventListener('change', function () { MY.year = el('myYear').value; viewStock(); });
+    }
+    if (el('myCsv')) {
+      el('myCsv').addEventListener('click', stkMonthCsv);
+    }
     if (el('whAdd')) {
       el('whAdd').addEventListener('click', function () { WF.open = !WF.open; viewStock(); });
     }
