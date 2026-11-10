@@ -1209,7 +1209,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   /* ================= หน้า 2 · บันทึกรายการ ================= */
   var form = { kind: 'import', date: '2026-11-03', cementType: 'powder', nation: 'thai',
                trucks: [{ type: 'powder', brand: '', nation: 'thai', scan: true, dest: '', destId: '', tLoad: '', tSend: '', tDeliver: '',
-                          wb: '', mf: '', round: '', wh: false, sp: '', jp: false,
+                          wb: '', mf: '', round: '', wh: false, sp: '', jp: false, bags: BAGS_TRUCK,
                           lao: { company: '', plate: '', driver: '', phone: '', tons: '32.00' },
                           thai: { company: '', plate: '', driver: '', phone: '', tons: '31.80' } }],
                scanner: false, tons: '', price: '', priceP: '', priceB: '', who: '', amount: '', note: '' };
@@ -1324,7 +1324,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         return '<div class="card" style="border-radius:var(--r-md);box-shadow:none;margin-bottom:10px">' +
           '<div class="card-h" style="padding:10px 14px;background:var(--tint-weak);display:block">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">' +
-              '<b style="font-size:13px;color:var(--head)">คู่รถที่ ' + (i + 1) + '</b>' +
+              '<b style="font-size:13px;color:var(--head)">' + (x.ty === 'bag' ? 'คันที่ ' : 'คู่รถที่ ') + (i + 1) + '</b>' +
               '<span style="flex:1 1 auto"></span>' +
               '<button type="button" class="btn sm" data-rm="' + i + '" title="ลบคู่รถนี้" ' +
                 'aria-label="ลบคู่รถที่ ' + (i + 1) + '" style="flex:0 0 auto;display:inline-flex;' +
@@ -1338,27 +1338,34 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
               '<input type="text" data-f="brand:' + i + '" list="dlBrand" value="' + esc(v.brand || '') + '" ' +
                 'placeholder="ยี่ห้อ/ชนิดปูน" aria-label="ยี่ห้อปูนของคู่รถที่ ' + (i + 1) + '" ' +
                 'style="width:auto;min-width:150px;min-height:38px">' +
-              '<select data-f="nation:' + i + '" aria-label="ฝั่งที่ข้ามด่านของคู่รถที่ ' + (i + 1) + '" style="width:auto;min-height:38px">' +
-                '<option value="thai"' + (x.na === 'thai' ? ' selected' : '') + '>รถไทยข้ามด่านลาว</option>' +
-                '<option value="lao"' + (x.na === 'lao' ? ' selected' : '') + '>รถลาวข้ามด่านไทย</option></select>' +
+              (x.ty === 'bag'
+                ? '<span class="badge b-s" style="align-self:center">รถลาวข้ามด่านไทย · วิ่งตรงถึงโกดัง</span>'
+                : '<select data-f="nation:' + i + '" aria-label="ฝั่งที่ข้ามด่านของคู่รถที่ ' + (i + 1) + '" style="width:auto;min-height:38px">' +
+                  '<option value="thai"' + (x.na === 'thai' ? ' selected' : '') + '>รถไทยข้ามด่านลาว</option>' +
+                  '<option value="lao"' + (x.na === 'lao' ? ' selected' : '') + '>รถลาวข้ามด่านไทย</option></select>') +
             '</div>' +
           '</div>' +
           '<div class="card-b" style="padding:12px 14px">' +
             '<div style="display:flex;flex-wrap:wrap;gap:10px">' +
-              sideBlock('lao', i, v.lao, x, 'ฝั่งลาว — รถบรรทุกที่รับปูนจากโรงงาน', 'var(--page)', { co: 'dlCoLao', plate: 'dlLao' }) +
-              sideBlock('thai', i, v.thai, x, 'ฝั่งไทย — รถบรรทุกที่รับถ่ายปูนและนำส่งปลายทาง', 'var(--tint-weak)', { co: 'dlCoThai', plate: 'dlThai' }, v.dest) +
+              (x.ty === 'bag'
+                ? bagBlock(i, v, x, { co: 'dlCoLao', plate: 'dlLao' })
+                : sideBlock('lao', i, v.lao, x, 'ฝั่งลาว — รถบรรทุกที่รับปูนจากโรงงาน', 'var(--page)', { co: 'dlCoLao', plate: 'dlLao' }) +
+                  sideBlock('thai', i, v.thai, x, 'ฝั่งไทย — รถบรรทุกที่รับถ่ายปูนและนำส่งปลายทาง', 'var(--tint-weak)', { co: 'dlCoThai', plate: 'dlThai' }, v.dest)) +
             '</div>' +
             '<div class="grid" style="grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:10px;margin-top:10px;align-items:center">' +
               '<label class="chk" style="padding:8px 14px;align-items:center;margin:0">' +
                 '<input type="checkbox"' + (x.scan ? ' checked' : '') + ' data-f="scan:' + i + '" style="margin-top:0">' +
                 '<span style="font-size:12.5px;font-weight:600">ผ่านเครื่องเอกซเรย์ · คิดค่าสแกน ' + m0(r.scanner) + ' ฿</span></label>' +
               '<p class="note" style="margin:0;line-height:1.75">' +
-                '<b style="color:' + (lossWarn ? 'var(--warn)' : 'var(--muted)') + '">น้ำหนักส่วนต่างจากการถ่ายปูน ' + t2(x.loss) + ' ตัน</b> · ' +
+                (x.ty === 'bag'
+                  ? '<b style="color:var(--muted)">ไม่มีการถ่ายปูน จึงไม่มีน้ำหนักส่วนต่าง</b> · '
+                  : '<b style="color:' + (lossWarn ? 'var(--warn)' : 'var(--muted)') + '">น้ำหนักส่วนต่างจากการถ่ายปูน ' + t2(x.loss) + ' ตัน</b> · ') +
                 'ค่าชิปปิ้งลาว ' + m2(x.sRate * x.tnL) + ' · ค่าชิปปิ้งไทย ' + m2(x.thaiAmt) +
                 (x.scan ? ' · ค่าเอกซเรย์ ' + m2(r.scanner) : ' · ไม่คิดค่าเอกซเรย์') +
               '</p>' +
             '</div>' +
             (function () {
+              if (x.ty === 'bag') { return ''; }
               var cu = cusById(v.destId);
               var ready = !!(cu && v.tDeliver);
               return '<button type="button" data-cus="' + i + '" ' +
@@ -1388,7 +1395,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         dataList('dlDrv', bk.driverNames) + dataList('dlCus', bk.customers) +
         dataList('dlBrand', bk.brands) +
         '<div class="head-row" style="margin-bottom:0"><div><h3>ทะเบียนคู่รถขนส่งประจำวัน</h3>' +
-        '<p class="note">หนึ่งรายการคือการจับคู่รถบรรทุกฝั่งลาวหนึ่งคันกับรถบรรทุกฝั่งไทยหนึ่งคัน · ชื่อผู้ประกอบการ หมายเลขทะเบียน พนักงานขับรถ และลูกค้าที่บันทึกไว้แล้ว ระบบจะแสดงให้เลือกโดยอัตโนมัติ</p></div>' +
+        '<p class="note">ปูนผงต้องจับคู่รถ เพราะรถไทยเข้าไปรับถ่ายปูนจากรถลาวที่ด่านฝั่งลาว · ' +
+        'ปูนถุงเป็นรถลาวคันเดียววิ่งตรงจากโรงงานมาลงโกดัง จึงกรอกคันเดียว · ' +
+        'ชื่อผู้ประกอบการ ทะเบียน และพนักงานขับรถที่เคยบันทึกไว้ ระบบจะแสดงให้เลือกเอง</p></div>' +
         '<div class="actions"><button type="button" class="btn sec sm" id="inc" aria-label="เพิ่มคู่รถ" ' +
         'title="เพิ่มคู่รถ" style="padding:6px 11px;min-height:34px;gap:0">' +
         '<span class="ms" aria-hidden="true" style="font-size:19px">add</span></button></div></div>' +
@@ -1610,6 +1619,20 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       inp.addEventListener('change', function () {
         var o = target();
         o[key] = inp.type === 'checkbox' ? inp.checked : inp.value;
+        if (key === 'type') {
+          var tk = form.trucks[i];
+          if (inp.value === 'bag') {
+            tk.nation = 'lao'; tk.wh = true; tk.sp = ''; tk.jp = false;
+            tk.bags = num(tk.bags) || BAGS_TRUCK;
+            tk.lao.tons = t2(num(tk.bags) / BAGS_TON);
+            tk.thai.tons = tk.lao.tons;
+          } else { tk.wh = false; }
+        }
+        if (key === 'bags') {
+          var tb = form.trucks[i];
+          var tn = t2(num(inp.value) / BAGS_TON);
+          tb.lao.tons = tn; tb.thai.tons = tn;
+        }
         if (key === 'driver') {
           var known = book().drivers[(inp.value || '').trim()];
           if (known && !(o.phone || '').trim()) {
@@ -1674,6 +1697,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                            dest: last.dest || '', destId: last.destId || '',
                            tLoad: last.tLoad || '', tSend: last.tSend || '', tDeliver: last.tDeliver || '',
                            wb: '', mf: '', round: last.round || '', wh: !!last.wh, sp: last.sp || '', jp: !!last.jp,
+                           bags: num(last.bags) || BAGS_TRUCK,
                            lao: { company: (last.lao || {}).company || '', plate: '', driver: '', phone: '', tons: t2(S.rates.truckTon) },
                            thai: { company: (last.thai || {}).company || '', plate: '', driver: '', phone: '', tons: t2(S.rates.truckTon) } });
         viewEntry();
@@ -1700,6 +1724,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           trucks: form.trucks.map(function (t) {
             function side(o) {
               return { company: (o.company || '').trim(), plate: (o.plate || '').trim(),
+                       plate2: (o.plate2 || '').trim(),
                        driver: (o.driver || '').trim(), phone: (o.phone || '').trim(), tons: num(o.tons) };
             }
             return { type: t.type || 'powder', brand: (t.brand || '').trim(), nation: t.nation || 'thai',
@@ -1707,6 +1732,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                      destId: t.destId || '', job: t.job || '', tok: t.tok || null,
                      tLoad: t.tLoad || '', tSend: t.tSend || '', tDeliver: t.tDeliver || '',
                      wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh, sp: num(t.sp) || '', jp: !!t.jp,
+                     bags: num(t.bags) || BAGS_TRUCK,
                      lao: side(t.lao), thai: side(t.thai) };
           }) });
       } else if (isSale) {
@@ -4978,6 +5004,44 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
 
   /* ช่องเอกสารและสตอกของคู่รถแต่ละคัน อยู่ท้ายการ์ดคู่รถในหน้าบันทึกปูนเข้า */
+
+  /* กล่องกรอกของปูนถุง — รถลาวคันเดียววิ่งตรงจากโรงงานถึงโกดัง ไม่มีการถ่ายปูน จึงไม่ต้องจับคู่รถ */
+  function bagBlock(i, v, x, lists) {
+    var bags = num(v.bags) || BAGS_TRUCK;
+    function f(id, lab, val, ph, attr, cls) {
+      return '<div style="min-width:0"><label class="fl" for="' + id + '" style="font-size:11px">' + esc(lab) + '</label>' +
+        '<input id="' + id + '" type="text" class="' + (cls || '') + '" value="' + esc(val == null ? '' : val) + '" ' +
+        'placeholder="' + esc(ph || '') + '" ' + (attr || '') + ' style="min-height:38px"></div>';
+    }
+    return '<div style="flex:1 1 100%;min-width:0;border:1px solid var(--line-field);border-radius:var(--r-md);' +
+      'background:var(--field);padding:11px 12px">' +
+      '<p style="margin:0 0 9px;font-size:11.5px;font-weight:700;color:var(--head)">' +
+      'รถลาวคันเดียวตลอดทาง — รับปูนถุงที่โรงงาน ผ่านด่าน แล้วยกลงโกดัง</p>' +
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px">' +
+        f('laocompany' + i, 'ผู้ประกอบการขนส่ง', v.lao.company, 'PHETALOUN',
+          'data-f="lao.company:' + i + '" list="' + lists.co + '"') +
+        f('laoplate' + i, 'ทะเบียนหัว', v.lao.plate, 'ກຂ 1294',
+          'data-f="lao.plate:' + i + '" list="' + lists.plate + '"') +
+        f('laoplate2' + i, 'ทะเบียนหาง', v.lao.plate2, 'ກຂ 2519', 'data-f="lao.plate2:' + i + '"') +
+        f('laodriver' + i, 'ชื่อพนักงานขับรถ', v.lao.driver, 'ระบุชื่อ-นามสกุล',
+          'data-f="lao.driver:' + i + '" list="dlDrv"') +
+        f('laophone' + i, 'หมายเลขโทรศัพท์', v.lao.phone, '08x-xxx-xxxx', 'data-f="lao.phone:' + i + '"') +
+      '</div>' +
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-top:9px">' +
+        f('bagn' + i, 'จำนวนถุง', bags, '640', 'data-f="bags:' + i + '" inputmode="numeric"', 'n') +
+        '<div style="min-width:0"><span class="fl" style="font-size:11px">เท่ากับ (ตัน)</span>' +
+        '<p class="num" style="margin:0;min-height:38px;display:flex;align-items:center;' +
+        'font-size:15px;font-weight:700;color:var(--head)">' + t2(bags / BAGS_TON) + '</p></div>' +
+        '<div style="min-width:0"><span class="fl" style="font-size:11px">วันเวลารับปูนที่โรงงาน</span>' +
+        dtField('tl' + i, v.tLoad, true, 'data-f="tLoad:' + i + '"', true) + '</div>' +
+        '<div style="min-width:0"><span class="fl" style="font-size:11px">วันเวลาผ่านด่านไทย</span>' +
+        dtField('ts' + i, v.tSend, true, 'data-f="tSend:' + i + '"', true) + '</div>' +
+      '</div>' +
+      '<p class="hint" style="margin:9px 0 0">1 คัน = ' + BAGS_TRUCK + ' ถุง = ' + t2(BAGS_TRUCK / BAGS_TON) +
+      ' ตัน แก้จำนวนถุงได้ถ้าคันไหนไม่เต็ม · ปูนถุงเข้าโกดัง อ.เชียงของ เสมอ ตัดสตอกตอนลูกค้ามารับ</p>' +
+      '</div>';
+  }
+
   function stkFields(i, v) {
     var opts = '<option value="">ไม่ระบุรอบ</option>' + rdList().map(function (r) {
       var p = r.trucks || {};
@@ -4996,23 +5060,29 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         'placeholder="DOWP000103624" style="min-height:38px"></div>' +
         '<div style="min-width:0"><label class="fl" for="rdf' + i + '" style="font-size:11px">รอบนำเข้า (Invoice)</label>' +
         '<select id="rdf' + i + '" data-f="round:' + i + '" style="min-height:38px">' + opts + '</select></div>' +
+        (v.type === 'bag' ? '' :
         '<div style="min-width:0"><label class="fl" for="spf' + i + '" style="font-size:11px">ราคาขาย/ตัน (รวมภาษี)</label>' +
         '<input id="spf' + i + '" class="n" type="text" inputmode="decimal" value="' + esc(v.sp || '') + '" ' +
-        'data-f="sp:' + i + '" placeholder="1,450" style="min-height:38px"></div>' +
+        'data-f="sp:' + i + '" placeholder="1,450" style="min-height:38px"></div>') +
+        (v.type === 'bag' ? '' :
         '<div style="min-width:0;align-self:end">' +
         '<label for="jpf' + i + '" style="display:flex;align-items:center;gap:8px;font-size:12px;' +
         'color:var(--muted);cursor:pointer;min-height:38px">' +
         '<input id="jpf' + i + '" type="checkbox" data-f="jp:' + i + '"' + (v.jp ? ' checked' : '') +
         ' style="width:17px;height:17px;min-height:0;padding:0;accent-color:var(--accent)">' +
-        'ส่งมอบให้ ' + esc(nm.buyer) + ' ตัดเครดิต</label></div>' +
+        'ส่งมอบให้ ' + esc(nm.buyer) + ' ตัดเครดิต</label></div>') +
+        (v.type === 'bag' ? '' :
         '<div style="min-width:0;align-self:end">' +
         '<label for="whf' + i + '" style="display:flex;align-items:center;gap:8px;font-size:12px;' +
         'color:var(--muted);cursor:pointer;min-height:38px">' +
         '<input id="whf' + i + '" type="checkbox" data-f="wh:' + i + '"' + (v.wh ? ' checked' : '') +
         ' style="width:17px;height:17px;min-height:0;padding:0;accent-color:var(--accent)">' +
-        'เข้าโกดัง ไม่ส่งตรงลูกค้า</label></div>' +
+        'เข้าโกดัง ไม่ส่งตรงลูกค้า</label></div>') +
       '</div>' +
-      (v.wh
+      (v.type === 'bag'
+        ? '<p class="hint" style="margin:8px 0 0">ปูนถุงเข้าโกดังเสมอ ' + BAGS_TRUCK + ' ถุงต่อคัน ' +
+          'ยอดขายจะไปเกิดตอนบันทึกจ่ายออกจากโกดัง</p>'
+        : v.wh
         ? '<p class="hint" style="margin:8px 0 0">คันนี้จะถูกนับเข้าสตอกโกดัง' +
           (v.type === 'bag' ? ' ' + BAGS_TRUCK + ' ถุง' : 'ตามน้ำหนักชั่งฝั่งไทย') + ' ' +
           'ยอดขายจะไปเกิดตอนบันทึกจ่ายออกจากโกดัง ไม่ใช่ช่องราคาขายนี้</p>'
