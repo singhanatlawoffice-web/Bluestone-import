@@ -671,18 +671,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           w.items.push(item);
           w.tons += tnL; w.tonsThai += tnT; w.loss += item.loss;
           w.fAmt += item.fAmt; w.ship += item.shipAmt; w.scan += item.scan; w.shipThai += item.thaiAmt;
-          /* กรอกราคาขายแล้ว ถือว่าคันนี้ขายออกไปแล้ว ตัดสตอกและคิดเป็นรายได้ */
-          var spT = num(t.sp);
-          if (spT > 0 && !t.wh) {
-            var revT = spT * tnT;
-            item.sellRate = spT; item.rev = revT; item.jp = !!t.jp;
-            w.rev += revT;
-            if (t.jp) { w.jAmt += revT; T.jCut += revT; T.revBuyer += revT; }
-            else { T.revOther += revT; }
-            stock[ty] -= tnT;
-            if (ty === 'powder') { T.soldPowder += tnT; } else { T.soldBag += tnT; }
-            T.soldCost += costOf(ty) * tnT;
-          }
           byType[ty] += tnT;
           byTypeL[ty] += tnL;
           fByType[ty] += item.fAmt;
@@ -692,12 +680,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           if (ty === 'powder') { T.inPowder += tnT; } else { T.inBag += tnT; }
         });
 
-        /* ถ้าทุกคันที่ขายออกใช้ราคาเดียวกัน ให้โชว์ราคานั้นในคอลัมน์ ฿/ตัน ของฝั่งผู้ซื้อ */
-        var sold = w.items.filter(function (it) { return it.rev > 0; });
-        if (sold.length) {
-          var one = sold[0].sellRate;
-          w.jRate = sold.every(function (it) { return it.sellRate === one; }) ? one : null;
-        }
         w.byType = byType;
         w.byTypeL = byTypeL;
         w.fByType = fByType;
@@ -709,12 +691,13 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         T.fCut += w.fAmt; T.trucks += w.trucks; T.scan += w.scan;
       }
 
-      if (e.kind === 'whOut') {
+      if (e.kind === 'whOut' || e.kind === 'pwOut') {
         var wp = e.trucks || {};
         var wBags = num(wp.bags);
         w.tons = num(e.tons) || wBags / 20;
-        w.jRate = w.tons > 0 ? (num(e.price) * wBags) / w.tons : 0;
-        w.rev = num(e.price) * wBags;
+        w.jRate = e.kind === 'pwOut' ? num(e.price)
+                                     : (w.tons > 0 ? (num(e.price) * wBags) / w.tons : 0);
+        w.rev = e.kind === 'pwOut' ? num(e.price) * w.tons : num(e.price) * wBags;
         w.stockDelta = -w.tons;
         stock[e.cementType || 'bag'] -= w.tons;
         if (wp.jp) { w.jAmt = w.rev; T.jCut += w.jAmt; T.revBuyer += w.rev; }
@@ -882,10 +865,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       if (e.kind === 'depositF') { badge = '<span class="badge b-s">เงินเข้าโรงงาน</span>'; bg = ' style="background:var(--ok-bg)"'; }
       else if (e.kind === 'depositJ') { badge = '<span class="badge b-i">รับเงินล่วงหน้า</span>'; bg = ' style="background:var(--tint-weak)"'; }
       else if (e.kind === 'import') { badge = '<span class="badge b-w">ปูนเข้า</span>'; }
-      else if (e.kind === 'whOut') {
+      else if (e.kind === 'whOut' || e.kind === 'pwOut') {
         badge = ((e.trucks || {}).jp
           ? '<span class="badge b-i">ส่งมอบให้ ' + esc(nm.buyer) + '</span>'
-          : '<span class="badge b-n">ขายจากโกดัง</span>');
+          : '<span class="badge b-n">' + (e.kind === 'pwOut' ? 'ขายปูนผงจากสตอก' : 'ขายจากโกดัง') + '</span>');
       }
       else if (e.kind === 'saleBuyer') { badge = '<span class="badge b-i">ส่งมอบให้ ' + esc(nm.buyer) + '</span>'; }
       else { badge = '<span class="badge b-n">จำหน่ายรายอื่น</span>'; }
@@ -897,6 +880,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         if (w.byType.bag > 0) { parts.push('ปูนถุง ' + t2(w.byType.bag) + ' ตัน'); }
         label = parts.join(' + ') + ' · ' + w.trucks + ' คู่รถ' +
           (w.loss > 0.004 ? ' · สูญเสียจากการถ่ายปูน ' + t2(w.loss) + ' ตัน' : '');
+      } else if (e.kind === 'pwOut') {
+        label = 'ขายปูนผงจากสตอก ' + t2(w.tons) + ' ตัน @ ' + m2(num(e.price)) + ' ฿/ตัน' +
+          (e.who ? ' · ' + e.who : '');
       } else if (e.kind === 'whOut') {
         label = 'จ่ายปูนถุงออกจากโกดัง ' + m0(num((e.trucks || {}).bags)) + ' ถุง · ' +
           t2(w.tons) + ' ตัน @ ' + m2(num(e.price)) + ' ฿/ถุง' + (e.who ? ' · ' + e.who : '');
@@ -1212,7 +1198,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                           wb: '', mf: '', round: '', wh: false, sp: '', jp: false, bags: BAGS_TRUCK,
                           lao: { company: '', plate: '', driver: '', phone: '', tons: '32.00' },
                           thai: { company: '', plate: '', driver: '', phone: '', tons: '31.80' } }],
-               scanner: false, tons: '', price: '', priceP: '', priceB: '', who: '', amount: '', note: '' };
+               scanner: false, tons: '', price: '', priceP: '', priceB: '', who: '', amount: '', note: '',
+               editId: null };
 
   var redrawT = null;
   function softRedraw() {
@@ -1573,6 +1560,32 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       'ปูนทุกคันจะเข้าสตอกก่อน แล้วจึงบันทึกขายออกที่หน้า STOCK</p></div>' +
       '<div class="actions"><a class="btn" href="#ledger">กลับหน้าคุมการตัดเงิน</a></div></div>' +
 
+      (function () {
+        /* แถบสตอกสด ให้เห็นผลของสิ่งที่กรอกโดยไม่ต้องเปลี่ยนหน้า */
+        var sc = stkCalc();
+        var pc = pwCalc();
+        function chip(txt, tone, href) {
+          return '<a href="' + href + '" style="display:inline-flex;align-items:center;gap:6px;'
+            + 'padding:6px 12px;border-radius:999px;font-size:12px;text-decoration:none;'
+            + 'border:1px solid ' + tone + ';color:' + tone + '">' + txt + '</a>';
+        }
+        return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px">' +
+          '<span class="note" style="margin:0">สตอกตอนนี้</span>' +
+          chip('ปูนถุงในโกดัง <b class="num">' + m0(sc.bags) + '</b> ถุง', 'var(--brand)', '#stock') +
+          chip('รถค้างด่าน <b class="num">' + m0(sc.transit.length) + '</b> คัน',
+               sc.transit.length ? 'var(--warn)' : 'var(--muted)', '#stock') +
+          chip('ปูนผงในสตอก <b class="num">' + m2(pc.bal) + '</b> ตัน',
+               pc.bal > 0 ? 'var(--brand)' : 'var(--muted)', '#stock') +
+          '</div>';
+      }()) +
+      (form.editId
+        ? '<div class="alert a-w" style="margin-bottom:12px"><div class="bd">' +
+          '<p>กำลังแก้รายการปูนเข้าของวันที่ <b>' + esc(thDate(form.date)) + '</b> · ' +
+          'กดบันทึกแล้วจะทับรายการเดิม ไม่ได้สร้างรายการใหม่</p>' +
+          '<div class="actions" style="margin-top:8px">' +
+          '<button type="button" class="btn sm" id="edCancel">ยกเลิกการแก้ เริ่มกรอกรายการใหม่</button></div>' +
+          '</div></div>'
+        : '') +
       '<div class="grid g2" style="align-items:start">' +
       '<section class="card"><div class="card-b stack">' +
         '<div class="alert a-i" style="margin-bottom:2px"><div class="bd">' +
@@ -1588,11 +1601,21 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         right +
         '<div class="actions" style="justify-content:flex-end">' +
           '<a class="btn" href="#ledger">ยกเลิก</a>' +
-          '<button type="button" class="btn pri" id="saveEntry">บันทึกรายการ</button>' +
+          '<button type="button" class="btn pri" id="saveEntry">' +
+          (form.editId ? 'บันทึกการแก้ไข' : 'บันทึกรายการ') + '</button>' +
         '</div>' +
       '</div></section></div>' +
+      rdSection() +
       importHistory(c);
 
+    bindRounds(viewEntry);
+    if (el('edCancel')) {
+      el('edCancel').addEventListener('click', function () {
+        form.editId = null;
+        form.trucks = [newTruck()];
+        viewEntry(); toast('ยกเลิกการแก้แล้ว');
+      });
+    }
     if (el('backImp')) {
       el('backImp').addEventListener('click', function () { form.kind = 'import'; viewEntry(); });
     }
@@ -1720,21 +1743,18 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       }
       var nid = S.entries.reduce(function (m, e) { return Math.max(m, e.id); }, 0) + 1;
       if (K === 'import') {
-        S.entries.push({ id: nid, date: form.date, kind: 'import',
-          trucks: form.trucks.map(function (t) {
-            function side(o) {
-              return { company: (o.company || '').trim(), plate: (o.plate || '').trim(),
-                       plate2: (o.plate2 || '').trim(),
-                       driver: (o.driver || '').trim(), phone: (o.phone || '').trim(), tons: num(o.tons) };
-            }
-            return { type: t.type || 'powder', brand: (t.brand || '').trim(), nation: t.nation || 'thai',
-                     scan: t.scan === undefined ? true : !!t.scan, dest: (t.dest || '').trim(),
-                     destId: t.destId || '', job: t.job || '', tok: t.tok || null,
-                     tLoad: t.tLoad || '', tSend: t.tSend || '', tDeliver: t.tDeliver || '',
-                     wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh, sp: num(t.sp) || '', jp: !!t.jp,
-                     bags: num(t.bags) || BAGS_TRUCK,
-                     lao: side(t.lao), thai: side(t.thai) };
-          }) });
+        var tk = form.trucks.map(mapTruck);
+        if (form.editId) {
+          var old = S.entries.filter(function (x) { return String(x.id) === String(form.editId); })[0];
+          if (old) { old.date = form.date; old.trucks = tk; }
+          form.editId = null;
+          S.demo = false; save();
+          logIt('แก้รายการปูนเข้า', tk.length + ' คู่รถ · ' + thDate(form.date));
+          location.hash = '#stock';
+          toast('บันทึกการแก้ไขแล้ว');
+          return;
+        }
+        S.entries.push({ id: nid, date: form.date, kind: 'import', trucks: tk });
       } else if (isSale) {
         var sP = 0, sB = 0;
         form.trucks.forEach(function (t) {
@@ -5042,6 +5062,316 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '</div>';
   }
 
+
+
+  /* แปลงคู่รถในฟอร์มเป็นรูปแบบที่เก็บลงรายการ ใช้ทั้งตอนบันทึกใหม่และตอนแก้ */
+  function mapTruck(t) {
+    function side(o) {
+      o = o || {};
+      return { company: (o.company || '').trim(), plate: (o.plate || '').trim(),
+               plate2: (o.plate2 || '').trim(),
+               driver: (o.driver || '').trim(), phone: (o.phone || '').trim(), tons: num(o.tons) };
+    }
+    return { type: t.type || 'powder', brand: (t.brand || '').trim(), nation: t.nation || 'thai',
+             scan: t.scan === undefined ? true : !!t.scan, dest: (t.dest || '').trim(),
+             destId: t.destId || '', job: t.job || '', tok: t.tok || null,
+             tLoad: t.tLoad || '', tSend: t.tSend || '', tDeliver: t.tDeliver || '',
+             wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh,
+             sp: num(t.sp) || '', jp: !!t.jp, bags: num(t.bags) || BAGS_TRUCK,
+             lao: side(t.lao), thai: side(t.thai) };
+  }
+
+  function newTruck() {
+    return { type: 'powder', brand: '', nation: 'thai', scan: true, dest: '', destId: '',
+             tLoad: '', tSend: '', tDeliver: '',
+             wb: '', mf: '', round: '', wh: false, sp: '', jp: false, bags: BAGS_TRUCK,
+             lao: { company: '', plate: '', plate2: '', driver: '', phone: '', tons: t2(S.rates.truckTon) },
+             thai: { company: '', plate: '', plate2: '', driver: '', phone: '', tons: t2(S.rates.truckTon) } };
+  }
+
+  /* ดึงรายการปูนเข้าที่บันทึกไปแล้วกลับมาแก้ในฟอร์มเดิม */
+  function loadImport(id) {
+    var e = S.entries.filter(function (x) { return String(x.id) === String(id) && x.kind === 'import'; })[0];
+    if (!e) { toast('ไม่พบรายการนี้'); return false; }
+    function side(o) {
+      o = o || {};
+      return { company: o.company || '', plate: o.plate || '', plate2: o.plate2 || '',
+               driver: o.driver || '', phone: o.phone || '', tons: t2(num(o.tons)) };
+    }
+    form.kind = 'import';
+    form.editId = e.id;
+    form.date = e.date;
+    form.trucks = (e.trucks || []).map(function (t) {
+      return { type: t.type || 'powder', brand: t.brand || '', nation: t.nation || 'thai',
+               scan: t.scan === undefined ? true : !!t.scan,
+               dest: t.dest || '', destId: t.destId || '', job: t.job || '', tok: t.tok || null,
+               tLoad: t.tLoad || '', tSend: t.tSend || '', tDeliver: t.tDeliver || '',
+               wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh,
+               sp: num(t.sp) || '', jp: !!t.jp, bags: num(t.bags) || BAGS_TRUCK,
+               lao: side(t.lao), thai: side(t.thai) };
+    });
+    if (!form.trucks.length) { toast('รายการนี้ไม่มีคู่รถ'); return false; }
+    return true;
+  }
+
+
+  /* หัวข้อรอบนำเข้า อยู่ในหน้าบันทึกปูนเข้า เพราะสร้างรอบแล้วผูกกับรถในหน้าเดียวกันได้เลย */
+  function rdSection() {
+    var c = stkCalc();
+    var rdRows = c.rounds.length
+      ? c.rounds.map(function (r) {
+          var ok = r.plan && r.crossed >= r.plan;
+          var exp = r.p.tisiExp ? daysSince(r.p.tisiExp) : null;
+          return '<tr><td class="str">' + esc(r.p.inv || '—') + '<br>' +
+            '<span class="muted" style="font-size:11px">' + esc(dtTH(r.p.invDate)) + '</span></td>' +
+            '<td>' + (r.e.cementType === 'bag' ? 'ปูนถุง' : 'ปูนผง') + '</td>' +
+            '<td class="muted">' + esc(r.p.fd || '—') + '</td>' +
+            '<td class="c">' + (r.plan ? r.crossed + ' / ' + r.plan : r.crossed + ' / —') +
+            (ok ? ' <span class="badge b-s">ครบ</span>'
+                : (r.plan ? ' <span class="badge b-w">ขาด ' + (r.plan - r.crossed) + '</span>' : '')) + '</td>' +
+            '<td class="muted">' + esc(r.p.decl || '—') + '</td>' +
+            '<td class="n">' + (r.kgDoc ? m0(r.kgDoc) : '—') + '</td>' +
+            '<td class="n">' + (r.kgReal ? m0(r.kgReal) : '—') + '</td>' +
+            '<td class="c">' + docChips(r.p) + '</td>' +
+            '<td class="c">' + (exp === null ? '—'
+              : (exp > 0 ? '<span class="badge b-d">หมดอายุแล้ว</span>'
+                         : '<span class="badge ' + (exp > -14 ? 'b-w' : 'b-n') + '">' + (-exp) + ' วัน</span>')) + '</td>' +
+            '<td class="c"><div class="actions" style="justify-content:center">' +
+            '<button type="button" class="btn sm" data-rde="' + r.e.id + '">แก้</button>' +
+            '<button type="button" class="btn sm" data-rdd="' + r.e.id + '">ลบ</button></div></td></tr>';
+        }).join('')
+      : '<tr><td colspan="10" class="muted" style="padding:20px;text-align:center">ยังไม่มีรอบนำเข้า กดเพิ่มด้านล่าง</td></tr>';
+
+    return '<section class="card" style="margin-top:14px"><div class="card-h">' +
+      '<span class="ms" aria-hidden="true" style="font-size:20px;color:var(--brand)">description</span>' +
+      '<div><h2>รอบนำเข้าและเอกสาร</h2>' +
+      '<p class="note">หนึ่งรอบคือหนึ่ง Invoice ที่ผูกกับ Form D ใบขน และใบอนุญาต สมอ. ชุดเดียวกัน · ' +
+      'สร้างรอบไว้ที่นี่ แล้วเลือกให้รถแต่ละคันในช่อง “รอบนำเข้า (Invoice)” ได้เลย</p></div></div>' +
+      '<div class="card-b">' +
+      '<div class="actions" style="margin-bottom:10px">' +
+      '<button type="button" class="btn pri" id="rdAdd">' + (RF.open && !RF.id ? 'ปิดฟอร์ม' : '+ เพิ่มรอบนำเข้า') + '</button></div>' +
+      (RF.open ? rdForm() : '') +
+      '<div class="tbox" style="margin-top:10px"><table><thead><tr><th>Invoice</th><th>ชนิด</th><th>Form D</th>' +
+      '<th class="c">ผ่านด่าน/ตาม Form D</th><th>ใบขน</th><th class="c">น้ำหนักเอกสาร (กก.)</th>' +
+      '<th class="c">ชั่งจริงฝั่งไทย (กก.)</th><th class="c">เอกสารแนบ</th>' +
+      '<th class="c">สมอ. เหลือ</th><th class="c">จัดการ</th>' +
+      '</tr></thead><tbody>' + rdRows + '</tbody></table></div>' +
+      '</div></section>';
+  }
+
+  /* ผูกปุ่มของหัวข้อรอบนำเข้า ใช้ได้ทุกหน้าที่เอาหัวข้อนี้ไปวาง */
+  function bindRounds(redraw) {
+    bindDocs(redraw);
+    if (el('rdAdd')) {
+      el('rdAdd').addEventListener('click', function () {
+        if (RF.open && !RF.id) { RF.open = false; } else { RF.open = true; RF.id = null; RF.docs = []; RF.vals = null; }
+        redraw();
+      });
+    }
+    if (el('rfCancel')) {
+      el('rfCancel').addEventListener('click', function () {
+        RF.open = false; RF.id = null; RF.docs = []; RF.vals = null; redraw();
+      });
+    }
+    if (el('rfSave')) {
+      el('rfSave').addEventListener('click', function () {
+        var p = {
+          inv: el('rfInv').value.trim(), invDate: dOnly(el('rfInvD').value),
+          fd: el('rfFd').value.trim(), fdDate: dOnly(el('rfFdD').value),
+          fdTrucks: num(el('rfFdT').value),
+          tisi: el('rfTisi').value.trim(), tisiDate: dOnly(el('rfTisiD').value),
+          tisiExp: dOnly(el('rfTisiX').value), kg: num(el('rfKg').value),
+          decl: el('rfDecl').value.trim(), declDate: dOnly(el('rfDeclD').value),
+          vat: num(el('rfVat').value), payRef: el('rfPay').value.trim(),
+          docs: (RF.docs || []).slice()
+        };
+        if (!p.inv) { toast('กรอกเลขที่ Invoice ก่อน'); return; }
+        if (RF.id) {
+          var r = rdFind(RF.id);
+          if (r) { r.trucks = p; r.date = p.invDate || r.date; r.cementType = el('rfType').value; }
+          logIt('แก้รอบนำเข้า', p.inv);
+        } else {
+          S.entries.push({ id: newId(), date: p.invDate || todayISO(), kind: 'round',
+                           cementType: el('rfType').value, trucks: p });
+          logIt('เพิ่มรอบนำเข้า', p.inv + ' · ' + (p.fdTrucks || '?') + ' คัน');
+        }
+        RF.open = false; RF.id = null; RF.docs = []; RF.vals = null;
+        save(); redraw(); toast('บันทึกรอบนำเข้าแล้ว');
+      });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-rde]'), function (b) {
+      b.addEventListener('click', function () {
+        RF.open = true; RF.id = b.getAttribute('data-rde'); RF.vals = null;
+        var rr = rdFind(RF.id);
+        RF.docs = ((rr && rr.trucks && rr.trucks.docs) || []).slice();
+        redraw();
+        var f = el('rfInv'); if (f) { f.scrollIntoView({ block: 'center' }); }
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-rdd]'), function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-rdd');
+        var used = stkTrips().filter(function (t) { return String(t.round) === String(id); }).length;
+        if (b.dataset.armed !== '1') {
+          b.dataset.armed = '1'; b.classList.add('pri'); b.textContent = 'กดอีกครั้ง';
+          toast(used ? 'รอบนี้มีเที่ยวรถผูกอยู่ ' + used + ' เที่ยว · กดอีกครั้งถ้าแน่ใจ'
+                     : 'กดอีกครั้งเพื่อลบรอบนำเข้านี้');
+          return;
+        }
+        S.entries = S.entries.filter(function (e) { return String(e.id) !== String(id); });
+        if (S.trash && S.trash.entries && S.trash.entries.indexOf(Number(id)) < 0) { S.trash.entries.push(Number(id)); }
+        save(); logIt('ลบรอบนำเข้า', 'id ' + id);
+        redraw(); toast('ลบแล้ว');
+      });
+    });
+  }
+
+
+  /* ---- ปูนผงในสตอก ----
+     รถปูนผงที่ผ่านด่านไทยแล้วและไม่ได้เข้าโกดัง ถือว่าเข้าสตอกปูนผง
+     จะตัดออกก็ต่อเมื่อบันทึกขายในหน้านี้ เหมือนปูนถุงที่ตัดตอนจ่ายออกจากโกดัง */
+  var PF = { open: false };
+
+  function pwList() {
+    return S.entries.filter(function (e) { return e.kind === 'pwOut'; });
+  }
+
+  function pwCalc() {
+    var moves = [];
+    stkTrips().forEach(function (t) {
+      if (t.type !== 'powder' || !t.cross || t.wh) { return; }
+      moves.push({ at: t.cross, dir: 'in', tons: t.tonsT,
+                   who: 'รถ ' + (t.thai || t.lao || '—'),
+                   note: 'ผ่านด่านไทยแล้ว เข้าสตอกปูนผง' });
+    });
+    pwList().forEach(function (e) {
+      var p = e.trucks || {};
+      moves.push({ at: e.date, dir: 'out', tons: num(e.tons),
+                   who: e.who || '', plate: p.plate || '', jp: !!p.jp,
+                   price: num(e.price), amount: num(e.price) * num(e.tons), entry: e });
+    });
+    moves.sort(function (a, b) { return (a.at || '').localeCompare(b.at || ''); });
+    var bal = 0, inSum = 0, outSum = 0, amt = 0;
+    moves.forEach(function (m) {
+      bal += (m.dir === 'in' ? m.tons : -m.tons);
+      m.bal = bal;
+      if (m.dir === 'in') { inSum += m.tons; } else { outSum += m.tons; amt += m.amount; }
+    });
+    return { moves: moves, bal: bal, inSum: inSum, outSum: outSum, amount: amt };
+  }
+
+  function pwForm() {
+    var cus = S.customers.map(function (c) { return '<option value="' + esc(c.name) + '">'; }).join('');
+    return '<div class="card" style="box-shadow:none;border:1px solid var(--line)">' +
+      '<div class="card-b">' +
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px">' +
+        '<div><label class="fl" for="pfDate">วันที่รถมารับ</label>' + dtField('pfDate', todayISO(), false, '', false) + '</div>' +
+        '<div><label class="fl" for="pfTons">จำนวนตันที่ขาย</label>' +
+        '<input id="pfTons" class="n" type="text" inputmode="decimal" value="" placeholder="32.00" style="min-height:38px"></div>' +
+        '<div><label class="fl" for="pfPT">ราคาต่อตัน (รวม VAT)</label>' +
+        '<input id="pfPT" class="n" type="text" inputmode="decimal" value="" placeholder="1450" style="min-height:38px"></div>' +
+        '<div><label class="fl" for="pfWho">ลูกค้า</label>' +
+        '<input id="pfWho" type="text" list="pfCus" value="" placeholder="ชื่อลูกค้า" style="min-height:38px">' +
+        '<datalist id="pfCus">' + cus + '</datalist></div>' +
+        '<div><label class="fl" for="pfPlate">ทะเบียนรถที่มารับ</label>' +
+        '<input id="pfPlate" type="text" value="" placeholder="73-3415 สระบุรี" style="min-height:38px"></div>' +
+        '<div><label class="fl" for="pfJp">ขายให้ใคร</label><select id="pfJp" style="min-height:38px">' +
+        '<option value="">ลูกค้ารายอื่น</option>' +
+        '<option value="1">' + esc(nm.buyer) + ' · ตัดเครดิต</option></select></div>' +
+      '</div>' +
+      '<p class="hint" id="pfCalc" style="margin:9px 0 0">กรอกตันกับราคาต่อตัน ระบบคิดเป็นเงินให้เอง</p>' +
+      '<div class="actions" style="margin-top:10px">' +
+        '<button type="button" class="btn pri" id="pfSave">บันทึกการขาย</button>' +
+        '<button type="button" class="btn" id="pfCancel">ยกเลิก</button>' +
+      '</div></div></div>';
+  }
+
+  function pwSection(pc) {
+    var rows = pc.moves.length
+      ? pc.moves.slice().reverse().map(function (m) {
+          var isIn = m.dir === 'in';
+          return '<tr><td class="muted" style="white-space:nowrap">' + esc(dtTH(m.at)) + '</td>' +
+            '<td>' + (isIn ? '<span class="badge b-s">รับเข้า</span>'
+                           : '<span class="badge b-w">ขายออก</span>' +
+                             (m.jp ? ' <span class="badge b-i">' + esc(nm.buyer) + '</span>' : '')) + '</td>' +
+            '<td class="str">' + esc(isIn ? m.who : (m.who || '—') + (m.plate ? ' · ' + m.plate : '')) + '</td>' +
+            '<td class="n">' + (isIn ? '+' : '−') + m2(m.tons) + '</td>' +
+            '<td class="n">' + (isIn ? '—' : m2(m.price)) + '</td>' +
+            '<td class="n">' + (isIn ? '—' : m2(m.amount)) + '</td>' +
+            '<td class="n" style="font-weight:700">' + m2(m.bal) + '</td>' +
+            '<td class="c">' + (isIn ? '' :
+              '<button type="button" class="btn sm" data-pwd="' + m.entry.id + '">ลบ</button>') + '</td></tr>';
+        }).join('')
+      : '<tr><td colspan="8" class="muted" style="padding:20px;text-align:center">ยังไม่มีความเคลื่อนไหวของปูนผง</td></tr>';
+
+    return section(2, 'ปูนผงในสตอก',
+      'รับเข้าอัตโนมัติเมื่อรถผ่านด่านไทย · ขายออกบันทึกเองตอนลูกค้ามารับ เหมือนปูนถุง',
+      '<div class="actions" style="margin-bottom:10px">' +
+      '<button type="button" class="btn pri" id="pwAdd">' + (PF.open ? 'ปิดฟอร์ม' : '+ บันทึกขายปูนผง') + '</button>' +
+      '<span class="badge ' + (pc.bal < -0.001 ? 'b-d' : 'b-i') + '" style="align-self:center">คงเหลือ ' +
+      m2(pc.bal) + ' ตัน</span></div>' +
+      (PF.open ? pwForm() : '') +
+      '<div class="tbox" style="margin-top:10px"><table><thead><tr><th>วันที่</th><th>รายการ</th>' +
+      '<th>ลูกค้า/ที่มา</th><th class="c">ตัน</th><th class="c">ราคา/ตัน</th><th class="c">เป็นเงิน</th>' +
+      '<th class="c">คงเหลือ (ตัน)</th><th class="c"></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (pc.bal < -0.001
+        ? '<p class="hint w" style="margin-top:9px">ยอดคงเหลือติดลบ แปลว่าบันทึกขายมากกว่าที่ผ่านด่านเข้ามา ' +
+          'ตรวจว่าลืมกรอกวันเวลาผ่านด่านของรถคันไหนหรือเปล่า</p>'
+        : ''));
+  }
+
+  function bindPw() {
+    if (el('pwAdd')) {
+      el('pwAdd').addEventListener('click', function () { PF.open = !PF.open; viewStock(); });
+    }
+    if (el('pfCancel')) {
+      el('pfCancel').addEventListener('click', function () { PF.open = false; viewStock(); });
+    }
+    if (el('pfTons') && el('pfPT')) {
+      function calc() {
+        var t = num(el('pfTons').value), r = num(el('pfPT').value);
+        el('pfCalc').textContent = (t > 0 && r > 0)
+          ? m2(t) + ' ตัน × ' + m2(r) + ' = ' + m2(t * r) + ' บาท (รวมภาษีแล้ว)'
+          : 'กรอกตันกับราคาต่อตัน ระบบคิดเป็นเงินให้เอง';
+      }
+      el('pfTons').addEventListener('input', calc);
+      el('pfPT').addEventListener('input', calc);
+    }
+    if (el('pfSave')) {
+      el('pfSave').addEventListener('click', function () {
+        var tons = num(el('pfTons').value);
+        if (tons <= 0) { toast('กรอกจำนวนตันก่อน'); return; }
+        var have = pwCalc().bal;
+        if (tons > have + 0.001) {
+          toast('ขายเกินที่มีในสตอก · ตอนนี้เหลือ ' + m2(have) + ' ตัน');
+          return;
+        }
+        S.entries.push({
+          id: newId(), date: dOnly(el('pfDate').value) || todayISO(), kind: 'pwOut',
+          cementType: 'powder', who: el('pfWho').value.trim(),
+          price: num(el('pfPT').value), tons: tons,
+          trucks: { plate: el('pfPlate').value.trim(), jp: !!(el('pfJp') && el('pfJp').value) }
+        });
+        PF.open = false;
+        save(); logIt('ขายปูนผงจากสตอก', m2(tons) + ' ตัน');
+        viewStock(); toast('บันทึกแล้ว · คงเหลือ ' + m2(pwCalc().bal) + ' ตัน');
+      });
+    }
+    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-pwd]'), function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-pwd');
+        if (b.dataset.armed !== '1') {
+          b.dataset.armed = '1'; b.classList.add('pri'); b.textContent = 'กดอีกครั้ง';
+          toast('กดอีกครั้งเพื่อลบรายการขายนี้'); return;
+        }
+        S.entries = S.entries.filter(function (e) { return String(e.id) !== String(id); });
+        if (S.trash && S.trash.entries && S.trash.entries.indexOf(Number(id)) < 0) { S.trash.entries.push(Number(id)); }
+        save(); logIt('ลบรายการขายปูนผง', 'id ' + id);
+        viewStock(); toast('ลบแล้ว');
+      });
+    });
+  }
+
   function stkFields(i, v) {
     var opts = '<option value="">ไม่ระบุรอบ</option>' + rdList().map(function (r) {
       var p = r.trucks || {};
@@ -5061,17 +5391,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<div style="min-width:0"><label class="fl" for="rdf' + i + '" style="font-size:11px">รอบนำเข้า (Invoice)</label>' +
         '<select id="rdf' + i + '" data-f="round:' + i + '" style="min-height:38px">' + opts + '</select></div>' +
         (v.type === 'bag' ? '' :
-        '<div style="min-width:0"><label class="fl" for="spf' + i + '" style="font-size:11px">ราคาขาย/ตัน (รวมภาษี)</label>' +
-        '<input id="spf' + i + '" class="n" type="text" inputmode="decimal" value="' + esc(v.sp || '') + '" ' +
-        'data-f="sp:' + i + '" placeholder="1,450" style="min-height:38px"></div>') +
-        (v.type === 'bag' ? '' :
-        '<div style="min-width:0;align-self:end">' +
-        '<label for="jpf' + i + '" style="display:flex;align-items:center;gap:8px;font-size:12px;' +
-        'color:var(--muted);cursor:pointer;min-height:38px">' +
-        '<input id="jpf' + i + '" type="checkbox" data-f="jp:' + i + '"' + (v.jp ? ' checked' : '') +
-        ' style="width:17px;height:17px;min-height:0;padding:0;accent-color:var(--accent)">' +
-        'ส่งมอบให้ ' + esc(nm.buyer) + ' ตัดเครดิต</label></div>') +
-        (v.type === 'bag' ? '' :
         '<div style="min-width:0;align-self:end">' +
         '<label for="whf' + i + '" style="display:flex;align-items:center;gap:8px;font-size:12px;' +
         'color:var(--muted);cursor:pointer;min-height:38px">' +
@@ -5085,9 +5404,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         : v.wh
         ? '<p class="hint" style="margin:8px 0 0">คันนี้จะถูกนับเข้าสตอกโกดัง' +
           (v.type === 'bag' ? ' ' + BAGS_TRUCK + ' ถุง' : 'ตามน้ำหนักชั่งฝั่งไทย') + ' ' +
-          'ยอดขายจะไปเกิดตอนบันทึกจ่ายออกจากโกดัง ไม่ใช่ช่องราคาขายนี้</p>'
-        : '<p class="hint" style="margin:8px 0 0">กรอกราคาขาย/ตัน แล้วคันนี้จะถูกนับเป็นยอดขายของเดือนที่ผ่านด่าน · ' +
-          'ถ้ายังไม่รู้ราคา เว้นว่างไว้ได้ คันนี้จะค้างเป็นสตอกจนกว่าจะกลับมากรอก</p>') +
+          'ยอดขายจะไปเกิดตอนบันทึกจ่ายออกจากโกดัง</p>'
+        : '<p class="hint" style="margin:8px 0 0">คันนี้จะเข้าสตอกปูนผงเมื่อกรอกวันเวลาผ่านด่านไทยแล้ว ' +
+          'ยอดขายจะไปเกิดตอนบันทึกขายในหน้า STOCK</p>') +
       '</div>';
   }
 
@@ -5242,9 +5561,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       var s = slot(ymOf(t.cross), t.type);
       s.inCars += 1;
       s.inQty += q;
-      /* ส่งตรงลูกค้าแล้วแต่ยังไม่กรอกราคาขาย ยังไม่นับเป็นขายออก ให้ค้างเป็นสตอกไว้ก่อน */
-      if (!t.wh && num(t.sp) > 0) { s.outQty += q; s.outAmt += t.tonsT * num(t.sp); }
-      if (!t.wh && !(num(t.sp) > 0)) { s.noPrice += 1; s.noPriceQty += q; }
     });
     whList().forEach(function (e) {
       var p = e.trucks || {}, ty = e.cementType || 'bag';
@@ -5252,6 +5568,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       var s = slot(ymOf(e.date), ty);
       s.outQty += ty === 'bag' ? bags : bags / BAGS_TON;
       s.outAmt += num(e.price) * bags;
+    });
+    pwList().forEach(function (e) {
+      var s = slot(ymOf(e.date), 'powder');
+      s.outQty += num(e.tons);
+      s.outAmt += num(e.price) * num(e.tons);
     });
     var keys = Object.keys(map).sort();
     var bal = { powder: 0, bag: 0 };
@@ -5294,52 +5615,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       myKpi('คงเหลือ', ty === 'bag' ? m0(cur.bal) : m2(cur.bal),
             ty === 'bag' ? 'ถุง · ' + m2(cur.bal / BAGS_TON) + ' ตัน' : 'ตัน',
             '<span class="hint">ยกไปเดือนหน้า</span>') +
-      '</div>' +
-      (cur.noPrice
-        ? '<p class="hint w" style="margin:9px 0 0">เดือนนี้มี ' + m0(cur.noPrice) + ' คันที่ผ่านด่านแล้ว ' +
-          'แต่ยังไม่กรอกราคาขาย · ยังไม่นับเป็นยอดขาย ค้างเป็นสตอก ' +
-          (ty === 'bag' ? m0(cur.noPriceQty) + ' ถุง' : m2(cur.noPriceQty) + ' ตัน') + '</p>'
-        : '') +
-      '</div>';
+      '</div></div>';
   }
 
-
-  /* กล่องตามเก็บราคาขายของคันที่ผ่านด่านแล้วแต่ยังไม่ได้กรอกราคา
-     มีเพราะรายการปูนเข้าที่บันทึกไปแล้วยังแก้จากหน้าบันทึกไม่ได้ */
-  function stkNoPrice() {
-    return stkTrips().filter(function (t) {
-      return t.cross && !t.wh && !(num(t.sp) > 0);
-    }).sort(function (a, b) { return (a.cross || '').localeCompare(b.cross || ''); });
-  }
-
-  function stkFillBox() {
-    var list = stkNoPrice();
-    if (!list.length) { return ''; }
-    var rows = list.map(function (t) {
-      return '<tr><td class="str">' + esc(dtTH(t.cross)) + '</td>' +
-        '<td>' + esc(t.lao || '—') + '</td>' +
-        '<td>' + esc(t.thai || '—') + '</td>' +
-        '<td>' + typeTH(t.type) + '</td>' +
-        '<td class="n">' + m2(t.tonsT) + '</td>' +
-        '<td>' + esc(t.dest || '—') + '</td>' +
-        '<td class="c" style="min-width:132px"><input class="n" type="text" inputmode="decimal" ' +
-        'data-sp="' + esc(t.eid) + ':' + t.seq + '" placeholder="ราคา/ตัน" ' +
-        'aria-label="ราคาขายต่อตันของรถ ' + esc(t.lao || t.thai) + '" style="min-height:36px"></td>' +
-        '<td class="c"><input type="checkbox" data-jp="' + esc(t.eid) + ':' + t.seq + '"' +
-        (t.jp ? ' checked' : '') + ' aria-label="ส่งมอบให้ ' + esc(nm.buyer) + '" ' +
-        'style="width:17px;height:17px;min-height:0;padding:0;accent-color:var(--accent)"></td></tr>';
-    }).join('');
-    return '<div style="border:1px solid var(--warn-bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">' +
-      '<p class="t" style="margin:0">รอกรอกราคาขาย ' + m0(list.length) + ' คัน</p>' +
-      '<p class="hint" style="margin:3px 0 10px">คันพวกนี้ผ่านด่านแล้วและส่งตรงให้ลูกค้า ' +
-      'แต่ยังไม่มีราคาขาย จึงยังค้างเป็นสตอกและยังไม่เข้ายอดขาย กรอกราคาแล้วกดบันทึกได้เลย</p>' +
-      '<div class="tbox"><table><thead><tr><th>วันผ่านด่าน</th><th>ทะเบียนลาว</th><th>ทะเบียนไทย</th>' +
-      '<th>ชนิด</th><th class="c">ตัน (ชั่งไทย)</th><th>ลูกค้า</th><th class="c">ราคาขาย/ตัน</th>' +
-      '<th class="c">ส่งมอบให้<br>' + esc(nm.buyer) + '</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '<div class="actions" style="margin-top:10px">' +
-      '<button type="button" class="btn pri" id="spSave">บันทึกราคาขาย</button></div></div>';
-  }
 
   function stkMonthSection() {
     var rows = stkMonths();
@@ -5409,16 +5687,15 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<button type="button" class="btn" id="myCsv">ส่งออกไฟล์ CSV</button></div>';
 
     return section(4, 'สะสมรายเดือน', 'นำเข้าเท่าไร ขายออกเท่าไร คงเหลือสิ้นเดือนเท่าไร แยกปูนผงกับปูนถุง',
-      bar + cards + stkFillBox() +
+      bar + cards +
       '<p class="note" style="margin:16px 0 6px">' + esc(ymFull(last.ym).split(' ')[1] ? 'ทุกเดือนในปี ' + (parseInt(MY.year, 10) + 543) : 'ทุกเดือน') +
       ' · แยกบรรทัดตามชนิดปูน</p>' +
       '<div class="tbox"><table><thead><tr><th>เดือน</th><th>ชนิด</th><th class="c">นำเข้า (คัน)</th>' +
       '<th class="c">นำเข้า</th><th class="c">ขายออก</th><th class="c">ยอดขาย (บาท)</th>' +
       '<th class="c">คงเหลือสิ้นเดือน</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
       '<p class="hint" style="margin-top:9px">นับนำเข้าตอนรถผ่านด่านไทย คันที่ยังไม่ผ่านด่านยังไม่เข้ายอดนี้ · ' +
-      'คันที่ส่งตรงลูกค้าจะนับเป็นขายออกต่อเมื่อกรอกช่อง “ราคาขาย/ตัน” ในหน้าบันทึกปูนเข้าแล้ว ' +
-      'ยังไม่กรอกก็ค้างเป็นสตอกไว้ก่อน · ยอดขายจากโกดังคิดจากรายการจ่ายออก ' +
-      'ทั้งสองยอดเป็นราคารวมภาษีแล้ว</p>');
+      'ยอดขายมาจากรายการขายในหัวข้อ 2 และ 3 เท่านั้น ปูนที่ผ่านด่านแล้วแต่ยังไม่บันทึกขาย ' +
+      'จะค้างเป็นสตอกไว้ · ทุกยอดเป็นราคารวมภาษีแล้ว</p>');
   }
 
   function stkMonthCsv() {
@@ -5608,7 +5885,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '</div>';
   }
 
-  function bindDocs() {
+  function bindDocs(redraw) {
+    redraw = redraw || viewStock;
     if (el('rfFile')) {
       el('rfFile').addEventListener('change', function () {
         var fs = Array.prototype.slice.call(el('rfFile').files || []);
@@ -5623,24 +5901,24 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           docPut(d.id, file).then(function () {
             docUp(d, file);
             left -= 1;
-            if (left <= 0) { rdSnap(); viewStock(); toast('แนบเอกสารแล้ว ' + fs.length + ' ไฟล์'); }
+            if (left <= 0) { rdSnap(); redraw(); toast('แนบเอกสารแล้ว ' + fs.length + ' ไฟล์'); }
           }).catch(function () {
             left -= 1;
-            if (left <= 0) { viewStock(); toast('แนบไฟล์ไม่สำเร็จ'); }
+            if (left <= 0) { redraw(); toast('แนบไฟล์ไม่สำเร็จ'); }
           });
         });
       });
     }
-    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-dk]'), function (s) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-dk]'), function (s) {
       s.addEventListener('change', function () {
         var d = (RF.docs || []).filter(function (x) { return x.id === s.getAttribute('data-dk'); })[0];
-        if (d) { d.kind = s.value; rdSnap(); viewStock(); }
+        if (d) { d.kind = s.value; rdSnap(); redraw(); }
       });
     });
-    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-dopen]'), function (b) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-dopen]'), function (b) {
       b.addEventListener('click', function () { docOpen(b.getAttribute('data-dopen')); });
     });
-    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-ddel]'), function (b) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ddel]'), function (b) {
       b.addEventListener('click', function () {
         var id = b.getAttribute('data-ddel');
         if (b.dataset.armed !== '1') {
@@ -5649,7 +5927,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         }
         RF.docs = (RF.docs || []).filter(function (x) { return x.id !== id; });
         docDel(id);
-        rdSnap(); viewStock(); toast('ลบเอกสารแล้ว');
+        rdSnap(); redraw(); toast('ลบเอกสารแล้ว');
       });
     });
   }
@@ -5838,11 +6116,12 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
             '<td class="n">' + m2(t.tonsL) + '</td>' +
             '<td class="muted">' + esc(t.wb || '—') + '</td>' +
             '<td class="muted">' + esc(rdName(t.round) || '—') + '</td>' +
+            '<td class="c"><button type="button" class="btn sm" data-ied="' + esc(t.eid) + '">แก้</button></td>' +
             '<td class="c">' + (d >= warnDays
               ? '<span class="badge b-d">ค้าง ' + d + ' วัน</span>'
               : '<span class="badge b-w">' + d + ' วัน</span>') + '</td></tr>';
         }).join('')
-      : '<tr><td colspan="7" class="muted" style="padding:20px;text-align:center">ไม่มีรถค้างด่าน รถที่เบิกปูนแล้วผ่านด่านครบทุกคัน</td></tr>';
+      : '<tr><td colspan="8" class="muted" style="padding:20px;text-align:center">ไม่มีรถค้างด่าน รถที่เบิกปูนแล้วผ่านด่านครบทุกคัน</td></tr>';
 
     var whRows = c.moves.length
       ? c.moves.slice().reverse().map(function (m) {
@@ -5892,12 +6171,15 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<div class="stack">' +
         section(1, 'รถที่ยังไม่ผ่านด่าน', 'เบิกปูนจากโรงงานลาวแล้ว ตัดเครดิตไปแล้ว แต่ยังไม่มีวันเวลาส่งออกจากด่าน',
           '<div class="tbox"><table><thead><tr><th>วันรับปูน</th><th>ทะเบียนลาว</th><th>ชนิด</th>' +
-          '<th class="c">น้ำหนัก (ตัน)</th><th>เลขใบชั่ง</th><th>รอบนำเข้า</th><th class="c">ค้างมา</th>' +
+          '<th class="c">น้ำหนัก (ตัน)</th><th>เลขใบชั่ง</th><th>รอบนำเข้า</th>' +
+          '<th class="c">จัดการ</th><th class="c">ค้างมา</th>' +
           '</tr></thead><tbody>' + transitRows + '</tbody></table></div>' +
           '<p class="hint" style="margin-top:9px">เติมช่อง “วันเวลาส่งปูนออกจากด่าน” ในหน้าบันทึกปูนเข้า แล้วรถจะหายจากตารางนี้เอง · ' +
           'ตั้งจำนวนวันที่ถือว่าค้างได้ที่หน้าตั้งค่าอัตรา (ตอนนี้ ' + warnDays + ' วัน)</p>') +
 
-        section(2, 'โกดังปูนถุง', 'รับเข้าอัตโนมัติจากเที่ยวรถที่ติ๊กว่าเข้าโกดัง · จ่ายออกบันทึกเองตอนรถลูกค้ามารับ',
+        pwSection(pwCalc()) +
+
+        section(3, 'โกดังปูนถุง', 'รับเข้าอัตโนมัติจากเที่ยวรถที่ติ๊กว่าเข้าโกดัง · จ่ายออกบันทึกเองตอนรถลูกค้ามารับ',
           '<div class="actions" style="margin-bottom:10px">' +
           '<button type="button" class="btn pri" id="whAdd">' + (WF.open ? 'ปิดฟอร์ม' : '+ บันทึกจ่ายออก') + '</button>' +
           '<span class="badge ' + (c.bags < 0 ? 'b-d' : 'b-i') + '" style="align-self:center">คงเหลือ ' +
@@ -5909,15 +6191,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           (c.bags < 0 ? '<p class="hint w" style="margin-top:9px">ยอดคงเหลือติดลบ แปลว่าบันทึกขายมากกว่าที่รับเข้า ' +
             'ตรวจว่าลืมติ๊กเที่ยวรถที่เข้าโกดังหรือเปล่า</p>' : '')) +
 
-        section(3, 'รอบนำเข้า', 'หนึ่งรอบคือหนึ่ง Invoice ที่ผูกกับ Form D และใบขนชุดเดียวกัน',
-          '<div class="actions" style="margin-bottom:10px">' +
-          '<button type="button" class="btn pri" id="rdAdd">' + (RF.open && !RF.id ? 'ปิดฟอร์ม' : '+ เพิ่มรอบนำเข้า') + '</button></div>' +
-          (RF.open ? rdForm() : '') +
-          '<div class="tbox" style="margin-top:10px"><table><thead><tr><th>Invoice</th><th>ชนิด</th><th>Form D</th>' +
-          '<th class="c">ผ่านด่าน/ตาม Form D</th><th>ใบขน</th><th class="c">น้ำหนักเอกสาร (กก.)</th>' +
-          '<th class="c">ชั่งจริงฝั่งไทย (กก.)</th><th class="c">เอกสารแนบ</th>' +
-          '<th class="c">สมอ. เหลือ</th><th class="c">จัดการ</th>' +
-          '</tr></thead><tbody>' + rdRows + '</tbody></table></div>') +
 
         stkMonthSection() +
       '</div>';
@@ -5926,28 +6199,13 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   }
 
   function bindStock() {
+    bindPw();
     bindDocs();
-    if (el('spSave')) {
-      el('spSave').addEventListener('click', function () {
-        var n = 0;
-        Array.prototype.forEach.call(document.querySelectorAll('[data-sp]'), function (inp) {
-          var v = num(inp.value);
-          if (!(v > 0)) { return; }
-          var parts = inp.getAttribute('data-sp').split(':');
-          var e = S.entries.filter(function (x) { return String(x.id) === parts[0]; })[0];
-          if (!e || !e.trucks) { return; }
-          var t = e.trucks[parseInt(parts[1], 10) - 1];
-          if (!t) { return; }
-          t.sp = v;
-          var jpBox = document.querySelector('[data-jp="' + inp.getAttribute('data-sp') + '"]');
-          t.jp = !!(jpBox && jpBox.checked);
-          n += 1;
-        });
-        if (!n) { toast('ยังไม่ได้กรอกราคาสักคัน'); return; }
-        save(); logIt('กรอกราคาขายย้อนหลัง', n + ' คัน');
-        viewStock(); toast('บันทึกราคาขาย ' + n + ' คันแล้ว');
+    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-ied]'), function (b) {
+      b.addEventListener('click', function () {
+        if (loadImport(b.getAttribute('data-ied'))) { location.hash = '#entry'; }
       });
-    }
+    });
     if (el('myYear')) {
       el('myYear').addEventListener('change', function () { MY.year = el('myYear').value; viewStock(); });
     }
@@ -5956,15 +6214,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     }
     if (el('whAdd')) {
       el('whAdd').addEventListener('click', function () { WF.open = !WF.open; viewStock(); });
-    }
-    if (el('rdAdd')) {
-      el('rdAdd').addEventListener('click', function () {
-        if (RF.open && !RF.id) { RF.open = false; } else { RF.open = true; RF.id = null; RF.docs = []; RF.vals = null; }
-        viewStock();
-      });
-    }
-    if (el('rfCancel')) {
-      el('rfCancel').addEventListener('click', function () { RF.open = false; RF.id = null; RF.docs = []; RF.vals = null; viewStock(); });
     }
     if (el('wfCancel')) {
       el('wfCancel').addEventListener('click', function () { WF.open = false; viewStock(); });
@@ -6019,57 +6268,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       });
     });
 
-    if (el('rfSave')) {
-      el('rfSave').addEventListener('click', function () {
-        var p = {
-          inv: el('rfInv').value.trim(), invDate: dOnly(el('rfInvD').value),
-          fd: el('rfFd').value.trim(), fdDate: dOnly(el('rfFdD').value),
-          fdTrucks: num(el('rfFdT').value),
-          tisi: el('rfTisi').value.trim(), tisiDate: dOnly(el('rfTisiD').value),
-          tisiExp: dOnly(el('rfTisiX').value), kg: num(el('rfKg').value),
-          decl: el('rfDecl').value.trim(), declDate: dOnly(el('rfDeclD').value),
-          vat: num(el('rfVat').value), payRef: el('rfPay').value.trim(),
-          docs: (RF.docs || []).slice()
-        };
-        if (!p.inv) { toast('กรอกเลขที่ Invoice ก่อน'); return; }
-        if (RF.id) {
-          var r = rdFind(RF.id);
-          if (r) { r.trucks = p; r.date = p.invDate || r.date; r.cementType = el('rfType').value; }
-          logIt('แก้รอบนำเข้า', p.inv);
-        } else {
-          S.entries.push({ id: newId(), date: p.invDate || todayISO(), kind: 'round',
-                           cementType: el('rfType').value, trucks: p });
-          logIt('เพิ่มรอบนำเข้า', p.inv + ' · ' + (p.fdTrucks || '?') + ' คัน');
-        }
-        RF.open = false; RF.id = null; RF.docs = []; RF.vals = null;
-        save(); viewStock(); toast('บันทึกรอบนำเข้าแล้ว');
-      });
-    }
-    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-rde]'), function (b) {
-      b.addEventListener('click', function () {
-        RF.open = true; RF.id = b.getAttribute('data-rde'); RF.vals = null;
-        var rr = rdFind(RF.id);
-        RF.docs = ((rr && rr.trucks && rr.trucks.docs) || []).slice();
-        viewStock();
-        var f = el('rfInv'); if (f) { f.scrollIntoView({ block: 'center' }); }
-      });
-    });
-    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-rdd]'), function (b) {
-      b.addEventListener('click', function () {
-        var id = b.getAttribute('data-rdd');
-        var used = stkTrips().filter(function (t) { return String(t.round) === String(id); }).length;
-        if (b.dataset.armed !== '1') {
-          b.dataset.armed = '1'; b.classList.add('pri'); b.textContent = 'กดอีกครั้ง';
-          toast(used ? 'รอบนี้มีเที่ยวรถผูกอยู่ ' + used + ' เที่ยว · กดอีกครั้งถ้าแน่ใจ'
-                     : 'กดอีกครั้งเพื่อลบรอบนำเข้านี้');
-          return;
-        }
-        S.entries = S.entries.filter(function (e) { return String(e.id) !== String(id); });
-        if (S.trash && S.trash.entries && S.trash.entries.indexOf(Number(id)) < 0) { S.trash.entries.push(Number(id)); }
-        save(); logIt('ลบรอบนำเข้า', 'id ' + id);
-        viewStock(); toast('ลบแล้ว');
-      });
-    });
   }
 
   /* ================= เราเตอร์ ================= */
