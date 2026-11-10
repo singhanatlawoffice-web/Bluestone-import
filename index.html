@@ -626,9 +626,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
               inPowder: 0, inBag: 0, soldPowder: 0, soldBag: 0, revBuyer: 0, revOther: 0, soldCost: 0, negStock: false };
 
     list.forEach(function (e) {
-      /* รอบนำเข้าและการจ่ายปูนถุงออกจากโกดัง เป็นข้อมูลสตอก ไม่ใช่รายการเงิน
-         จึงข้ามไป ไม่ให้ไปโผล่เป็นแถวว่างในสมุดคุมการตัดเงิน */
-      if (e.kind === 'round' || e.kind === 'whOut') { return; }
+      /* รอบนำเข้าเป็นข้อมูลเอกสาร ไม่ใช่รายการเงิน จึงข้ามไป
+         ส่วนการจ่ายปูนออกจากโกดังถือเป็นการขาย จึงคิดเป็นรายได้ด้วย */
+      if (e.kind === 'round') { return; }
       var r = ratesFor(e);               /* ทับตัวแปรด้านนอกเฉพาะในรอบนี้ */
       var w = { e: e, date: e.date, tons: 0, tonsThai: 0, loss: 0, trucks: 0, fRate: null, fAmt: 0,
                 jRate: null, jAmt: 0, fIn: 0, jIn: 0, ship: 0, shipThai: 0, scan: 0, tier: 0, shipRate: 0,
@@ -671,6 +671,18 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           w.items.push(item);
           w.tons += tnL; w.tonsThai += tnT; w.loss += item.loss;
           w.fAmt += item.fAmt; w.ship += item.shipAmt; w.scan += item.scan; w.shipThai += item.thaiAmt;
+          /* กรอกราคาขายแล้ว ถือว่าคันนี้ขายออกไปแล้ว ตัดสตอกและคิดเป็นรายได้ */
+          var spT = num(t.sp);
+          if (spT > 0 && !t.wh) {
+            var revT = spT * tnT;
+            item.sellRate = spT; item.rev = revT; item.jp = !!t.jp;
+            w.rev += revT;
+            if (t.jp) { w.jAmt += revT; T.jCut += revT; T.revBuyer += revT; }
+            else { T.revOther += revT; }
+            stock[ty] -= tnT;
+            if (ty === 'powder') { T.soldPowder += tnT; } else { T.soldBag += tnT; }
+            T.soldCost += costOf(ty) * tnT;
+          }
           byType[ty] += tnT;
           byTypeL[ty] += tnL;
           fByType[ty] += item.fAmt;
@@ -680,6 +692,12 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           if (ty === 'powder') { T.inPowder += tnT; } else { T.inBag += tnT; }
         });
 
+        /* ถ้าทุกคันที่ขายออกใช้ราคาเดียวกัน ให้โชว์ราคานั้นในคอลัมน์ ฿/ตัน ของฝั่งผู้ซื้อ */
+        var sold = w.items.filter(function (it) { return it.rev > 0; });
+        if (sold.length) {
+          var one = sold[0].sellRate;
+          w.jRate = sold.every(function (it) { return it.sellRate === one; }) ? one : null;
+        }
         w.byType = byType;
         w.byTypeL = byTypeL;
         w.fByType = fByType;
@@ -689,6 +707,20 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         w.tier = w.items.length ? w.items[0].tier : 0;
         w.stockDelta = w.tonsThai;
         T.fCut += w.fAmt; T.trucks += w.trucks; T.scan += w.scan;
+      }
+
+      if (e.kind === 'whOut') {
+        var wp = e.trucks || {};
+        var wBags = num(wp.bags);
+        w.tons = num(e.tons) || wBags / 20;
+        w.jRate = w.tons > 0 ? (num(e.price) * wBags) / w.tons : 0;
+        w.rev = num(e.price) * wBags;
+        w.stockDelta = -w.tons;
+        stock[e.cementType || 'bag'] -= w.tons;
+        if (wp.jp) { w.jAmt = w.rev; T.jCut += w.jAmt; T.revBuyer += w.rev; }
+        else { T.revOther += w.rev; }
+        if ((e.cementType || 'bag') === 'powder') { T.soldPowder += w.tons; } else { T.soldBag += w.tons; }
+        T.soldCost += costOf(e.cementType || 'bag') * w.tons;
       }
 
       if (e.kind === 'saleBuyer' || e.kind === 'saleOther') {
@@ -850,6 +882,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       if (e.kind === 'depositF') { badge = '<span class="badge b-s">เงินเข้าโรงงาน</span>'; bg = ' style="background:var(--ok-bg)"'; }
       else if (e.kind === 'depositJ') { badge = '<span class="badge b-i">รับเงินล่วงหน้า</span>'; bg = ' style="background:var(--tint-weak)"'; }
       else if (e.kind === 'import') { badge = '<span class="badge b-w">ปูนเข้า</span>'; }
+      else if (e.kind === 'whOut') {
+        badge = ((e.trucks || {}).jp
+          ? '<span class="badge b-i">ส่งมอบให้ ' + esc(nm.buyer) + '</span>'
+          : '<span class="badge b-n">ขายจากโกดัง</span>');
+      }
       else if (e.kind === 'saleBuyer') { badge = '<span class="badge b-i">ส่งมอบให้ ' + esc(nm.buyer) + '</span>'; }
       else { badge = '<span class="badge b-n">จำหน่ายรายอื่น</span>'; }
 
@@ -860,6 +897,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         if (w.byType.bag > 0) { parts.push('ปูนถุง ' + t2(w.byType.bag) + ' ตัน'); }
         label = parts.join(' + ') + ' · ' + w.trucks + ' คู่รถ' +
           (w.loss > 0.004 ? ' · สูญเสียจากการถ่ายปูน ' + t2(w.loss) + ' ตัน' : '');
+      } else if (e.kind === 'whOut') {
+        label = 'จ่ายปูนถุงออกจากโกดัง ' + m0(num((e.trucks || {}).bags)) + ' ถุง · ' +
+          t2(w.tons) + ' ตัน @ ' + m2(num(e.price)) + ' ฿/ถุง' + (e.who ? ' · ' + e.who : '');
       } else if (e.kind === 'saleBuyer') {
         label = typeTH(e.cementType) + ' ' + t2(w.tons) + ' ตัน @ ' + m0(w.jRate) + ' ฿';
       } else if (e.kind === 'saleOther') {
@@ -1169,7 +1209,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   /* ================= หน้า 2 · บันทึกรายการ ================= */
   var form = { kind: 'import', date: '2026-11-03', cementType: 'powder', nation: 'thai',
                trucks: [{ type: 'powder', brand: '', nation: 'thai', scan: true, dest: '', destId: '', tLoad: '', tSend: '', tDeliver: '',
-                          wb: '', mf: '', round: '', wh: false, sp: '',
+                          wb: '', mf: '', round: '', wh: false, sp: '', jp: false,
                           lao: { company: '', plate: '', driver: '', phone: '', tons: '32.00' },
                           thai: { company: '', plate: '', driver: '', phone: '', tons: '31.80' } }],
                scanner: false, tons: '', price: '', priceP: '', priceB: '', who: '', amount: '', note: '' };
@@ -1191,7 +1231,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         if (typeof af.selectionStart === 'number') { afPos = af.selectionStart; }
       }
     } catch (eFocus) { afId = ''; }
-    if (form.kind !== 'import' && form.kind !== 'saleBuyer' && form.kind !== 'saleOther') { form.kind = 'import'; }
+    /* หน้านี้บันทึกปูนเข้าอย่างเดียว ปูนทุกคันต้องเข้าสตอกก่อน แล้วค่อยไปบันทึกขายออกที่หน้า STOCK */
+    form.kind = 'import';
     var K = form.kind;
     var isImport = K === 'import', isSale = (K === 'saleBuyer' || K === 'saleOther'), isMoney = false;
 
@@ -1519,24 +1560,17 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
     el('v-entry').innerHTML =
       '<div class="head-row"><div><h1>บันทึกการรับปูนเข้าประจำวัน</h1>' +
-      '<p class="lede">หน้านี้ใช้บันทึกการเคลื่อนไหวของปูน ทั้งการรับเข้า การส่งมอบ และการจำหน่าย · รายการรับ-จ่ายเงินอยู่ที่หน้าคุมการตัดเงิน</p></div>' +
+      '<p class="lede">บันทึกปูนที่รับเข้ามาในแต่ละวัน ทะเบียนรถ น้ำหนักสองฝั่ง และเอกสารประจำคัน · ' +
+      'ปูนทุกคันจะเข้าสตอกก่อน แล้วจึงบันทึกขายออกที่หน้า STOCK</p></div>' +
       '<div class="actions"><a class="btn" href="#ledger">กลับหน้าคุมการตัดเงิน</a></div></div>' +
 
       '<div class="grid g2" style="align-items:start">' +
       '<section class="card"><div class="card-b stack">' +
-        '<fieldset><legend style="display:flex;align-items:center;gap:7px">' +
-          '<span class="ms" aria-hidden="true" style="font-size:17px">inventory_2</span>บันทึกการส่งมอบหรือการจำหน่าย</legend>' +
-          '<div class="seg">' +
-            '<label><input type="radio" name="kind" value="saleBuyer"' + (K === 'saleBuyer' ? ' checked' : '') +
-            ' data-set="kind"><span>ส่งมอบให้ ' + esc(nm.buyer) + '</span></label>' +
-            '<label><input type="radio" name="kind" value="saleOther"' + (K === 'saleOther' ? ' checked' : '') +
-            ' data-set="kind"><span>จำหน่ายให้ลูกค้ารายอื่น</span></label>' +
-          '</div>' +
-          (isSale
-            ? '<p class="hint">กำลังบันทึกรายการส่งมอบหรือจำหน่าย · หากต้องการบันทึกปูนเข้า ใช้ปุ่มด้านล่างฟอร์มนี้</p>'
-            : '<p class="hint">หากไม่เลือกข้อใด ระบบจะบันทึกเป็นการรับปูนเข้าตามปกติ · รายการรับ-จ่ายเงินให้บันทึกที่หน้าคุมการตัดเงิน</p>') +
-        '</fieldset>' +
-        (isImport ? '<div><span class="fl">วันที่</span>' + dtField('fdate', form.date, false, 'data-set="date"') + '</div>' : '') +
+        '<div class="alert a-i" style="margin-bottom:2px"><div class="bd">' +
+        '<p>หน้านี้บันทึกปูนที่รับเข้ามาเท่านั้น ปูนทุกคันจะเข้าสตอกก่อน ' +
+        'การขายออกให้บันทึกที่หน้า <a href="#stock">STOCK</a> ' +
+        'ส่วนรายการรับ-จ่ายเงินอยู่ที่หน้าคุมการตัดเงิน</p></div></div>' +
+        '<div><span class="fl">วันที่</span>' + dtField('fdate', form.date, false, 'data-set="date"') + '</div>' +
         left +
       '</div></section>' +
 
@@ -1639,7 +1673,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                            scan: last.scan === undefined ? true : !!last.scan,
                            dest: last.dest || '', destId: last.destId || '',
                            tLoad: last.tLoad || '', tSend: last.tSend || '', tDeliver: last.tDeliver || '',
-                           wb: '', mf: '', round: last.round || '', wh: !!last.wh, sp: last.sp || '',
+                           wb: '', mf: '', round: last.round || '', wh: !!last.wh, sp: last.sp || '', jp: !!last.jp,
                            lao: { company: (last.lao || {}).company || '', plate: '', driver: '', phone: '', tons: t2(S.rates.truckTon) },
                            thai: { company: (last.thai || {}).company || '', plate: '', driver: '', phone: '', tons: t2(S.rates.truckTon) } });
         viewEntry();
@@ -1672,7 +1706,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                      scan: t.scan === undefined ? true : !!t.scan, dest: (t.dest || '').trim(),
                      destId: t.destId || '', job: t.job || '', tok: t.tok || null,
                      tLoad: t.tLoad || '', tSend: t.tSend || '', tDeliver: t.tDeliver || '',
-                     wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh, sp: num(t.sp) || '',
+                     wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh, sp: num(t.sp) || '', jp: !!t.jp,
                      lao: side(t.lao), thai: side(t.thai) };
           }) });
       } else if (isSale) {
@@ -4966,6 +5000,12 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<input id="spf' + i + '" class="n" type="text" inputmode="decimal" value="' + esc(v.sp || '') + '" ' +
         'data-f="sp:' + i + '" placeholder="1,450" style="min-height:38px"></div>' +
         '<div style="min-width:0;align-self:end">' +
+        '<label for="jpf' + i + '" style="display:flex;align-items:center;gap:8px;font-size:12px;' +
+        'color:var(--muted);cursor:pointer;min-height:38px">' +
+        '<input id="jpf' + i + '" type="checkbox" data-f="jp:' + i + '"' + (v.jp ? ' checked' : '') +
+        ' style="width:17px;height:17px;min-height:0;padding:0;accent-color:var(--accent)">' +
+        'ส่งมอบให้ ' + esc(nm.buyer) + ' ตัดเครดิต</label></div>' +
+        '<div style="min-width:0;align-self:end">' +
         '<label for="whf' + i + '" style="display:flex;align-items:center;gap:8px;font-size:12px;' +
         'color:var(--muted);cursor:pointer;min-height:38px">' +
         '<input id="whf' + i + '" type="checkbox" data-f="wh:' + i + '"' + (v.wh ? ' checked' : '') +
@@ -5030,7 +5070,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           tonsL: num(t.lao && t.lao.tons), tonsT: num(t.thai && t.thai.tons),
           load: dOnly(t.tLoad), cross: dOnly(t.tSend),
           wb: t.wb || '', mf: t.mf || '', round: t.round || '',
-          wh: !!t.wh, dest: t.dest || '', sp: num(t.sp)
+          wh: !!t.wh, dest: t.dest || '', sp: num(t.sp), jp: !!t.jp
         });
       });
     });
@@ -5214,7 +5254,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<td>' + esc(t.dest || '—') + '</td>' +
         '<td class="c" style="min-width:132px"><input class="n" type="text" inputmode="decimal" ' +
         'data-sp="' + esc(t.eid) + ':' + t.seq + '" placeholder="ราคา/ตัน" ' +
-        'aria-label="ราคาขายต่อตันของรถ ' + esc(t.lao || t.thai) + '" style="min-height:36px"></td></tr>';
+        'aria-label="ราคาขายต่อตันของรถ ' + esc(t.lao || t.thai) + '" style="min-height:36px"></td>' +
+        '<td class="c"><input type="checkbox" data-jp="' + esc(t.eid) + ':' + t.seq + '"' +
+        (t.jp ? ' checked' : '') + ' aria-label="ส่งมอบให้ ' + esc(nm.buyer) + '" ' +
+        'style="width:17px;height:17px;min-height:0;padding:0;accent-color:var(--accent)"></td></tr>';
     }).join('');
     return '<div style="border:1px solid var(--warn-bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">' +
       '<p class="t" style="margin:0">รอกรอกราคาขาย ' + m0(list.length) + ' คัน</p>' +
@@ -5222,6 +5265,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       'แต่ยังไม่มีราคาขาย จึงยังค้างเป็นสตอกและยังไม่เข้ายอดขาย กรอกราคาแล้วกดบันทึกได้เลย</p>' +
       '<div class="tbox"><table><thead><tr><th>วันผ่านด่าน</th><th>ทะเบียนลาว</th><th>ทะเบียนไทย</th>' +
       '<th>ชนิด</th><th class="c">ตัน (ชั่งไทย)</th><th>ลูกค้า</th><th class="c">ราคาขาย/ตัน</th>' +
+      '<th class="c">ส่งมอบให้<br>' + esc(nm.buyer) + '</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
       '<div class="actions" style="margin-top:10px">' +
       '<button type="button" class="btn pri" id="spSave">บันทึกราคาขาย</button></div></div>';
@@ -5636,6 +5680,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<datalist id="wfCus">' + cus + '</datalist></div>' +
         '<div><label class="fl" for="wfPlate">ทะเบียนรถที่มารับ</label>' +
         '<input id="wfPlate" type="text" value="" placeholder="73-3415 สระบุรี" style="min-height:38px"></div>' +
+        '<div><label class="fl" for="wfJp">ขายให้ใคร</label><select id="wfJp" style="min-height:38px">' +
+        '<option value="">ลูกค้ารายอื่น</option>' +
+        '<option value="1">' + esc(nm.buyer) + ' · ตัดเครดิต</option></select></div>' +
       '</div>' +
       '<p class="hint" id="wfCalc" style="margin:9px 0 0">กรอกราคาช่องใดช่องหนึ่ง อีกช่องคำนวณให้เอง · 1 ตัน = ' + BAGS_TON + ' ถุง</p>' +
       '<div class="actions" style="margin-top:10px">' +
@@ -5822,6 +5869,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           var t = e.trucks[parseInt(parts[1], 10) - 1];
           if (!t) { return; }
           t.sp = v;
+          var jpBox = document.querySelector('[data-jp="' + inp.getAttribute('data-sp') + '"]');
+          t.jp = !!(jpBox && jpBox.checked);
           n += 1;
         });
         if (!n) { toast('ยังไม่ได้กรอกราคาสักคัน'); return; }
@@ -5875,7 +5924,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           id: newId(), date: dOnly(el('wfDate').value) || todayISO(), kind: 'whOut',
           cementType: 'bag', who: el('wfWho').value.trim(),
           price: num(el('wfPB').value), tons: bags / BAGS_TON,
-          trucks: { bags: bags, plate: el('wfPlate').value.trim() }
+          trucks: { bags: bags, plate: el('wfPlate').value.trim(),
+                    jp: !!(el('wfJp') && el('wfJp').value) }
         });
         WF.open = false;
         save();
