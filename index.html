@@ -290,8 +290,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     <nav id="nav" aria-label="เมนูหลัก">
       <a href="#ledger"><span class="ms" aria-hidden="true">account_balance</span>คุมการตัดเงิน</a>
       <a href="#entry"><span class="ms" aria-hidden="true">add_circle</span>บันทึกปูนเข้า</a>
+      <a href="#stock"><span class="ms" aria-hidden="true">inventory_2</span>STOCK</a>
       <a href="#shipping"><span class="ms" aria-hidden="true">swap_horiz</span>ค่าชิปปิ้ง</a>
-      <a href="#stock"><span class="ms" aria-hidden="true">inventory_2</span>สตอก</a>
       <a href="#rates"><span class="ms" aria-hidden="true">tune</span>ตั้งค่าอัตรา</a>
       <a href="#export"><span class="ms" aria-hidden="true">table_view</span>ส่งออกข้อมูล</a>
     </nav>
@@ -5326,7 +5326,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   }
 
   /* ---- ฟอร์มเพิ่ม/แก้รอบนำเข้า และฟอร์มจ่ายออกจากโกดัง ---- */
-  var RF = { open: false, id: null };
+  var RF = { open: false, id: null, docs: [], vals: null };
   var WF = { open: false };
 
   /* วงกลมสัดส่วน ใช้โครงเดียวกับวงเครดิตในหน้าคุมการตัดเงิน
@@ -5372,9 +5372,216 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '</div></section>';
   }
 
+
+  /* ================= เอกสารแนบของรอบนำเข้า =================
+     ไฟล์เก็บสองที่ ตัวไฟล์อยู่ใน IndexedDB ของเครื่องนี้ เปิดได้ทันทีแม้ไม่มีเน็ต
+     และอัปขึ้นถัง round-docs ของ Supabase ให้เครื่องอื่นเปิดได้ด้วย
+     รายชื่อเอกสารเก็บในตัวรอบเอง จึงซิงก์ไปพร้อมข้อมูลรอบ */
+  var DOC_KINDS = ['Invoice', 'Form D', 'ใบอนุญาต สมอ.', 'ใบขนสินค้า', 'Car Manifest',
+                   'ใบชั่งน้ำหนัก', 'ใบเสร็จ/สลิปโอนเงิน', 'เอกสารอื่น'];
+  var DOC_NEED = ['Invoice', 'Form D', 'ใบอนุญาต สมอ.', 'ใบขนสินค้า'];
+  var DOC_BUCKET = 'round-docs';
+  var dbP = null;
+
+  function docDB() {
+    if (dbP) { return dbP; }
+    dbP = new Promise(function (ok, no) {
+      if (!window.indexedDB) { no(new Error('เครื่องนี้ไม่รองรับ IndexedDB')); return; }
+      var rq = indexedDB.open('bluestone-docs', 1);
+      rq.onupgradeneeded = function () {
+        if (!rq.result.objectStoreNames.contains('f')) { rq.result.createObjectStore('f'); }
+      };
+      rq.onsuccess = function () { ok(rq.result); };
+      rq.onerror = function () { no(rq.error); };
+    });
+    return dbP;
+  }
+  function docPut(id, blob) {
+    return docDB().then(function (db) {
+      return new Promise(function (ok, no) {
+        var tx = db.transaction('f', 'readwrite');
+        tx.objectStore('f').put(blob, id);
+        tx.oncomplete = function () { ok(true); };
+        tx.onerror = function () { no(tx.error); };
+      });
+    });
+  }
+  function docGet(id) {
+    return docDB().then(function (db) {
+      return new Promise(function (ok) {
+        var rq = db.transaction('f', 'readonly').objectStore('f').get(id);
+        rq.onsuccess = function () { ok(rq.result || null); };
+        rq.onerror = function () { ok(null); };
+      });
+    }).catch(function () { return null; });
+  }
+  function docDel(id) {
+    return docDB().then(function (db) {
+      return new Promise(function (ok) {
+        var tx = db.transaction('f', 'readwrite');
+        tx.objectStore('f').delete(id);
+        tx.oncomplete = function () { ok(true); };
+        tx.onerror = function () { ok(false); };
+      });
+    }).catch(function () { return false; });
+  }
+
+  function docUp(d, blob) {
+    var cl = SB.client || sbConnect();
+    if (!cl) { return; }
+    var path = (RF.id || 'new') + '/' + d.id + '_' + d.name.replace(/[^\w.\-]/g, '_');
+    cl.storage.from(DOC_BUCKET).upload(path, blob, { contentType: d.type || 'application/octet-stream', upsert: true })
+      .then(function (res) {
+        if (res && res.error) { return; }
+        d.up = path;
+        save();
+      }).catch(function () { /* ไม่มีเน็ตก็ข้าม ไฟล์ยังอยู่ในเครื่อง */ });
+  }
+
+  function docOpen(id) {
+    var d = (RF.docs || []).filter(function (x) { return x.id === id; })[0];
+    docGet(id).then(function (blob) {
+      if (blob) { window.open(URL.createObjectURL(blob), '_blank'); return; }
+      var cl = SB.client || sbConnect();
+      if (!cl || !d || !d.up) { toast('ไฟล์นี้ไม่ได้อยู่ในเครื่องนี้ และยังไม่ได้อัปขึ้นเซิร์ฟเวอร์'); return; }
+      cl.storage.from(DOC_BUCKET).createSignedUrl(d.up, 600).then(function (sg) {
+        if (sg && sg.data && sg.data.signedUrl) { window.open(sg.data.signedUrl, '_blank'); }
+        else { toast('เปิดไฟล์ไม่สำเร็จ'); }
+      });
+    });
+  }
+
+  function docSize(n) {
+    if (!n) { return '—'; }
+    if (n < 1024) { return n + ' B'; }
+    if (n < 1024 * 1024) { return Math.round(n / 1024) + ' KB'; }
+    return (Math.round(n / 1024 / 102.4) / 10) + ' MB';
+  }
+
+  function docBox() {
+    var list = RF.docs || [];
+    var rows = list.length
+      ? list.map(function (d, i) {
+          return '<tr><td style="min-width:150px">' +
+            '<select data-dk="' + esc(d.id) + '" aria-label="ชนิดเอกสารของ ' + esc(d.name) + '" style="min-height:34px">' +
+            DOC_KINDS.map(function (k) {
+              return '<option value="' + esc(k) + '"' + (d.kind === k ? ' selected' : '') + '>' + esc(k) + '</option>';
+            }).join('') + '</select></td>' +
+            '<td class="str">' + esc(d.name) + '</td>' +
+            '<td class="n">' + docSize(d.size) + '</td>' +
+            '<td class="c">' + (d.up ? '<span class="badge b-s">ขึ้นเซิร์ฟเวอร์แล้ว</span>'
+                                     : '<span class="badge b-n">เก็บในเครื่องนี้</span>') + '</td>' +
+            '<td class="c"><div class="actions" style="justify-content:center">' +
+            '<button type="button" class="btn sm" data-dopen="' + esc(d.id) + '">เปิด</button>' +
+            '<button type="button" class="btn sm" data-ddel="' + esc(d.id) + '">ลบ</button>' +
+            '</div></td></tr>';
+        }).join('')
+      : '<tr><td colspan="5" class="muted" style="padding:16px;text-align:center">ยังไม่มีเอกสารแนบ</td></tr>';
+    var have = {};
+    list.forEach(function (d) { have[d.kind] = 1; });
+    var miss = DOC_NEED.filter(function (k) { return !have[k]; });
+    return '<div style="margin-top:12px;padding:12px 13px;border:1px dashed var(--line-field);' +
+      'border-radius:var(--r-md);background:var(--field)">' +
+      '<p style="margin:0 0 3px;font-size:11.5px;font-weight:700;color:var(--head)">เอกสารแนบของรอบนี้</p>' +
+      '<p class="hint" style="margin:0 0 9px">แนบได้ทั้ง PDF และรูปถ่าย · เลือกชนิดเอกสารให้ถูกเพื่อให้ระบบตรวจความครบได้</p>' +
+      '<input type="file" id="rfFile" multiple accept="application/pdf,image/*" style="min-height:38px">' +
+      '<div class="tbox" style="margin-top:10px"><table><thead><tr><th>ชนิดเอกสาร</th><th>ชื่อไฟล์</th>' +
+      '<th class="c">ขนาด</th><th class="c">ที่เก็บ</th><th class="c">จัดการ</th></tr></thead><tbody>' +
+      rows + '</tbody></table></div>' +
+      (miss.length
+        ? '<p class="hint w" style="margin:9px 0 0">ยังขาด ' + esc(miss.join(' · ')) + '</p>'
+        : '<p class="hint" style="margin:9px 0 0">เอกสารหลักครบแล้ว</p>') +
+      '</div>';
+  }
+
+  function bindDocs() {
+    if (el('rfFile')) {
+      el('rfFile').addEventListener('change', function () {
+        var fs = Array.prototype.slice.call(el('rfFile').files || []);
+        if (!fs.length) { return; }
+        var left = fs.length;
+        fs.forEach(function (file) {
+          var d = { id: 'd' + Date.now() + Math.random().toString(36).slice(2, 7),
+                    name: file.name, kind: docGuess(file.name), size: file.size,
+                    type: file.type || '', at: sbNow() };
+          RF.docs = RF.docs || [];
+          RF.docs.push(d);
+          docPut(d.id, file).then(function () {
+            docUp(d, file);
+            left -= 1;
+            if (left <= 0) { rdSnap(); viewStock(); toast('แนบเอกสารแล้ว ' + fs.length + ' ไฟล์'); }
+          }).catch(function () {
+            left -= 1;
+            if (left <= 0) { viewStock(); toast('แนบไฟล์ไม่สำเร็จ'); }
+          });
+        });
+      });
+    }
+    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-dk]'), function (s) {
+      s.addEventListener('change', function () {
+        var d = (RF.docs || []).filter(function (x) { return x.id === s.getAttribute('data-dk'); })[0];
+        if (d) { d.kind = s.value; rdSnap(); viewStock(); }
+      });
+    });
+    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-dopen]'), function (b) {
+      b.addEventListener('click', function () { docOpen(b.getAttribute('data-dopen')); });
+    });
+    Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-ddel]'), function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-ddel');
+        if (b.dataset.armed !== '1') {
+          b.dataset.armed = '1'; b.classList.add('pri'); b.textContent = 'กดอีกครั้ง';
+          toast('กดอีกครั้งเพื่อลบเอกสารนี้'); return;
+        }
+        RF.docs = (RF.docs || []).filter(function (x) { return x.id !== id; });
+        docDel(id);
+        rdSnap(); viewStock(); toast('ลบเอกสารแล้ว');
+      });
+    });
+  }
+
+  /* เดาชนิดเอกสารจากชื่อไฟล์ ผู้ใช้แก้ทีหลังได้ */
+  function docGuess(name) {
+    var n = String(name || '').toLowerCase();
+    if (n.indexOf('tisi') >= 0 || n.indexOf('สมอ') >= 0) { return 'ใบอนุญาต สมอ.'; }
+    if (n.indexOf('manifest') >= 0) { return 'Car Manifest'; }
+    if (n.indexOf('formd') >= 0 || n.indexOf('form-d') >= 0 || n.indexOf('form_d') >= 0 || n.indexOf('e-co') >= 0) { return 'Form D'; }
+    if (n.indexOf('ใบขน') >= 0 || n.indexOf('decl') >= 0) { return 'ใบขนสินค้า'; }
+    if (n.indexOf('ใบชั่ง') >= 0 || n.indexOf('weight') >= 0) { return 'ใบชั่งน้ำหนัก'; }
+    if (n.indexOf('slip') >= 0 || n.indexOf('สลิป') >= 0 || n.indexOf('ktb') >= 0) { return 'ใบเสร็จ/สลิปโอนเงิน'; }
+    if (n.indexOf('invoice') >= 0 || n.indexOf('fcr') >= 0) { return 'Invoice'; }
+    return 'เอกสารอื่น';
+  }
+
+  function docChips(p) {
+    var list = (p && p.docs) || [];
+    if (!list.length) { return '<span class="muted">—</span>'; }
+    var have = {};
+    list.forEach(function (d) { have[d.kind] = 1; });
+    var miss = DOC_NEED.filter(function (k) { return !have[k]; });
+    return '<span class="badge ' + (miss.length ? 'b-w' : 'b-s') + '">' + list.length + ' ไฟล์</span>' +
+      (miss.length ? '<br><span class="muted" style="font-size:11px">ขาด ' + esc(miss.join(', ')) + '</span>' : '');
+  }
+
+
+  /* จำค่าที่พิมพ์ค้างไว้ในฟอร์มรอบ เพราะการแนบไฟล์ทำให้หน้าวาดใหม่
+     ถ้าไม่จำไว้ ค่าที่พิมพ์ไปแล้วจะหายทั้งหมด */
+  function rdSnap() {
+    if (!el('rfInv')) { return; }
+    RF.vals = {
+      inv: el('rfInv').value, invDate: el('rfInvD').value,
+      fd: el('rfFd').value, fdDate: el('rfFdD').value, fdTrucks: el('rfFdT').value,
+      tisi: el('rfTisi').value, tisiDate: el('rfTisiD').value, tisiExp: el('rfTisiX').value,
+      kg: el('rfKg').value, decl: el('rfDecl').value, declDate: el('rfDeclD').value,
+      vat: el('rfVat').value, payRef: el('rfPay').value,
+      cementType: el('rfType') ? el('rfType').value : 'powder'
+    };
+  }
+
   function rdForm() {
     var r = RF.id ? rdFind(RF.id) : null;
-    var p = (r && r.trucks) || {};
+    var p = RF.vals || (r && r.trucks) || {};
+    var ct = RF.vals ? RF.vals.cementType : (r && r.cementType);
     function f(id, label, val, ph, wide) {
       return '<div style="min-width:0' + (wide ? ';grid-column:span 2' : '') + '">' +
         '<label class="fl" for="' + id + '" style="font-size:11px">' + esc(label) + '</label>' +
@@ -5385,8 +5592,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<div class="card-b">' +
       '<div class="grid g2" style="margin-bottom:10px">' +
         '<div><label class="fl" for="rfType">ชนิดปูน</label><select id="rfType">' +
-        '<option value="powder"' + ((r && r.cementType) === 'bag' ? '' : ' selected') + '>ปูนผง</option>' +
-        '<option value="bag"' + ((r && r.cementType) === 'bag' ? ' selected' : '') + '>ปูนถุง</option></select></div>' +
+        '<option value="powder"' + (ct === 'bag' ? '' : ' selected') + '>ปูนผง</option>' +
+        '<option value="bag"' + (ct === 'bag' ? ' selected' : '') + '>ปูนถุง</option></select></div>' +
         f('rfKg', 'น้ำหนักรวมตามเอกสาร (กก.)', p.kg, '64000') +
       '</div>' +
       '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px">' +
@@ -5403,6 +5610,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         f('rfVat', 'ภาษีที่ชำระ (บาท)', p.vat, '9184.64') +
         f('rfPay', 'เลขอ้างอิงการชำระ', p.payRef, 'mKTB...') +
       '</div>' +
+      docBox() +
       '<div class="actions" style="margin-top:12px">' +
         '<button type="button" class="btn pri" id="rfSave">' + (RF.id ? 'บันทึกการแก้ไข' : 'เพิ่มรอบนำเข้า') + '</button>' +
         '<button type="button" class="btn" id="rfCancel">ยกเลิก</button>' +
@@ -5549,6 +5757,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
             '<td class="muted">' + esc(r.p.decl || '—') + '</td>' +
             '<td class="n">' + (r.kgDoc ? m0(r.kgDoc) : '—') + '</td>' +
             '<td class="n">' + (r.kgReal ? m0(r.kgReal) : '—') + '</td>' +
+            '<td class="c">' + docChips(r.p) + '</td>' +
             '<td class="c">' + (exp === null ? '—'
               : (exp > 0 ? '<span class="badge b-d">หมดอายุแล้ว</span>'
                          : '<span class="badge ' + (exp > -14 ? 'b-w' : 'b-n') + '">' + (-exp) + ' วัน</span>')) + '</td>' +
@@ -5556,7 +5765,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
             '<button type="button" class="btn sm" data-rde="' + r.e.id + '">แก้</button>' +
             '<button type="button" class="btn sm" data-rdd="' + r.e.id + '">ลบ</button></div></td></tr>';
         }).join('')
-      : '<tr><td colspan="9" class="muted" style="padding:20px;text-align:center">ยังไม่มีรอบนำเข้า กดเพิ่มด้านล่าง</td></tr>';
+      : '<tr><td colspan="10" class="muted" style="padding:20px;text-align:center">ยังไม่มีรอบนำเข้า กดเพิ่มด้านล่าง</td></tr>';
 
     el('v-stock').innerHTML =
       '<div class="head-row"><div><h1>สตอกและรอบนำเข้า</h1>' +
@@ -5589,7 +5798,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           (RF.open ? rdForm() : '') +
           '<div class="tbox" style="margin-top:10px"><table><thead><tr><th>Invoice</th><th>ชนิด</th><th>Form D</th>' +
           '<th class="c">ผ่านด่าน/ตาม Form D</th><th>ใบขน</th><th class="c">น้ำหนักเอกสาร (กก.)</th>' +
-          '<th class="c">ชั่งจริงฝั่งไทย (กก.)</th><th class="c">สมอ. เหลือ</th><th class="c">จัดการ</th>' +
+          '<th class="c">ชั่งจริงฝั่งไทย (กก.)</th><th class="c">เอกสารแนบ</th>' +
+          '<th class="c">สมอ. เหลือ</th><th class="c">จัดการ</th>' +
           '</tr></thead><tbody>' + rdRows + '</tbody></table></div>') +
 
         stkMonthSection() +
@@ -5599,6 +5809,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   }
 
   function bindStock() {
+    bindDocs();
     if (el('spSave')) {
       el('spSave').addEventListener('click', function () {
         var n = 0;
@@ -5629,12 +5840,12 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     }
     if (el('rdAdd')) {
       el('rdAdd').addEventListener('click', function () {
-        if (RF.open && !RF.id) { RF.open = false; } else { RF.open = true; RF.id = null; }
+        if (RF.open && !RF.id) { RF.open = false; } else { RF.open = true; RF.id = null; RF.docs = []; RF.vals = null; }
         viewStock();
       });
     }
     if (el('rfCancel')) {
-      el('rfCancel').addEventListener('click', function () { RF.open = false; RF.id = null; viewStock(); });
+      el('rfCancel').addEventListener('click', function () { RF.open = false; RF.id = null; RF.docs = []; RF.vals = null; viewStock(); });
     }
     if (el('wfCancel')) {
       el('wfCancel').addEventListener('click', function () { WF.open = false; viewStock(); });
@@ -5697,7 +5908,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           tisi: el('rfTisi').value.trim(), tisiDate: dOnly(el('rfTisiD').value),
           tisiExp: dOnly(el('rfTisiX').value), kg: num(el('rfKg').value),
           decl: el('rfDecl').value.trim(), declDate: dOnly(el('rfDeclD').value),
-          vat: num(el('rfVat').value), payRef: el('rfPay').value.trim()
+          vat: num(el('rfVat').value), payRef: el('rfPay').value.trim(),
+          docs: (RF.docs || []).slice()
         };
         if (!p.inv) { toast('กรอกเลขที่ Invoice ก่อน'); return; }
         if (RF.id) {
@@ -5709,13 +5921,16 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                            cementType: el('rfType').value, trucks: p });
           logIt('เพิ่มรอบนำเข้า', p.inv + ' · ' + (p.fdTrucks || '?') + ' คัน');
         }
-        RF.open = false; RF.id = null;
+        RF.open = false; RF.id = null; RF.docs = []; RF.vals = null;
         save(); viewStock(); toast('บันทึกรอบนำเข้าแล้ว');
       });
     }
     Array.prototype.forEach.call(el('v-stock').querySelectorAll('[data-rde]'), function (b) {
       b.addEventListener('click', function () {
-        RF.open = true; RF.id = b.getAttribute('data-rde'); viewStock();
+        RF.open = true; RF.id = b.getAttribute('data-rde'); RF.vals = null;
+        var rr = rdFind(RF.id);
+        RF.docs = ((rr && rr.trucks && rr.trucks.docs) || []).slice();
+        viewStock();
         var f = el('rfInv'); if (f) { f.scrollIntoView({ block: 'center' }); }
       });
     });
