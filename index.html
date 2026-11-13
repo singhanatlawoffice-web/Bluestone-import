@@ -5720,6 +5720,20 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
   function sxS(v) { return String(v === undefined || v === null ? '' : v); }
 
+  /* ปุ่มเริ่มบันทึกนำเข้า สีชมพูอ่อนเรืองแสง คู่กับปุ่มวันที่นำเข้าสีเขียว
+     สัญลักษณ์วาดเป็น SVG ในตัว ไม่ต้องรอฟอนต์ไอคอน รถบรรทุกถังคือปูนผง กระสอบคือปูนถุง */
+  var SX_PINK = 'background:#ffe9f3;border:2px solid #f472b6;color:#9d174d;font-weight:700;min-height:46px;' +
+    'display:inline-flex;align-items:center;gap:8px;' +
+    'box-shadow:0 0 0 4px rgba(244,114,182,.20),0 0 16px rgba(244,114,182,.55)';
+  var SX_IC_POWDER = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto">' +
+    '<rect x="1.5" y="7" width="12.5" height="8" rx="4"/><path d="M14 10h4l3.5 3.2V16H14z"/>' +
+    '<circle cx="5.5" cy="17.6" r="1.9"/><circle cx="10.5" cy="17.6" r="1.9"/><circle cx="18" cy="17.6" r="1.9"/></svg>';
+  var SX_IC_BAG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto">' +
+    '<path d="M8.5 3h7l-1.6 3.6c3 1.9 4.6 4.9 4.6 8.4a5 5 0 0 1-5 5h-3a5 5 0 0 1-5-5c0-3.5 1.600-6.500 4.600-8.400z"/>' +
+    '<path d="M9.8 6.600h4.400M9.500 13h5M9.500 16h5"/></svg>';
+
   /* สีเขียวชุดเดียวกับปุ่มวันที่นำเข้า ใช้กับปุ่มดูตัวอย่างการกรอก กดเปิดอยู่จะเป็นเขียวเข้มตัวหนังสือขาว */
   function sxGreen(on) {
     return on
@@ -6226,48 +6240,62 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   /* ตัวอย่างการกรอก ให้คนกรอกเทียบกับเอกสารในมือได้ว่าช่องไหนดูจากตรงไหน */
   function sxGuide() {
     var bag = SX.type === 'bag';
-    function row(a, b, c) {
-      return '<tr><th scope="row" style="font-weight:600;white-space:nowrap">' + a + '</th>' +
-        '<td class="str" style="white-space:nowrap">' + b + '</td><td class="muted">' + c + '</td></tr>';
+    /* ปุ่มดูตัวอย่างอยู่ท้ายแถว กดแล้วเปิดเอกสารจำลองของแถวนั้น หมุดเลขแดงชี้ตำแหน่งที่ต้องดู */
+    function see(k) {
+      if (!k) { return '<span class="faint">—</span>'; }
+      var d = exFind(k);
+      return '<button type="button" class="btn sm" data-exdoc="' + k + '" title="ดูตัวอย่าง ' + esc(d ? d.t : '') + '" ' +
+        'style="min-height:30px;padding:0 11px;white-space:nowrap;border:1.5px solid var(--brand);' +
+        'color:var(--brand);font-weight:700">ดูตัวอย่าง</button>';
     }
-    var body =
-      '<tr><td colspan="3" style="background:var(--tint-weak);font-weight:700;color:var(--head)">1 · เอกสารของชุด</td></tr>' +
-      row('Invoice เลขที่', 'FCR/0463', 'มุมขวาบนของใบ Invoice / Packing List ช่อง No:') +
-      row('Form D เลขที่', 'E-CO/26041226', 'มุมขวาบนของ Form D ช่อง Reference No.') +
-      row('ใบขนสินค้าเลขที่', 'A013-0691107386', 'มุมขวาบนของใบขนสินค้าขาเข้า ช่องเลขที่ใบขนฯ') +
-      row('ใบอนุญาต สมอ. เลขที่', '20261111040000115475', 'ใบ สมอ. บรรทัด Permit Number') +
-      row('สมอ. หมดอายุ', '10 ม.ค. 70', 'ใบ สมอ. บรรทัด วัน Permit หมดอายุ') +
-      row('จำนวนคัน', '2', 'Form D ช่อง 9 เขียนว่า 2.00 BULK CAR LOAD หรือดูช่อง TRUCK ใน Invoice') +
-      row('จ่ายกรมศุลกากร (บาท)', '9,384.00', 'ยอดในสลิปธนาคารที่จ่ายกรมศุลกากร (ภาษี 9,184 + ค่าธรรมเนียม 200)') +
-      '<tr><td colspan="3" style="background:var(--tint-weak);font-weight:700;color:var(--head)">2 · รถแต่ละคัน</td></tr>';
+    function row(a, b, c, k) {
+      return '<tr><th scope="row" style="font-weight:600;white-space:nowrap">' + a + '</th>' +
+        '<td class="str" style="white-space:nowrap">' + b + '</td><td class="muted">' + c + '</td>' +
+        '<td class="c" style="white-space:nowrap">' + see(k) + '</td></tr>';
+    }
+    function head(t) {
+      return '<tr><td colspan="4" style="background:var(--tint-weak);font-weight:700;color:var(--head)">' + t + '</td></tr>';
+    }
+    var body = head('1 · เอกสารของชุด') +
+      row('Invoice เลขที่', 'FCR/0463', 'มุมขวาบนของใบ Invoice / Packing List ช่อง No:', 'inv') +
+      row('Form D เลขที่', 'E-CO/26041226', 'มุมขวาบนของ Form D ช่อง Reference No.', 'fd') +
+      row('ใบขนสินค้าเลขที่', 'A013-0691107386', 'มุมขวาบนของใบขนสินค้าขาเข้า ช่องเลขที่ใบขนฯ', 'decl') +
+      row('ใบอนุญาต สมอ. เลขที่', '20261111040000115475', 'ใบ สมอ. บรรทัด Permit Number', 'tisi') +
+      row('สมอ. หมดอายุ', '10 ม.ค. 70', 'ใบ สมอ. บรรทัด วัน Permit หมดอายุ', 'tisi') +
+      row('จำนวนคัน', '2', 'Form D ช่อง 9 เขียนว่า 2.00 BULK CAR LOAD หรือดูช่อง TRUCK ใน Invoice', 'fd') +
+      row('จ่ายกรมศุลกากร (บาท)', '9,384.00', 'ยอดในสลิปธนาคารที่จ่ายกรมศุลกากร (ภาษี 9,184 + ค่าธรรมเนียม 200)', 'pay') +
+      head('2 · รถแต่ละคัน');
     if (bag) {
       body +=
-        row('ทะเบียนหัวรถลาว', 'ກຂ 1294', 'ใบชั่งโรงงาน หรือใบรายการรถ') +
-        row('ทะเบียนหาง', 'ກຂ 2519', 'ใบรายการรถ') +
-        row('วันเวลารถลาวรับปูนที่โรงงาน', '11 พ.ย. 69 · 13:17', 'ใบชั่งโรงงาน เวลาออกจากโรงงาน') +
-        row('จำนวนถุง', '640', 'รถเต็มคัน 640 ถุง = 32 ตัน ถ้าไม่เต็มให้แก้ตามจริง ระบบคิดตันให้เอง') +
-        row('วันเวลาเข้า STOCK (โกดัง)', '13 พ.ย. 69 · 12:15', 'วันเวลาที่รถผ่านด่านไทยและลงของที่โกดัง');
+        row('ทะเบียนหัวรถลาว', 'ກຂ 1294', 'ใบชั่งโรงงาน หรือใบรายการรถ', 'ws') +
+        row('ทะเบียนหาง', 'ກຂ 2519', 'ใบรายการรถ', 'trk') +
+        row('วันเวลารถลาวรับปูนที่โรงงาน', '11 พ.ย. 69 · 13:17', 'ใบชั่งโรงงาน เวลาออกจากโรงงาน', 'ws') +
+        row('จำนวนถุง', '640', 'รถเต็มคัน 640 ถุง = 32 ตัน ถ้าไม่เต็มให้แก้ตามจริง ระบบคิดตันให้เอง', '') +
+        row('วันเวลาเข้า STOCK (โกดัง)', '13 พ.ย. 69 · 12:15', 'วันเวลาที่รถผ่านด่านไทยและลงของที่โกดัง', 'cm');
     } else {
       body +=
-        row('ทะเบียนรถลาว', '3957', 'ใบชั่งโรงงาน ช่อง 车号 หรือท้ายรายการในใบเก็บเงินโรงงาน') +
-        row('วันเวลารถลาวรับปูนที่โรงงาน', '11 พ.ย. 69 · 13:17', 'ใบชั่งโรงงาน ช่อง 出厂时间 (เวลาออกจากโรงงาน)') +
-        row('ใบชั่งโรงงาน (ตัน)', '32.25', 'ใบชั่งโรงงาน ช่อง 净重 (น้ำหนักสุทธิ) โรงงานเก็บเงินตามตัวเลขนี้') +
-        row('ทะเบียนรถไทย', '71-0087 เชียงราย', 'Car Manifest ช่อง Car License หรือใบรายการรถ') +
-        row('วันเวลารถไทยรับปูน', '13 พ.ย. 69 · 10:30', 'เวลาที่รถไทยรับถ่ายปูนจากรถลาวเสร็จที่ด่านฝั่งลาว') +
-        row('ชั่งฝั่งไทย (ตัน)', '32.10', 'ใบชั่งฝั่งไทย ปูนเข้า STOCK ตามตัวเลขนี้') +
-        row('วันเวลาเข้า STOCK', '13 พ.ย. 69 · 12:15', 'วันเวลาที่รถผ่านด่านไทย ดูได้จาก Car Manifest บรรทัดวันที่/เวลาตอบรับ') +
-        row('ขายปลายทาง', 'เว้นว่าง', 'ใส่เฉพาะคันที่วิ่งไปส่งลูกค้าเลย ใส่ชื่อลูกค้าและราคาต่อตัน ระบบเข้า STOCK แล้วตัดขายให้ทันที');
+        row('ทะเบียนรถลาว', '3957', 'ใบชั่งโรงงาน ช่อง 车号 หรือท้ายรายการในใบเก็บเงินโรงงาน', 'ws') +
+        row('วันเวลารถลาวรับปูนที่โรงงาน', '11 พ.ย. 69 · 13:17', 'ใบชั่งโรงงาน ช่อง 出厂时间 (เวลาออกจากโรงงาน)', 'ws') +
+        row('ใบชั่งโรงงาน (ตัน)', '32.25', 'ใบชั่งโรงงาน ช่อง 净重 (น้ำหนักสุทธิ) โรงงานเก็บเงินตามตัวเลขนี้', 'ws') +
+        row('ทะเบียนรถไทย', '71-0087 เชียงราย', 'Car Manifest ช่อง Car License หรือใบรายการรถ', 'cm') +
+        row('วันเวลารถไทยรับปูน', '13 พ.ย. 69 · 10:30', 'เวลาที่รถไทยรับถ่ายปูนจากรถลาวเสร็จที่ด่านฝั่งลาว ไม่มีในเอกสารชุดนี้', '') +
+        row('ชั่งฝั่งไทย (ตัน)', '32.10', 'ใบชั่งฝั่งไทย ปูนเข้า STOCK ตามตัวเลขนี้', '') +
+        row('วันเวลาเข้า STOCK', '13 พ.ย. 69 · 12:15', 'วันเวลาที่รถผ่านด่านไทย ดูได้จาก Car Manifest บรรทัดวันที่/เวลาตอบรับ', 'cm') +
+        row('ขายปลายทาง', 'เว้นว่าง', 'ใส่เฉพาะคันที่วิ่งไปส่งลูกค้าเลย ใส่ชื่อลูกค้าและราคาต่อตัน ระบบเข้า STOCK แล้วตัดขายให้ทันที', '');
     }
+    body += head('3 · เอกสารที่ต้องแนบ แต่ไม่มีช่องกรอกในหน้าแรก') +
+      row('บิลชิปปิ้งลาว', 'ใช้ตรวจยอด', 'เทียบยอดรวมของบิลกับป้าย “บิล…ควรเป็น … บาท” ในหัวข้อ 3 ระบบตรวจให้', 'bill') +
+      row('ใบรายการรถ', 'ใช้จับคู่รถ', 'บอกว่ารถไทยคันไหนรับปูนจากรถลาวคันไหน มีทะเบียนหาง ชื่อคนขับ และเบอร์โทร', 'trk') +
+      row('ใบเก็บเงินโรงงาน', 'ใช้ตรวจน้ำหนัก', 'ยอดเงินหารราคาต่อตัน ต้องได้เท่ากับน้ำหนักสุทธิในใบชั่งโรงงาน', 'fin');
     return '<div style="margin:0 0 12px;padding:12px 14px;border:1.5px solid var(--accent);border-radius:12px;background:var(--tint-weak)">' +
       '<p style="margin:0 0 3px;font-size:13px;font-weight:700;color:var(--head)">ตัวอย่างการกรอก ' + (bag ? 'ชุดปูนถุง' : 'ชุดปูนผง') + '</p>' +
       '<p class="hint" style="margin:0 0 9px">' + (bag
-        ? 'เลขเอกสารของชุดยกมาจากชุด FCR/0463 วันที่ 13 พ.ย. 69 ส่วนข้อมูลรถเป็นตัวอย่างสมมุติ'
+        ? 'เลขเอกสารของชุดยกมาจากชุด FCR/0463 วันที่ 13 พ.ย. 69 ส่วนข้อมูลรถเป็นตัวอย่างสมมุติ · เอกสารตัวอย่างเป็นของชุดปูนผง ตำแหน่งที่ดูเหมือนกัน'
         : 'ยกมาจากเอกสารจริงชุด FCR/0463 วันที่ 13 พ.ย. 69 · เวลารถไทยรับปูนและน้ำหนักชั่งฝั่งไทยเป็นตัวอย่างสมมุติ') +
-      ' · ตารางนี้มีไว้ดูอย่างเดียว ไม่ถูกบันทึก</p>' +
-      '<div class="tbox"><table><thead><tr><th>ช่อง</th><th>ตัวอย่างที่กรอก</th><th>ดูจากเอกสารตรงไหน</th></tr></thead>' +
-      '<tbody>' + body + '</tbody></table></div>' +
-      (bag ? '<p class="hint" style="margin:10px 0 0">ตัวอย่างเอกสารด้านล่างเป็นของชุดปูนผง ชุดปูนถุงใช้เอกสารชนิดเดียวกัน ตำแหน่งที่ดูเหมือนกัน</p>' : '') +
-      exButtons() + '</div>';
+      ' · กด “ดูตัวอย่าง” ท้ายแถวเพื่อเปิดเอกสารจำลองที่มีหมุดชี้ตำแหน่ง · ตารางนี้มีไว้ดูอย่างเดียว ไม่ถูกบันทึก</p>' +
+      '<div class="tbox"><table><thead><tr><th>ช่อง</th><th>ตัวอย่างที่กรอก</th><th>ดูจากเอกสารตรงไหน</th>' +
+      '<th class="c">ตัวอย่างเอกสาร</th></tr></thead>' +
+      '<tbody>' + body + '</tbody></table></div></div>';
   }
 
   function sxEditor(seq) {
@@ -6374,7 +6402,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     if (!sets.length && !SX.open) {
       body = '<section class="card"><div class="card-b" style="text-align:center;padding:22px 16px">' +
         '<p style="margin:0 0 4px;font-weight:700;color:var(--head)">วันที่ ' + esc(thDate(day)) + ' ยังไม่มีชุดนำเข้า</p>' +
-        '<p class="hint" style="margin:0">กด “+ ชุดปูนผง” หรือ “+ ชุดปูนถุง” ด้านบนเพื่อเริ่มกรอก · Form D หนึ่งฉบับคือหนึ่งชุด วันเดียวมีได้หลายชุด</p>' +
+        '<p class="hint" style="margin:0">กด “บันทึกนำเข้าปูนผง” หรือ “บันทึกนำเข้าปูนถุง” ด้านบนเพื่อเริ่มกรอก · Form D หนึ่งฉบับคือหนึ่งชุด วันเดียวมีได้หลายชุด</p>' +
         '</div></section>';
     }
     /* ปุ่มวันที่นำเข้าเป็นตัวตั้งของทั้งหน้า จึงทำให้เด่นกว่าปุ่มอื่น พื้นเขียวอ่อนมีแสงเรืองรอบ */
@@ -6394,8 +6422,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<span style="flex:1 1 auto"></span>' +
       (SX.open ? '' : '<button type="button" class="btn" data-sxguide="1" style="' + sxGreen(SX.guide) + ';min-height:46px">' +
         (SX.guide ? 'ซ่อนตัวอย่าง' : 'ดูตัวอย่างการกรอก') + '</button>') +
-      '<button type="button" class="btn pri" data-sxnew="powder">+ ชุดปูนผง</button>' +
-      '<button type="button" class="btn pri" data-sxnew="bag">+ ชุดปูนถุง</button></div>' +
+      '<button type="button" class="btn" data-sxnew="powder" style="' + SX_PINK + '">' + SX_IC_POWDER + 'บันทึกนำเข้าปูนผง</button>' +
+      '<button type="button" class="btn" data-sxnew="bag" style="' + SX_PINK + '">' + SX_IC_BAG + 'บันทึกนำเข้าปูนถุง</button></div>' +
       (SX.guide && !SX.open ? sxGuide() : '') + body;
   }
 
@@ -6974,7 +7002,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
             '<button type="button" class="btn sm" data-sxo="r:' + r.e.id + '">เปิดแก้</button>' +
             '<button type="button" class="btn sm" data-sxdel="r:' + r.e.id + '">ลบ</button></div></td></tr>';
         }).join('')
-      : '<tr><td colspan="14" class="muted" style="padding:20px;text-align:center">ยังไม่มีชุดนำเข้า กด “+ ชุดปูนผง” หรือ “+ ชุดปูนถุง” ด้านบนเพื่อเริ่ม</td></tr>';
+      : '<tr><td colspan="14" class="muted" style="padding:20px;text-align:center">ยังไม่มีชุดนำเข้า กด “บันทึกนำเข้าปูนผง” หรือ “บันทึกนำเข้าปูนถุง” ด้านบนเพื่อเริ่ม</td></tr>';
 
     return '<section class="card"><div class="card-h">' +
       '<span class="secnum" aria-hidden="true">4</span>' +
@@ -7174,7 +7202,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     return section(n || 1, 'ขายปูนผง · ตัดสตอก',
       'รับเข้าอัตโนมัติเมื่อรถปูนผงผ่านด่านไทย · ขายออกบันทึกเองตอนลูกค้ามารับ',
       '<div class="actions" style="margin-bottom:10px">' +
-      '<button type="button" class="btn pri" id="pwAdd">' + (PF.open ? 'ปิดฟอร์ม' : '+ บันทึกขายปูนผง') + '</button>' +
+      '<button type="button" class="btn" id="pwAdd" style="' + SX_PINK + '">' + SX_IC_POWDER +
+      (PF.open ? 'ปิดฟอร์ม' : 'บันทึกขายปูนผง') + '</button>' +
       '<span class="badge ' + (pc.bal < -0.001 ? 'b-d' : 'b-i') + '" style="align-self:center">คงเหลือ ' +
       m2(pc.bal) + ' ตัน</span></div>' +
       (PF.open ? pwForm() : '') +
@@ -8271,7 +8300,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       pw: pwSection(pwCalc(), 1),
       wh: section(2, 'โกดังปูนถุง · ตัดสตอก', 'รับเข้าอัตโนมัติจากรถปูนถุงที่ผ่านด่าน · จ่ายออกบันทึกเองตอนรถลูกค้ามารับ',
         '<div class="actions" style="margin-bottom:10px">' +
-        '<button type="button" class="btn pri" id="whAdd">' + (WF.open ? 'ปิดฟอร์ม' : '+ บันทึกจ่ายออก') + '</button>' +
+        '<button type="button" class="btn" id="whAdd" style="' + SX_PINK + '">' + SX_IC_BAG +
+        (WF.open ? 'ปิดฟอร์ม' : 'บันทึกจ่ายออก') + '</button>' +
         '<span class="badge ' + (c.bags < 0 ? 'b-d' : 'b-i') + '" style="align-self:center">คงเหลือ ' +
         m0(c.bags) + ' ถุง · ' + m2(c.tons) + ' ตัน</span></div>' +
         (WF.open ? whForm() : '') +
