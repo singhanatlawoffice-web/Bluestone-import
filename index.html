@@ -726,7 +726,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           var item = { seq: k + 1, lao: t.lao, thai: t.thai, dest: t.dest || '',
                        destId: t.destId || '', brand: t.brand || '',
                        plateLao: (t.lao.plate || '').trim(), plateThai: (t.thai.plate || '').trim(),
-                       tons: tnL, tonsThai: tnT, loss: tnL - tnT,
+                       /* คันที่ยังไม่ได้ชั่งฝั่งไทย ยังไม่นับเป็นน้ำหนักสูญเสีย */
+                       tons: tnL, tonsThai: tnT, loss: tnT > 0 ? tnL - tnT : 0,
                        type: ty, nation: na, lane: lane,
                        tier: Math.min(cnt, 5), count: cnt,
                        fRate: fR, fAmt: fR * tnL,
@@ -1964,7 +1965,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     var by = {}, order = [];
     c.rows.forEach(function (w) {
       var e = w.e;
-      if (e.kind !== 'import' && e.kind !== 'saleBuyer') { return; }
+      /* ส่งมอบให้ผู้ซื้อหลัก นับทั้งรายการขายแบบเดิม และการจ่ายออกจากสตอกที่เลือกตัดเครดิต */
+      var jpOut = (e.kind === 'pwOut' || e.kind === 'whOut') && w.jAmt > 0;
+      if (e.kind !== 'import' && e.kind !== 'saleBuyer' && !jpOut) { return; }
       if (!by[w.date]) {
         by[w.date] = { date: w.date, trucks: 0, lp: 0, lb: 0, tp: 0, tb: 0, f: 0, jt: 0, j: 0 };
         order.push(w.date);
@@ -6979,18 +6982,18 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
             return s + (k ? k.fAmt + k.ship + k.scan + k.thai : 0);
           }, 0);
           var costTon = shipTons > 0 ? allCost / shipTons : 0;
-          return '<tr><td class="str">' + esc(r.p.inv || '—') + '<br>' +
-            '<span class="muted" style="font-size:11px">' + esc(dtTH(r.p.invDate)) + '</span></td>' +
-            '<td>' + (r.e.cementType === 'bag' ? 'ปูนถุง' : 'ปูนผง') + '</td>' +
-            '<td class="muted">' + esc(r.p.fd || '—') + '</td>' +
-            '<td class="c">' + (r.plan ? r.crossed + ' / ' + r.plan : r.crossed + ' / —') +
+          /* รวมช่องที่เกี่ยวกันไว้ด้วยกัน ให้ทั้งตารางพอดีจอ ไม่ต้องเลื่อนไปทางขวา */
+          return '<tr><td class="str" style="white-space:nowrap">' + esc(r.p.inv || '—') +
+            ' <span class="badge b-n">' + (r.e.cementType === 'bag' ? 'ปูนถุง' : 'ปูนผง') + '</span><br>' +
+            '<span class="muted" style="font-size:11px;font-weight:400">' + esc(dtTH(r.p.invDate)) + '</span></td>' +
+            '<td class="muted" style="white-space:nowrap;font-size:12px">' + esc(r.p.fd || '—') + '<br>' + esc(r.p.decl || '—') + '</td>' +
+            '<td class="c" style="white-space:nowrap">' + (r.plan ? r.crossed + ' / ' + r.plan : r.crossed + ' / —') +
             (ok ? ' <span class="badge b-s">ครบ</span>'
                 : (r.plan ? ' <span class="badge b-w">ขาด ' + (r.plan - r.crossed) + '</span>' : '')) + '</td>' +
-            '<td class="muted">' + esc(r.p.decl || '—') + '</td>' +
-            '<td class="n">' + (r.kgDoc ? m0(r.kgDoc) : '—') + '</td>' +
-            '<td class="n">' + (r.kgReal ? m0(r.kgReal) : '—') + '</td>' +
-            '<td class="n">' + (ship > 0 ? m2(ship) : '—') + '</td>' +
-            '<td class="n">' + (shipTon > 0 ? m2(shipTon) : '—') + '</td>' +
+            '<td class="n">' + (r.kgDoc ? m0(r.kgDoc) : '—') +
+            '<br><span class="muted" style="font-size:11px">ชั่งไทย ' + (r.kgReal ? m0(r.kgReal) : '—') + '</span></td>' +
+            '<td class="n">' + (ship > 0 ? m2(ship) : '—') +
+            (shipTon > 0 ? '<br><span class="muted" style="font-size:11px">' + m2(shipTon) + '/ตัน</span>' : '') + '</td>' +
             '<td class="n">' + (tax > 0 ? m0(tax) : '—') +
             (taxTon > 0 ? '<br><span class="muted" style="font-size:11px">' + m2(taxTon) + '/ตัน</span>' : '') + '</td>' +
             '<td class="n" style="font-weight:700">' + (costTon > 0 ? m2(costTon) : '—') + '</td>' +
@@ -6998,11 +7001,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
             '<td class="c">' + (exp === null ? '—'
               : (exp > 0 ? '<span class="badge b-d">หมดอายุแล้ว</span>'
                          : '<span class="badge ' + (exp > -14 ? 'b-w' : 'b-n') + '">' + (-exp) + ' วัน</span>')) + '</td>' +
-            '<td class="c"><div class="actions" style="justify-content:center">' +
+            '<td class="c"><div class="actions" style="justify-content:center;flex-wrap:nowrap">' +
             '<button type="button" class="btn sm" data-sxo="r:' + r.e.id + '">เปิดแก้</button>' +
             '<button type="button" class="btn sm" data-sxdel="r:' + r.e.id + '">ลบ</button></div></td></tr>';
         }).join('')
-      : '<tr><td colspan="14" class="muted" style="padding:20px;text-align:center">ยังไม่มีชุดนำเข้า กด “บันทึกนำเข้าปูนผง” หรือ “บันทึกนำเข้าปูนถุง” ด้านบนเพื่อเริ่ม</td></tr>';
+      : '<tr><td colspan="10" class="muted" style="padding:20px;text-align:center">ยังไม่มีชุดนำเข้า กด “บันทึกนำเข้าปูนผง” หรือ “บันทึกนำเข้าปูนถุง” ด้านบนเพื่อเริ่ม</td></tr>';
 
     return '<section class="card"><div class="card-h">' +
       '<span class="secnum" aria-hidden="true">4</span>' +
@@ -7010,11 +7013,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<p class="note">หนึ่งชุดคือ Form D หนึ่งฉบับ พร้อม Invoice ใบขน และใบอนุญาต สมอ. ของชุดนั้น · ' +
       'ต้นทุนรวมต่อตันคิดจากค่าปูน ค่าชิปปิ้งลาว ค่าขนส่งและประกัน ค่าชิปปิ้งไทย ค่าเอกซเรย์ และภาษีที่จ่ายกรมศุลกากร</p></div></div>' +
       '<div class="card-b">' +
-      '<div class="tbox"><table><thead><tr><th>Invoice</th><th>ชนิด</th><th>Form D</th>' +
-      '<th class="c">ผ่านด่าน/ตาม Form D</th><th>ใบขน</th><th class="c">น้ำหนักเอกสาร (กก.)</th>' +
-      '<th class="c">ชั่งจริงฝั่งไทย (กก.)</th>' +
-      '<th class="c">ค่าชิปปิ้งไทย (บาท)</th><th class="c">ต่อตัน (บาท)</th>' +
-      '<th class="c">ภาษี+ค่าธรรมเนียม</th><th class="c">ต้นทุนรวม/ตัน</th>' +
+      '<div class="tbox"><table><thead><tr><th>ชุดนำเข้า</th><th>Form D · ใบขน</th>' +
+      '<th class="c">ผ่านด่าน</th><th class="n">เอกสาร (กก.)</th>' +
+      '<th class="n">ชิปปิ้งไทย</th>' +
+      '<th class="n">ภาษี+ธรรมเนียม</th><th class="n">ต้นทุนรวม/ตัน</th>' +
       '<th class="c">เอกสารแนบ</th>' +
       '<th class="c">สมอ. เหลือ</th><th class="c">จัดการ</th>' +
       '</tr></thead><tbody>' + rdRows + '</tbody></table></div>' +
