@@ -2788,10 +2788,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     });
   }
 
-  function section(n, title, desc, inner) {
+  function section(n, title, desc, inner, right) {
     return '<section class="card"><div class="card-h">' +
       '<span class="secnum" aria-hidden="true">' + n + '</span>' +
-      '<div><h2>' + esc(title) + '</h2><p class="note">' + esc(desc) + '</p></div></div>' +
+      '<div><h2>' + esc(title) + '</h2><p class="note">' + esc(desc) + '</p></div>' +
+      (right || '') + '</div>' +
       '<div class="card-b">' + inner + '</div></section>';
   }
 
@@ -7939,6 +7940,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     return section(n || 1, 'ขายปูนผง' + whTail('powder') + ' · ตัดสตอก',
       'รับเข้าอัตโนมัติเมื่อรถปูนผงผ่านด่านไทย' + (whNm('powder') ? ' เข้า' + whOf('powder') : '') +
       ' · ขายออกบันทึกเองตอนลูกค้ามารับ',
+      exPanel('powder') +
       '<div class="actions" style="margin-bottom:10px">' +
       '<button type="button" class="btn" id="pwAdd" style="' + SX_PINK + '">' + SX_IC_POWDER +
       (PF.open ? 'ปิดฟอร์ม' : 'บันทึกขายปูนผง') + '</button>' +
@@ -7951,11 +7953,12 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       (pc.bal < -0.001
         ? '<p class="hint w" style="margin-top:9px">ยอดคงเหลือติดลบ แปลว่าบันทึกขายมากกว่าที่ผ่านด่านเข้ามา ' +
           'ตรวจว่าลืมกรอกวันเวลาผ่านด่านของรถคันไหนหรือเปล่า</p>'
-        : ''));
+        : ''), exBtn('powder'));
   }
 
   function bindPw(redraw) {
     redraw = redraw || viewEntry;
+    exBind('powder', redraw);
     if (el('pwAdd')) {
       el('pwAdd').addEventListener('click', function () { PF.open = !PF.open; PF.editId = null; redraw(); });
     }
@@ -8554,6 +8557,644 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       'จะค้างเป็นสตอกไว้ · ทุกยอดเป็นราคารวมภาษีแล้ว</p>');
   }
 
+
+  /* ================= ส่งออกรับเข้าและตัดขาย · หัวข้อ 1 และ 2 =================
+     ปุ่มอยู่มุมขวาบนของหัวข้อ กดแล้วเลือกช่วงก่อน (ช่วงวัน สัปดาห์ เดือน ทั้งหมด)
+     แล้วค่อยเลือกว่าจะเอา Excel หรือ CSV · ไฟล์เดียวมี 5 ชีต
+     สรุป / รับเข้า / ตัดขายออก / สรุปตามลูกค้า / รายการที่ลบไว้
+     ทุกชีตมีหัวเอกสาร 5 บรรทัด บอกบริษัท ชื่อรายงาน ช่วงวันที่ และคนออกรายงาน
+     วันที่ในไฟล์เป็น ค.ศ. ล้วน เพื่อให้ Excel เรียงและคำนวณได้ทันที */
+  var EXP = { open: '', mode: 'month', m: '', w: '', d1: '', d2: '', busy: false };
+  var EX_LIBS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js',
+    'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+    'https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js'
+  ];
+  var EX_HEAD = '2A3B96';          /* สีหัวตาราง ตรงกับสีหลักของเว็บ */
+  var EX_TOTAL = 'E9ECF7';
+  var EX_BAND = 'FAFAFA';
+
+  function exTag(ty) { return ty === 'bag' ? 'B' : 'P'; }
+  function exISO(d) { return d.getFullYear() + '-' + rpPad(d.getMonth() + 1) + '-' + rpPad(d.getDate()); }
+  function exDate(iso) {
+    var a = String(iso || '').split('-');
+    return new Date(num(a[0]), num(a[1]) - 1, num(a[2]) || 1);
+  }
+  function exAdd(iso, n) { var d = exDate(iso); d.setDate(d.getDate() + n); return exISO(d); }
+  function exMonday(iso) {
+    var d = exDate(iso);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));     /* จันทร์เป็นวันแรก */
+    return exISO(d);
+  }
+  function exTime(v) {
+    var m = String(v || '').match(/(\d{2}):(\d{2})/);
+    return m ? m[1] + ':' + m[2] : '';
+  }
+
+  /* เดือนที่มีให้เลือก เอาจากเดือนที่มีรายการจริง บวกเดือนปัจจุบันไว้เสมอ */
+  function exMonList() {
+    var seen = {}, out = [];
+    S.entries.forEach(function (e) { var k = dOnly(e.date).slice(0, 7); if (k.length === 7) { seen[k] = 1; } });
+    seen[todayISO().slice(0, 7)] = 1;
+    Object.keys(seen).sort().reverse().forEach(function (k) { out.push(k); });
+    return out;
+  }
+  function exWkList() {
+    var out = [], w = exMonday(todayISO()), i;
+    for (i = 0; i < 12; i += 1) { out.push(w); w = exAdd(w, -7); }
+    return out;
+  }
+  function exRange() {
+    var t = todayISO();
+    if (EXP.mode === 'all') { return { from: '0000-01-01', to: '9999-12-31', all: true, tag: 'ทั้งหมด' }; }
+    if (EXP.mode === 'week') {
+      var w = EXP.w || exMonday(t);
+      return { from: w, to: exAdd(w, 6), tag: w.replace(/-/g, '') + '-' + exAdd(w, 6).replace(/-/g, '') };
+    }
+    if (EXP.mode === 'day') {
+      var a = EXP.d1 || t, b = EXP.d2 || t;
+      if (a > b) { var x = a; a = b; b = x; }
+      return { from: a, to: b, tag: a.replace(/-/g, '') + '-' + b.replace(/-/g, '') };
+    }
+    var m = EXP.m || t.slice(0, 7);
+    var last = exISO(new Date(num(m.slice(0, 4)), num(m.slice(5, 7)), 0));
+    return { from: m + '-01', to: last, tag: m.replace(/-/g, '') };
+  }
+  function exLabel(r) { return r.all ? 'ทุกรายการที่มีในระบบ' : r.from + ' ถึง ' + r.to; }
+  function exIn(r, d) { var k = dOnly(d); return !!k && k >= r.from && k <= r.to; }
+
+  /* ---- ต้นทุนรายคัน ยกมาจากหน้าคุมการตัดเงิน จะได้ไม่คิดเลขคนละทางกัน ---- */
+  function exItems() {
+    var map = {};
+    compute().rows.forEach(function (w) {
+      if (!w.e || w.e.kind !== 'import' || !w.items) { return; }
+      w.items.forEach(function (it) { map[w.e.id + ':' + it.seq] = it; });
+    });
+    return map;
+  }
+  /* ภาษีและค่าธรรมเนียมของชุด หารเฉลี่ยตามจำนวนคันในชุดนั้น */
+  function exTaxes() {
+    var cnt = {}, map = {};
+    S.entries.forEach(function (e) {
+      if (e.kind !== 'import' || !e.trucks) { return; }
+      e.trucks.forEach(function (t) { if (t.round) { cnt[t.round] = (cnt[t.round] || 0) + 1; } });
+    });
+    rdList().forEach(function (r) {
+      var n = cnt[r.id] || num((r.trucks || {}).fdTrucks) || 0;
+      map[r.id] = n > 0 ? rdTax(r.trucks || {}) / n : 0;
+    });
+    return map;
+  }
+  function exSet(round) {
+    var r = round ? rdFind(round) : null;
+    var p = (r && r.trucks) || {};
+    return { inv: p.inv || '', fd: p.fd || '', decl: p.decl || '' };
+  }
+  /* ชุดนำเข้าที่มาของรายการขายปลายทาง (trucks.src = 'เลขรายการ:ลำดับคัน') */
+  function exSrcInv(p) {
+    var s = String((p && p.src) || '');
+    if (!s) { return ''; }
+    var a = s.split(':'), imp = null;
+    S.entries.forEach(function (x) { if (String(x.id) === a[0] && x.kind === 'import') { imp = x; } });
+    var t = imp && imp.trucks ? imp.trucks[num(a[1]) - 1] : null;
+    return t ? exSet(t.round).inv : '';
+  }
+
+  /* ---- ไทม์ไลน์รับเข้า/ขายออกของชนิดปูนนั้น พร้อมยอดคงเหลือสะสม ---- */
+  function exMoves(ty) {
+    var bag = ty === 'bag', items = exItems(), tax = exTaxes(), list = [];
+    S.entries.forEach(function (e) {
+      if (e.kind !== 'import' || !e.trucks) { return; }
+      e.trucks.forEach(function (t, i) {
+        var ty2 = t.type || 'powder', wh = !!t.wh;
+        var ok = bag ? (wh && ty2 === 'bag') : (ty2 === 'powder' && !wh);
+        if (!ok) { return; }
+        var at = dOnly(t.tSend) || (bag ? e.date : '');
+        if (!at) { return; }
+        var bags = num(t.bags) || BAGS_TRUCK;
+        var tnT = num(t.thai && t.thai.tons);
+        list.push({ dir: 'in', at: at, time: exTime(t.tSend), t: t, e: e, seq: i + 1,
+                    it: items[e.id + ':' + (i + 1)] || {}, tax: tax[t.round] || 0,
+                    qty: bag ? bags : tnT, tons: bag ? bags / BAGS_TON : tnT });
+      });
+    });
+    (bag ? whList() : pwList()).forEach(function (e) {
+      var p = e.trucks || {}, bags = num(p.bags), tn = num(e.tons);
+      list.push({ dir: 'out', at: dOnly(e.date), e: e, p: p,
+                  qty: bag ? bags : tn, tons: bag ? bags / BAGS_TON : tn,
+                  price: num(e.price), amount: num(e.price) * (bag ? bags : tn) });
+    });
+    list.sort(function (a, b) {
+      if (a.at === b.at) { return (a.dir === b.dir) ? 0 : (a.dir === 'in' ? -1 : 1); }
+      return a.at < b.at ? -1 : 1;
+    });
+    var bal = 0;
+    list.forEach(function (m) { bal += (m.dir === 'in' ? m.qty : -m.qty); m.bal = bal; });
+    return list;
+  }
+
+  /* ---- รายการที่ลบไว้ เลือกเฉพาะที่เกี่ยวกับชนิดปูนของไฟล์นี้ ---- */
+  function exBinType(b) {
+    var ty = '';
+    ((b.trucks || {}).items || []).forEach(function (x) {
+      if (x.kind === 'pwOut') { ty = ty || 'powder'; }
+      if (x.kind === 'whOut') { ty = ty || 'bag'; }
+      if (x.kind === 'import' && x.trucks) {
+        x.trucks.forEach(function (t) { ty = ty || ((t.type === 'bag') ? 'bag' : 'powder'); });
+      }
+    });
+    return ty;
+  }
+  function exBinSum(b) {
+    var tons = 0, amt = 0;
+    ((b.trucks || {}).items || []).forEach(function (x) {
+      if (x.kind === 'pwOut') { tons += num(x.tons); amt += num(x.tons) * num(x.price); }
+      else if (x.kind === 'whOut') {
+        var g = num((x.trucks || {}).bags);
+        tons += g / BAGS_TON; amt += g * num(x.price);
+      } else if (x.kind === 'import' && x.trucks) {
+        x.trucks.forEach(function (t) { tons += num(t.thai && t.thai.tons); });
+      }
+    });
+    return { tons: tons, amt: amt };
+  }
+
+  /* ================= ประกอบเนื้อไฟล์ ================= */
+  function exDoc(ty) {
+    var bag = ty === 'bag', r = exRange(), c = compute();
+    var unit = bag ? 'ถุง' : 'ตัน';
+    var all = exMoves(ty), mine = all.filter(function (m) { return exIn(r, m.at); });
+    var ins = mine.filter(function (m) { return m.dir === 'in'; });
+    var outs = mine.filter(function (m) { return m.dir === 'out'; });
+    var who = (S.profile && S.profile.name) || '—';
+    var role = (S.profile && S.profile.role) || '';
+    var now = todayISO() + ' เวลา ' + sbNow().slice(0, 5) + ' น.';
+    var days = {};
+    mine.forEach(function (m) { days[m.at] = 1; });
+
+    /* ---- ชีตรับเข้า ---- */
+    var inHead = ['ลำดับ', 'วันที่เข้า STOCK', 'เวลา', 'ทะเบียนรถลาว', 'ทะเบียนรถไทย',
+      'Invoice', 'Form D', 'ใบขนสินค้า', 'ชนิดปูน']
+      .concat(bag ? ['จำนวนถุง'] : [])
+      .concat(['ใบชั่งโรงงาน (ตัน)', 'ชั่งฝั่งไทย (ตัน)', 'ส่วนต่าง (ตัน)',
+        'ค่าปูน ฿/ตัน', 'ตัดเงินโรงงาน', 'ชิปปิ้งลาว', 'ขนส่งและประกัน', 'เอกซเรย์', 'ชิปปิ้งไทย',
+        'ภาษี+ธรรมเนียม', 'ต้นทุนรวมคันนี้', 'ต้นทุน ฿/ตัน', 'คงเหลือสะสม (' + unit + ')',
+        'ขนส่งฝั่งลาว', 'คนขับลาว', 'ขนส่งฝั่งไทย', 'คนขับไทย', 'Car Manifest', 'ใบเก็บเงินโรงงาน']);
+    var inFmt = ['n0', 'd', '', '', '', '', '', '', '']
+      .concat(bag ? ['n0'] : [])
+      .concat(['n2', 'n2', 'n2', 'n2', 'n2', 'n2', 'n2', 'n2', 'n2', 'n2', 'n2', 'n2', 'n2',
+        '', '', '', '', '', '']);
+    var inW = [6, 15, 7, 16, 17, 14, 16, 18, 9]
+      .concat(bag ? [10] : [])
+      .concat([16, 15, 12, 12, 14, 12, 15, 9, 12, 15, 15, 12, 16, 20, 16, 20, 16, 16, 17]);
+    var tIn = { docT: 0, thaiT: 0, loss: 0, f: 0, lao: 0, fr: 0, scan: 0, thai: 0, tax: 0, cost: 0, bags: 0 };
+    var inRows = ins.map(function (m, i) {
+      var t = m.t, it = m.it, st = exSet(t.round);
+      var laoShip = num(it.shipAmt) - num(it.freightAmt);
+      var cost = num(it.fAmt) + num(it.shipAmt) + num(it.scan) + num(it.thaiAmt) + num(m.tax);
+      var tnT = num(it.tonsThai) || m.tons;
+      tIn.docT += num(it.tons); tIn.thaiT += tnT; tIn.loss += num(it.loss);
+      tIn.f += num(it.fAmt); tIn.lao += laoShip; tIn.fr += num(it.freightAmt);
+      tIn.scan += num(it.scan); tIn.thai += num(it.thaiAmt); tIn.tax += num(m.tax); tIn.cost += cost;
+      tIn.bags += bag ? m.qty : 0;
+      return [i + 1, m.at, m.time, (t.lao && t.lao.plate) || '', (t.thai && t.thai.plate) || '',
+        st.inv, st.fd, st.decl, typeTH(t.type || 'powder')]
+        .concat(bag ? [m.qty] : [])
+        .concat([num(it.tons), tnT, num(it.loss), num(it.fRate), num(it.fAmt), laoShip,
+          num(it.freightAmt), num(it.scan), num(it.thaiAmt), num(m.tax), cost,
+          tnT > 0 ? cost / tnT : 0, m.bal,
+          (t.lao && t.lao.company) || '', (t.lao && t.lao.driver) || '',
+          (t.thai && t.thai.company) || '', (t.thai && t.thai.driver) || '',
+          t.mf || '', t.wb || '']);
+    });
+    var inTot = ['รวม', ins.length + ' คัน', '', '', '', '', '', '', '']
+      .concat(bag ? [tIn.bags] : [])
+      .concat([tIn.docT, tIn.thaiT, tIn.loss, '', tIn.f, tIn.lao, tIn.fr, tIn.scan, tIn.thai,
+        tIn.tax, tIn.cost, tIn.thaiT > 0 ? tIn.cost / tIn.thaiT : 0, '', '', '', '', '', '', '']);
+
+    /* ---- ชีตตัดขายออก ---- */
+    var outHead = ['ลำดับ', 'วันที่', 'ลูกค้า/ปลายทางจัดส่ง', 'ทะเบียนรถที่มารับ',
+      'ประเภทรายการ', 'ตัดเครดิตให้']
+      .concat(bag ? ['จำนวนถุง', 'จำนวน (ตัน)', 'ราคา ฿/ถุง'] : ['จำนวน (ตัน)', 'ราคา ฿/ตัน'])
+      .concat(['เป็นเงิน', 'ชุดนำเข้าที่มา', 'คงเหลือสะสม (' + unit + ')', 'หมายเหตุ']);
+    var outFmt = ['n0', 'd', '', '', '', '']
+      .concat(bag ? ['n0', 'n2', 'n2'] : ['n2', 'n2'])
+      .concat(['n2', '', 'n2', '']);
+    var outW = [6, 13, 26, 18, 14, 20]
+      .concat(bag ? [10, 12, 12] : [12, 12])
+      .concat([14, 16, 18, 24]);
+    var tOut = { qty: 0, tons: 0, amt: 0, cr: 0, no: 0 }, byCus = {}, byCr = {};
+    var outRows = outs.map(function (m, i) {
+      var e = m.e, p = m.p, cid = crOf(e), cn = cid ? crName(cid) : '';
+      tOut.qty += m.qty; tOut.tons += m.tons; tOut.amt += m.amount;
+      if (cid) { tOut.cr += m.amount; } else { tOut.no += m.amount; }
+      var ck = e.who || 'ไม่ระบุชื่อลูกค้า';
+      if (!byCus[ck]) { byCus[ck] = { n: 0, qty: 0, tons: 0, amt: 0 }; }
+      byCus[ck].n += 1; byCus[ck].qty += m.qty; byCus[ck].tons += m.tons; byCus[ck].amt += m.amount;
+      if (cid) {
+        if (!byCr[cid]) { byCr[cid] = { n: 0, tons: 0, amt: 0 }; }
+        byCr[cid].n += 1; byCr[cid].tons += m.tons; byCr[cid].amt += m.amount;
+      }
+      return [i + 1, m.at, e.who || '', p.plate || '',
+        p.auto ? 'ขายปลายทาง' : 'ขายปกติ', cn || 'ไม่ตัดเครดิต']
+        .concat(bag ? [m.qty, m.tons, m.price] : [m.qty, m.price])
+        .concat([m.amount, exSrcInv(p), m.bal, e.note || '']);
+    });
+    var outTot = ['รวม', outs.length + ' รายการ', '', '', '', '']
+      .concat(bag ? [tOut.qty, tOut.tons, ''] : [tOut.qty, ''])
+      .concat([tOut.amt, '', '', '']);
+
+    /* ---- ชีตสรุปตามลูกค้า ---- */
+    var cusRows = Object.keys(byCus).map(function (k) { return [k, byCus[k]]; })
+      .sort(function (a, b) { return b[1].qty - a[1].qty; })
+      .map(function (x, i) {
+        var v = x[1];
+        return [i + 1, x[0], v.n, v.qty, v.amt, v.qty > 0 ? v.amt / v.qty : 0,
+          tOut.qty > 0 ? v.qty / tOut.qty : 0];
+      });
+    var crRows = crAll().map(function (q, i) {
+      var v = byCr[q.id] || { n: 0, tons: 0, amt: 0 };
+      return [i + 1, q.name, v.n, v.tons, v.amt, num(c.crBal[q.id])];
+    });
+    crRows.push(['', 'ไม่ตัดเครดิต', outs.length - Object.keys(byCr).reduce(function (s, k) { return s + byCr[k].n; }, 0),
+      '', tOut.no, '']);
+
+    /* ---- ชีตรายการที่ลบไว้ ---- */
+    var binRows = S.entries.filter(function (e) {
+      if (e.kind !== 'bin' || !exIn(r, e.date)) { return false; }
+      var bt = exBinType(e);
+      return !bt || bt === ty;
+    }).sort(function (a, b) {
+      return String((a.trucks || {}).at).localeCompare(String((b.trucks || {}).at));
+    }).map(function (e, i) {
+      var p = e.trucks || {}, s = exBinSum(e);
+      return [i + 1, dOnly(p.at || e.date), exTime(p.at), p.who || '',
+        p.label || '', p.sub || '', (p.items || []).length, s.tons, s.amt, 'ยังอยู่ในถังขยะ'];
+    });
+
+    /* ---- ชีตสรุป ---- */
+    var last = null;
+    all.forEach(function (m) { if (!r.all ? (m.at <= r.to) : true) { last = m; } });
+    var sumRows = [
+      [1, 'ชนิดปูน', typeTH(ty), ''],
+      [2, 'จำนวนวันที่มีรายการ', Object.keys(days).length, 'วัน'],
+      [3, 'รับเข้าสตอก', bag ? tIn.bags : tIn.thaiT, unit],
+      [4, 'จำนวนคันที่รับเข้า', ins.length, 'คัน'],
+      [5, 'น้ำหนักใบชั่งโรงงานรวม', tIn.docT, 'ตัน'],
+      [6, 'ส่วนต่างจากการถ่ายปูนรวม', tIn.loss, 'ตัน'],
+      [7, 'ตัดขายออก', tOut.qty, unit],
+      [8, 'จำนวนรายการขาย', outs.length, 'รายการ'],
+      [9, 'มูลค่าตัดขายรวม', tOut.amt, 'บาท'],
+      [10, 'ในนั้นตัดเครดิตคู่ค้า', tOut.cr, 'บาท'],
+      [11, 'ไม่ตัดเครดิต (ลูกค้าเงินสด)', tOut.no, 'บาท'],
+      [12, 'คงเหลือในสตอก ณ วันสุดท้ายของช่วง', last ? last.bal : 0, unit],
+      [13, 'ต้นทุนรวมของที่รับเข้า', tIn.cost, 'บาท'],
+      [14, 'ต้นทุนเฉลี่ยต่อตัน', tIn.thaiT > 0 ? tIn.cost / tIn.thaiT : 0, 'บาท/ตัน'],
+      [15, 'รายการที่ลบไว้ในช่วงนี้', binRows.length, 'ครั้ง']
+    ];
+
+    function L(title, extra) {
+      return ['BLUE STONE TRADING CO., LTD.',
+        (S.names && S.names.company) || 'บริษัท บลูสโตนเทรดดิ้ง จำกัด',
+        title + ' — ' + typeTH(ty) + (bag ? whTail('bag') : whTail('powder')),
+        'ช่วงข้อมูล ' + exLabel(r) + (extra ? ' · ' + extra : ''),
+        'ออกเมื่อ ' + now + ' · โดย ' + who + (role ? ' (' + role + ')' : '')];
+    }
+    var nDay = r.all ? Object.keys(days).length + ' วันที่มีรายการ'
+      : (Math.round((exDate(r.to) - exDate(r.from)) / 86400000) + 1) + ' วัน · มีรายการ ' + Object.keys(days).length + ' วัน';
+
+    return {
+      fname: typeTH(ty) + '-รับเข้าและตัดขาย-' + r.tag,
+      sheets: [
+        { name: 'สรุป', lines: L('สรุปรับเข้าและตัดขาย', nDay), land: false,
+          blocks: [{ head: ['ลำดับ', 'หัวข้อ', 'ค่า', 'หน่วย'],
+                     fmt: function (i) {
+                       var u = (sumRows[i] || [])[3];
+                       var cnt = (u === 'วัน' || u === 'คัน' || u === 'รายการ' || u === 'ครั้ง');
+                       return ['n0', '', cnt ? 'n0' : 'n2', ''];
+                     },
+                     w: [7, 38, 16, 11], rows: sumRows }] },
+        { name: 'รับเข้า', lines: L('รายงานรับเข้าสตอก ทีละคันรถ',
+            ins.length + ' คัน · รับเข้ารวม ' + m2(bag ? tIn.bags : tIn.thaiT) + ' ' + unit), land: true,
+          blocks: [{ head: inHead, fmt: inFmt, w: inW, rows: inRows, total: inRows.length ? inTot : null }] },
+        { name: 'ตัดขายออก', lines: L('รายงานตัดขายออกจากสตอก',
+            outs.length + ' รายการ · ' + m2(tOut.qty) + ' ' + unit + ' · ' + m2(tOut.amt) + ' บาท'), land: true,
+          blocks: [{ head: outHead, fmt: outFmt, w: outW, rows: outRows, total: outRows.length ? outTot : null }] },
+        { name: 'สรุปตามลูกค้า', lines: L('สรุปตามลูกค้าและคู่ค้าเครดิต',
+            cusRows.length + ' ราย'), land: false,
+          blocks: [
+            { head: ['ลำดับ', 'ลูกค้า/ปลายทางจัดส่ง', 'จำนวนครั้ง', unit, 'เป็นเงิน',
+                     'ราคาเฉลี่ย ฿/' + unit, 'สัดส่วน'],
+              fmt: ['n0', '', 'n0', 'n2', 'n2', 'n2', 'pc'], w: [7, 30, 12, 13, 16, 17, 11],
+              rows: cusRows,
+              total: cusRows.length ? ['', 'รวม', outs.length, tOut.qty, tOut.amt,
+                tOut.qty > 0 ? tOut.amt / tOut.qty : 0, cusRows.length ? 1 : 0] : null },
+            { head: ['ลำดับ', 'คู่ค้าวางเงินล่วงหน้า', 'จำนวนครั้ง', 'ตันที่ส่งมอบ', 'ตัดเครดิตไป',
+                     'เครดิตคงเหลือล่าสุด'],
+              fmt: ['n0', '', 'n0', 'n2', 'n2', 'n2'], w: [7, 30, 12, 15, 16, 20], rows: crRows }
+          ] },
+        { name: 'รายการที่ลบไว้', lines: L('รายการที่ลบไว้ ยังไม่ได้กู้คืน', binRows.length + ' ครั้ง'), land: true,
+          blocks: [{ head: ['ลำดับ', 'วันที่ลบ', 'เวลา', 'คนลบ', 'ลบอะไร', 'รายละเอียด',
+                            'รายการที่หายพร้อมกัน', 'ตัน', 'เป็นเงิน', 'สถานะตอนนี้'],
+                     fmt: ['n0', 'd', '', '', '', '', 'n0', 'n2', 'n2', ''],
+                     w: [7, 13, 8, 18, 16, 44, 19, 11, 14, 17], rows: binRows }] }
+      ]
+    };
+  }
+
+  /* ---- โลโก้บริษัท วาดสดด้วย canvas จะได้ไม่ต้องฝังไฟล์รูปไว้ในเว็บ ---- */
+  function exLogo() {
+    try {
+      var c = document.createElement('canvas');
+      c.width = 128; c.height = 128;
+      var x = c.getContext('2d');
+      if (!x) { return ''; }
+      function poly(pts, col) {
+        x.beginPath();
+        pts.forEach(function (p, i) {
+          if (i) { x.lineTo(p[0] * 2, p[1] * 2); } else { x.moveTo(p[0] * 2, p[1] * 2); }
+        });
+        x.closePath(); x.fillStyle = col; x.fill();
+      }
+      poly([[32, 3], [57, 17.5], [57, 46.5], [32, 61], [7, 46.5], [7, 17.5]], '#2a3b96');
+      poly([[32, 3], [57, 17.5], [32, 32], [7, 17.5]], '#4b59cb');
+      poly([[32, 32], [57, 17.5], [57, 46.5]], '#1b2568');
+      poly([[32, 32], [7, 17.5], [7, 46.5]], '#35469f');
+      poly([[32, 32], [7, 46.5], [32, 61], [57, 46.5]], '#223180');
+      return String(c.toDataURL('image/png')).split(',')[1] || '';
+    } catch (err) { return ''; }
+  }
+
+  /* ชีตสรุปใช้รูปแบบไม่เหมือนกันทุกแถว จึงให้ fmt เป็นฟังก์ชันได้ */
+  function exFmtOf(b, i) { return typeof b.fmt === 'function' ? b.fmt(i) : b.fmt; }
+
+  /* ปัดเศษตามชนิดช่อง จะได้ไม่มีทศนิยมหางยาวติดไปในไฟล์ */
+  function exFix(v, k) {
+    if (typeof v !== 'number' || !isFinite(v)) { return v; }
+    if (k === 'n0') { return Math.round(v); }
+    if (k === 'pc') { return Math.round(v * 10000) / 10000; }
+    return Math.round(v * 100) / 100;
+  }
+
+  /* ---- CSV ได้เนื้อหาเหมือนกัน แค่ไม่มีโลโก้กับสี ---- */
+  function exCsv(doc) {
+    var out = [];
+    function line(r, b, n) {
+      var f = exFmtOf(b, n);
+      out.push(r.map(function (v, i) { return exFix(v, f[i]); }));
+    }
+    doc.sheets.forEach(function (s) {
+      s.lines.forEach(function (t) { out.push([t]); });
+      s.blocks.forEach(function (b) {
+        out.push([]);
+        out.push(b.head);
+        b.rows.forEach(function (r, i) { line(r, b, i); });
+        if (b.total) { line(b.total, b, -1); }
+      });
+      out.push([]); out.push([]);
+    });
+    return out.map(function (r) { return r.map(rpCsvCell).join(','); }).join('\n');
+  }
+
+  function exNumFmt(k) {
+    if (k === 'n0') { return '#,##0'; }
+    if (k === 'n2') { return '#,##0.00'; }
+    if (k === 'pc') { return '0.0%'; }
+    if (k === 'd') { return 'yyyy-mm-dd'; }
+    return null;
+  }
+  /* ช่องวันที่เขียนเป็นวันที่จริงของ Excel จะได้เรียงและลบวันกันได้
+     ใช้ Date.UTC เพื่อไม่ให้เลื่อนวันตามเขตเวลาของเครื่อง */
+  function exCell(v, k) {
+    if (k === 'd' && typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      return new Date(Date.UTC(num(v.slice(0, 4)), num(v.slice(5, 7)) - 1, num(v.slice(8, 10))));
+    }
+    return exFix(v, k);
+  }
+
+  function exXlsx(doc, done) {
+    function build() {
+      var EJ = window.ExcelJS;
+      if (!EJ) { done(false); return; }
+      var wb = new EJ.Workbook();
+      wb.creator = 'Blue Stone Import';
+      var b64 = exLogo();
+      var img = b64 ? wb.addImage({ base64: b64, extension: 'png' }) : null;
+      doc.sheets.forEach(function (s) {
+        var nCol = 1;
+        s.blocks.forEach(function (b) { nCol = Math.max(nCol, b.head.length); });
+        var ws = wb.addWorksheet(s.name, {
+          pageSetup: { orientation: s.land ? 'landscape' : 'portrait', paperSize: 9,
+                       fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+                       margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.5, header: 0.2, footer: 0.2 } }
+        });
+        ws.columns = (s.blocks[0].w || []).map(function (w) { return { width: w }; });
+        /* หัวเอกสาร 5 บรรทัด เว้นคอลัมน์แรกไว้ให้โลโก้ */
+        s.lines.forEach(function (txt, i) {
+          var row = ws.getRow(i + 1);
+          row.height = i === 0 ? 20 : 15;
+          var cell = row.getCell(2);
+          cell.value = txt;
+          if (nCol > 2) { ws.mergeCells(i + 1, 2, i + 1, nCol); }
+          if (i === 0) { cell.font = { bold: true, size: 13 }; }
+          else if (i === 2) { cell.font = { bold: true, size: 11.5, color: { argb: 'FF' + EX_HEAD } }; }
+          else if (i === 3) { cell.font = { bold: true, size: 10.5 }; }
+          else { cell.font = { size: 10, color: { argb: 'FF6B6B6B' } }; }
+          cell.alignment = { vertical: 'middle' };
+        });
+        if (img !== null) {
+          ws.addImage(img, { tl: { col: 0.15, row: 0.15 }, ext: { width: 54, height: 54 } });
+        }
+        var at = 7;
+        var firstHead = 0;
+        s.blocks.forEach(function (b) {
+          var hr = ws.getRow(at);
+          var hf = exFmtOf(b, -1);
+          b.head.forEach(function (h, i) {
+            var cell = hr.getCell(i + 1);
+            cell.value = h;
+            cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + EX_HEAD } };
+            cell.alignment = { vertical: 'middle', wrapText: true,
+                               horizontal: (hf[i] && hf[i] !== 'd') ? 'right' : 'left' };
+          });
+          hr.height = 26;
+          if (!firstHead) { firstHead = at; }
+          at += 1;
+          b.rows.forEach(function (r, k) {
+            var row = ws.getRow(at);
+            var rf = exFmtOf(b, k);
+            r.forEach(function (v, i) {
+              var cell = row.getCell(i + 1);
+              cell.value = (v === '' || v === null || v === undefined) ? null : exCell(v, rf[i]);
+              var f = exNumFmt(rf[i]);
+              if (f && (typeof v === 'number' || rf[i] === 'd')) { cell.numFmt = f; }
+              cell.font = { size: 10 };
+              cell.border = { bottom: { style: 'hair', color: { argb: 'FFD9D9D9' } } };
+              if (k % 2 === 1) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + EX_BAND } };
+              }
+            });
+            at += 1;
+          });
+          if (b.total) {
+            var tr = ws.getRow(at);
+            var tf = exFmtOf(b, -1);
+            b.total.forEach(function (v, i) {
+              var cell = tr.getCell(i + 1);
+              cell.value = (v === '' || v === null || v === undefined) ? null : exCell(v, tf[i]);
+              var f = exNumFmt(tf[i]);
+              if (f && (typeof v === 'number' || tf[i] === 'd')) { cell.numFmt = f; }
+              cell.font = { bold: true, size: 10 };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + EX_TOTAL } };
+            });
+            at += 1;
+          }
+          at += 1;
+        });
+        if (firstHead) {
+          ws.views = [{ state: 'frozen', ySplit: firstHead }];
+          ws.autoFilter = { from: { row: firstHead, column: 1 },
+                            to: { row: firstHead, column: s.blocks[0].head.length } };
+          ws.pageSetup.printTitlesRow = '1:' + firstHead;
+        }
+        ws.headerFooter = {
+          oddFooter: '&L' + doc.fname + '.xlsx · ชีต' + s.name + '&C' + s.lines[3] + '&R หน้า &P / &N'
+        };
+      });
+      wb.xlsx.writeBuffer().then(function (buf) {
+        rpSave(doc.fname + '.xlsx', new Blob([buf], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }));
+        done(true);
+      }, function () { done(false); });
+    }
+    if (window.ExcelJS) { build(); return; }
+    var i = 0;
+    function next() {
+      if (i >= EX_LIBS.length) { done(false); return; }
+      var sc = document.createElement('script');
+      sc.src = EX_LIBS[i];
+      i += 1;
+      sc.onload = function () { if (window.ExcelJS) { build(); } else { next(); } };
+      sc.onerror = next;
+      document.head.appendChild(sc);
+    }
+    next();
+  }
+
+  function exRun(ty, fmt, redraw) {
+    if (EXP.busy) { return; }
+    var doc = exDoc(ty);
+    if (fmt === 'csv') {
+      rpSave(doc.fname + '.csv', exCsv(doc), 'text/csv;charset=utf-8');
+      logIt('ส่งออกข้อมูล', doc.fname + '.csv');
+      toast('ส่งออกไฟล์ CSV แล้ว');
+      EXP.open = ''; redraw();
+      return;
+    }
+    EXP.busy = true;
+    toast('กำลังสร้างไฟล์ Excel…');
+    exXlsx(doc, function (ok) {
+      EXP.busy = false;
+      if (ok) {
+        logIt('ส่งออกข้อมูล', doc.fname + '.xlsx');
+        toast('ส่งออกไฟล์ Excel แล้ว');
+        EXP.open = '';
+      } else {
+        toast('สร้างไฟล์ Excel ไม่สำเร็จ ลองใหม่อีกครั้ง หรือกดส่งออกเป็น CSV แทน');
+      }
+      redraw();
+    });
+  }
+
+  /* ---- ปุ่มมุมขวาบนของหัวข้อ ---- */
+  function exBtn(ty) {
+    var on = EXP.open === ty;
+    return '<button type="button" class="btn' + (on ? ' pri' : '') + '" id="exBtn' + exTag(ty) + '" ' +
+      'style="min-height:36px;padding:0 13px;font-size:12.5px;margin-left:auto">' +
+      '<span class="ms" aria-hidden="true" style="font-size:18px">download</span>' +
+      (on ? 'ปิด' : 'ส่งออก') + '</button>';
+  }
+
+  function exPanel(ty) {
+    if (EXP.open !== ty) { return ''; }
+    var g = exTag(ty), r = exRange(), t = todayISO();
+    function seg(k, label) {
+      return '<button type="button" class="btn' + (EXP.mode === k ? ' pri' : '') + '" data-exm="' + k + '" ' +
+        'style="min-height:32px;padding:0 12px;font-size:12.5px">' + label + '</button>';
+    }
+    var body = '';
+    if (EXP.mode === 'month') {
+      body = '<label class="fl" for="exM' + g + '">เดือน</label>' +
+        '<select id="exM' + g + '" style="min-height:38px">' +
+        exMonList().map(function (k) {
+          return '<option value="' + k + '"' + ((EXP.m || t.slice(0, 7)) === k ? ' selected' : '') + '>' +
+            esc(ymTH(k)) + '</option>';
+        }).join('') + '</select>';
+    } else if (EXP.mode === 'week') {
+      body = '<label class="fl" for="exW' + g + '">สัปดาห์ (จันทร์ถึงอาทิตย์)</label>' +
+        '<select id="exW' + g + '" style="min-height:38px">' +
+        exWkList().map(function (k) {
+          return '<option value="' + k + '"' + ((EXP.w || exMonday(t)) === k ? ' selected' : '') + '>' +
+            k + ' ถึง ' + exAdd(k, 6) + '</option>';
+        }).join('') + '</select>';
+    } else if (EXP.mode === 'day') {
+      body = '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<div style="flex:1 1 150px;min-width:0"><label class="fl" for="exD1' + g + '">ตั้งแต่</label>' +
+        '<input id="exD1' + g + '" type="date" value="' + esc(EXP.d1 || t) + '" style="min-height:38px;width:100%"></div>' +
+        '<div style="flex:1 1 150px;min-width:0"><label class="fl" for="exD2' + g + '">ถึง</label>' +
+        '<input id="exD2' + g + '" type="date" value="' + esc(EXP.d2 || t) + '" style="min-height:38px;width:100%"></div>' +
+        '</div>';
+    } else {
+      body = '<p class="hint" style="margin:0">ส่งออกทุกรายการที่มีในระบบ ไม่จำกัดวันที่</p>';
+    }
+    return '<div class="card" style="box-shadow:none;border:2px solid var(--accent);margin-bottom:10px">' +
+      '<div class="card-b" style="padding:13px 14px">' +
+      '<p style="margin:0 0 9px;font-size:13px;font-weight:700;color:var(--head)">' +
+      'ส่งออกข้อมูลรับเข้าและตัดขาย · ' + esc(typeTH(ty)) + '</p>' +
+      '<div class="actions" style="margin-bottom:9px">' +
+      seg('day', 'ช่วงวัน') + seg('week', 'สัปดาห์') + seg('month', 'เดือน') + seg('all', 'ทั้งหมด') + '</div>' +
+      body +
+      '<p class="hint" style="margin:9px 0 0">ช่วงที่จะได้ · ' + esc(exLabel(r)) + '</p>' +
+      '<div class="actions" style="margin-top:10px">' +
+      '<button type="button" class="btn pri" data-exf="xlsx">ไฟล์ Excel (.xlsx)</button>' +
+      '<button type="button" class="btn" data-exf="csv">ไฟล์ CSV</button></div>' +
+      '<p class="hint" style="margin:8px 0 0">ไฟล์เดียวมี 5 ชีต คือ สรุป · รับเข้า · ตัดขายออก · ' +
+      'สรุปตามลูกค้า · รายการที่ลบไว้ · ทุกชีตมีโลโก้กับช่วงวันที่ พิมพ์ออกมาใช้ได้เลย</p>' +
+      '</div></div>';
+  }
+
+  function exBind(ty, redraw) {
+    redraw = redraw || viewEntry;
+    var g = exTag(ty), b = el('exBtn' + g);
+    if (b) {
+      b.addEventListener('click', function () {
+        EXP.open = (EXP.open === ty ? '' : ty);
+        redraw();
+      });
+    }
+    if (EXP.open !== ty) { return; }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-exm]'), function (x) {
+      x.addEventListener('click', function () { EXP.mode = x.getAttribute('data-exm'); redraw(); });
+    });
+    if (el('exM' + g)) {
+      el('exM' + g).addEventListener('change', function () { EXP.m = el('exM' + g).value; redraw(); });
+    }
+    if (el('exW' + g)) {
+      el('exW' + g).addEventListener('change', function () { EXP.w = el('exW' + g).value; redraw(); });
+    }
+    if (el('exD1' + g)) {
+      el('exD1' + g).addEventListener('change', function () { EXP.d1 = el('exD1' + g).value; redraw(); });
+    }
+    if (el('exD2' + g)) {
+      el('exD2' + g).addEventListener('change', function () { EXP.d2 = el('exD2' + g).value; redraw(); });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-exf]'), function (x) {
+      x.addEventListener('click', function () { exRun(ty, x.getAttribute('data-exf'), redraw); });
+    });
+  }
+
   function stkMonthCsv() {
     var rows = stkMonths().filter(function (r) { return r.ym.slice(0, 4) === MY.year; });
     var out = [['เดือน', 'ชนิดปูน', 'นำเข้า (คัน)', 'นำเข้า', 'หน่วย', 'ขายออก', 'ยอดขาย (บาท)', 'คงเหลือสิ้นเดือน']];
@@ -9039,6 +9680,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       pw: pwSection(pwCalc(), 1),
       wh: section(2, 'โกดังปูนถุง' + whTail('bag') + ' · ตัดสตอก',
         'รับเข้าอัตโนมัติจากรถปูนถุงที่ผ่านด่านเข้า' + whOf('bag') + ' · จ่ายออกบันทึกเองตอนรถลูกค้ามารับ',
+        exPanel('bag') +
         '<div class="actions" style="margin-bottom:10px">' +
         '<button type="button" class="btn" id="whAdd" style="' + SX_PINK + '">' + SX_IC_BAG +
         (WF.open ? 'ปิดฟอร์ม' : 'บันทึกขายปูนถุง') + '</button>' +
@@ -9049,7 +9691,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<th class="c">ถุง</th><th class="c">ตัน</th><th class="c">ราคา/ถุง</th><th class="c">เป็นเงิน</th>' +
         '<th class="c">คงเหลือ (ถุง)</th><th class="c"></th></tr></thead><tbody>' + whRows + '</tbody></table></div>' +
         (c.bags < 0 ? '<p class="hint w" style="margin-top:9px">ยอดคงเหลือติดลบ แปลว่าบันทึกขายมากกว่าที่รับเข้า ' +
-          'ตรวจว่าลืมกรอกวันเวลาผ่านด่านของรถปูนถุงหรือเปล่า</p>' : '')),
+          'ตรวจว่าลืมกรอกวันเวลาผ่านด่านของรถปูนถุงหรือเปล่า</p>' : ''), exBtn('bag')),
       month: stkMonthSection()
     };
   }
@@ -9074,6 +9716,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
   function bindSell(redraw) {
     bindPw(redraw);
+    exBind('bag', redraw || viewEntry);
     if (el('whAdd')) {
       el('whAdd').addEventListener('click', function () { WF.open = !WF.open; WF.editId = null; redraw(); });
     }
