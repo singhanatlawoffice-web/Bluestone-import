@@ -5534,6 +5534,15 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     '.exd th,.exd td{border:1px solid #333;padding:5px 6px;text-align:center;vertical-align:top;background:transparent;' +
     'color:#111;font-weight:400;white-space:normal}' +
     '.exd th{font-weight:700;background:#f2f2f2}' +
+    '.exd .dc{font-family:"Norasi","TH Sarabun New","Angsana New","Sarabun",serif}' +
+    '.exd .dc table{width:100%;border-collapse:collapse;margin:0}' +
+    '.exd .dc table td,.exd .dc table th{border:1px solid #333;padding:3px 5px;text-align:left;vertical-align:top;white-space:normal}' +
+    '.exd .dc .c{text-align:center}.exd .dc .r{text-align:right}.exd .dc .b{font-weight:700}' +
+    '.exd .dc .u{text-decoration:underline}' +
+    '.exd .dc .en,.exd .dc .th{font-family:inherit}' +
+    '.exd .dc .lao{font-family:"Phetsarath OT","Noto Sans Lao","Saysettha OT","Leelawadee UI","Lao UI",serif}' +
+    '.exd .dc .cjk{font-family:"Noto Serif CJK SC","Microsoft YaHei","PingFang SC",serif}' +
+    '.exd .dc .sig{color:#777;font-style:italic;font-size:11px;font-family:inherit}' +
     '.exd .l{text-align:left}.exd .r{text-align:right}.exd .c{text-align:center}.exd .b{font-weight:700}' +
     '.exd .row{display:flex;justify-content:space-between;gap:16px}' +
     '.exd .bx{border:1px solid #333;padding:7px 9px}' +
@@ -5560,206 +5569,622 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
   /* pins: [เลขหมุด, ช่องในระบบ, ดูตรงไหนในเอกสาร, ค่าที่กรอก, ชนิด]
      ชนิด '' = ช่องหน้าแรก · 'm' = อยู่ใต้ปุ่มรายละเอียดเพิ่ม · 'k' = ใช้ตรวจเทียบ ไม่ต้องกรอก */
+  var EX_PHASES = ['ช่วงที่ 1 · ตกลงซื้อขายและขอใบรับรองฝั่งลาว', 'ช่วงที่ 2 · รถลาวเข้าไปรับปูนที่โรงงาน', 'ช่วงที่ 3 · เตรียมผ่านพิธีการฝั่งไทย', 'ช่วงที่ 4 · รถผ่านด่านเข้าไทยและปิดงาน'];
+
   var EX_DOCS = [
-    { k: 'inv', f: '01-invoice-packing-list.pdf', t: 'Invoice / Packing List', g: 0,
+    { k: 'inv', n: 1, f: '01-invoice-packing-list.pdf', t: 'Invoice / Packing List', g: 0,
+      who: 'โรงงานลาว (ผู้ขาย)', side: 'lao', ph: 0,
+      when: 'ตอนตกลงซื้อขาย เป็นใบแรกสุดของชุด', fill: 'Invoice เลขที่ · วันที่ · จำนวนคัน · น้ำหนักตามเอกสาร',
       body: function () {
-        return '<p class="c b">LAO PEOPLE\'S DEMOCRATIC REPUBLIC<br>PEACE INDEPENDENCE DEMOCRACY UNITY PROSPERITY</p>' +
-          '<div class="row" style="margin-top:12px"><div>' + esc(nm.factory) + '<br>NATHONG VILLAGE, NAMOR DISTRICT,<br>OUDOMXAY PROVINCE, LAO PDR</div>' +
-          '<div class="r" style="white-space:nowrap">No: ' + exH('FCR/0463', 1) + '<br>Date: ' + exH('01/11/2026', 3) + '<br>Term: FOB LAOS</div></div>' +
-          '<p class="ttl" style="text-decoration:underline">INVOICE/PACKING LIST</p>' +
-          '<p>CONSIGNEE: ' + EX_IMP + '</p><p>Shipped: BOKEO - LAO P.D.R · To: Chiang Rai - THAILAND</p><p>Kind of goods: Cement</p>' +
-          '<table><tr><th rowspan="2">Marks</th><th rowspan="2">Description of goods</th><th rowspan="2">HS CODE</th><th>Quantity</th>' +
-          '<th rowspan="2">Net weight (KGS)</th><th rowspan="2">Price per TON (USD)</th><th rowspan="2">Amount (USD)</th></tr>' +
-          '<tr><th>TRUCK</th></tr>' +
-          '<tr><td>JIANGGE</td><td class="l">JIANGGE PORTLAND CEMENT TYPE I<br>Loaded in bulk truck</td><td>25232990</td>' +
-          '<td>' + exH('2', 2) + '</td><td>' + exH('64,000', 4) + '</td><td>27.12</td><td>1,736</td></tr>' +
-          '<tr><td class="b">TOTAL</td><td></td><td></td><td>2</td><td>64,000</td><td>27.12</td><td>1,736</td></tr></table>' +
-          '<p>Net Weight: sixty-four thousand KILOGRAMS</p><p class="r" style="margin-top:12px">GENERAL MANAGER</p>' + EX_SIG;
+        return '<div class="dc"> <div style="font-size:9pt;line-height:1.5"> <div class="c en b" style="font-size:9.5pt;letter-spacing:.2px">LAO PEOPLE\'S DEMOCRATIC ' +
+          'REPUBLIC</div> <div class="c en b" style="font-size:8.6pt">PEACE INDEPENDENCE DEMOCRACY UNITY PROSPERITY</div> <div class="c en" ' +
+          'style="font-size:9pt;letter-spacing:3px;margin-bottom:3mm">**********</div> <table style="width:100%;border:0;font-size:8.6pt"> <tr> <td ' +
+          'style="border:0;padding:0;vertical-align:top;width:58%"> <div class="en b">OUDOMXAY DEMO CEMENT SOLE CO.,LTD</div> <div class="en b">NATHONG VILLAGE, ' +
+          'NAMOR DISTRICT,</div> <div class="en b">OUDOMXAY PROVINCE, LAO PDR</div> <div class="en b">TEL/FAX: 020-9XXXXXXX</div> </td> <td ' +
+          'style="border:0;padding:0;vertical-align:top"> <div class="en">No:&nbsp;&nbsp;&nbsp;<b class="exh">FCR/9001</b><span class="exp">1</span></div> <div ' +
+          'class="en">Date:&nbsp;<b class="exh">01/11/2026</b><span class="exp">4</span></div> <div class="en" style="margin-top:2mm">Term: ' +
+          'FOB&nbsp;&nbsp;LAOS</div> </td> </tr> </table> <div class="c en b u" style="font-size:12pt;margin:4mm 0 3mm">INVOICE/PACKING LIST</div> <div ' +
+          'class="en" style="font-size:8.6pt;line-height:1.55"> <div>CONSIGNEE:: BLUE STONE TRADING CO.,LTD</div> <div style="margin-top:1.5mm">ADD: 99 MOO 9 ' +
+          'MAE KA, MUEANG, PHAYAO, THAILAND.</div> <div>TEL:&nbsp;&nbsp;0XX-XXXXXXX</div> </div> <div class="c en b" style="font-size:10pt;margin:3mm 0 ' +
+          '2mm">THAILAND</div> <div class="en" style="font-size:8.4pt;line-height:1.5"> <div>Shipped: BOKEO - LAO P. D. R.</div> <div>To: Chiang ' +
+          'Rai-THAILAND</div> <div>Shipping mark JIANGGE</div> <div>According to the lot 01</div> <div>Kind of goods:Cement</div> <div>ORIGIN Goods: LAO ' +
+          'PDR</div> <div>DATE:</div> </div> <table class="grid en" style="margin-top:2mm;font-size:8pt"> <tr class="c b"> <td style="width:13%">Marks ' +
+          'and<br>numbers<br>on packages</td> <td style="width:26%">Description of goods</td> <td style="width:10%">HS CODE</td> <td ' +
+          'style="width:9%">Quantity<br><span style="font-weight:400">TRUCK</span><span class="exp">2</span></td> <td style="width:11%">Net weigth<br>(KGS)</td> ' +
+          '<td style="width:11%">Total weight<br>(KGS)<span class="exp">3</span></td> <td style="width:8%">Priceper<br>(TON)<br>(USD)</td> <td ' +
+          'style="width:8%">Amount<br>(USD)</td> <td style="width:4%">Note</td> </tr> <tr style="height:5mm"> <td class="c">JIANGGE</td> <td>JIANGGE PORTLAND ' +
+          'CEMENT TYPE I</td> <td class="c">25232990</td> <td class="c b exh">2</td> <td class="r">64,000</td> <td class="r b exh">64,000</td> <td ' +
+          'class="r">27.12</td> <td class="r">1,736</td> <td></td> </tr> <tr style="height:5mm"><td></td><td>Loaded in bulk ' +
+          'truck</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> <tr ' +
+          'style="height:5mm"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> <tr ' +
+          'style="height:5mm"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> <tr ' +
+          'style="height:5mm"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> <tr class="b"><td ' +
+          'class="c">TOTAL</td><td></td><td></td><td class="c">2</td><td class="r">64,000</td> <td class="r">64,000</td><td class="r">27.12</td><td ' +
+          'class="r">1,736</td><td></td></tr> </table> <div class="en" style="font-size:8.4pt;margin-top:2.5mm;line-height:1.5"> <div>Quantity:</div> <div>Net ' +
+          'Weigth: sixty-four thousand KILOGRAMS</div> <div>OUDOMXAY DEMO CEMENT SOLE CO.,LTD</div> </div> <table style="width:100%;border:0;margin-top:6mm"> ' +
+          '<tr> <td style="border:0;padding:0;vertical-align:top;width:52%" class="en">Remark:</td> <td style="border:0;padding:0;vertical-align:top" class="c ' +
+          'en b">GENERAL MANAGER <div style="margin-top:12mm"><span class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></div></td> </tr> </table> ' +
+          '</div> </div>';
       },
-      pins: [[1, 'Invoice เลขที่', 'มุมขวาบน บรรทัด No:', 'FCR/0463', ''],
-             [2, 'จำนวนคัน', 'ตารางสินค้า คอลัมน์ Quantity / TRUCK', '2', ''],
-             [3, 'Invoice ลงวันที่', 'มุมขวาบน บรรทัด Date:', '1 พ.ย. 69', 'm'],
-             [4, 'น้ำหนักรวมตามเอกสาร (กก.)', 'ตารางสินค้า คอลัมน์ Net weight', '64000', 'm']] },
-
-    { k: 'fd', f: '02-form-d.pdf', t: 'Form D', g: 0,
+      pins: [[1, 'Invoice เลขที่', 'มุมขวาบน บรรทัด No:', 'FCR/9001', ''],
+             [2, 'จำนวนคันตาม Form D', 'ตารางสินค้า คอลัมน์ Quantity / TRUCK', '2', ''],
+             [3, 'น้ำหนักตามเอกสาร (กก.)', 'ตารางสินค้า คอลัมน์ Total weight (KGS)', '64000', 'm'],
+             [4, 'Invoice ลงวันที่', 'มุมขวาบน บรรทัด Date:', '1 พ.ย. 69', 'm']] },
+    { k: 'fd', n: 2, f: '02-form-d.pdf', t: 'Form D', g: 0,
+      who: 'หน่วยงานรับรองถิ่นกำเนิดของลาว', side: 'lao', ph: 0,
+      when: 'ขอหลังมี Invoice แล้ว ต้องได้ก่อนของถึงด่านไทย', fill: 'Form D เลขที่ · วันที่ · จำนวนคันที่แจ้ง',
       body: function () {
-        return '<div class="row" style="gap:0"><div class="bx" style="flex:1 1 50%">' +
-          '<p class="sm">1. Goods consigned from (Exporter\'s business name, address, country)</p><p class="b">' + esc(nm.factory) + '<br>OUDOMXAY PROVINCE, LAO PDR</p>' +
-          '<p class="sm" style="margin-top:8px">2. Goods consigned to (Consignee\'s name, address, country)</p><p class="b">' + EX_IMP + '</p></div>' +
-          '<div class="bx" style="flex:1 1 50%;border-left:0"><p>Reference No. ' + exH('E-CO/26041226', 1) + '</p>' +
-          '<p class="c b" style="margin-top:8px">ASEAN TRADE IN GOODS AGREEMENT<br>CERTIFICATE OF ORIGIN</p>' +
-          '<p class="c">(Combined Declaration and Certificate)</p><p class="c b">FORM D</p>' +
-          '<p class="c">Issued in LAO PEOPLE\'S DEMOCRATIC REPUBLIC</p></div></div>' +
-          '<div class="row" style="gap:0"><div class="bx" style="flex:1 1 50%;border-top:0">' +
-          '<p class="sm">3. Means of transport and route</p><p>FROM OUDOMXAY PROVINCE, LAO PDR TO THAILAND BY TRUCK</p>' +
-          '<p>Departure date 02/11/2026</p><p>Port of Discharge: CHIANG KHONG CUSTOMS HOUSE</p></div>' +
-          '<div class="bx" style="flex:1 1 50%;border-left:0;border-top:0"><p class="sm">4. For Official Use</p>' +
-          '<p>☐ Preferential Treatment Given Under ASEAN Trade in Goods Agreement</p><p>☐ Preferential Treatment Not Given</p></div></div>' +
-          '<table style="margin-top:0"><tr><th style="border-top:0">5. Item</th><th style="border-top:0">6. Marks</th><th style="border-top:0">7. Number and type of packages, description of goods</th>' +
-          '<th style="border-top:0">8. Origin criterion</th><th style="border-top:0">9. Gross weight or other quantity and FOB price</th><th style="border-top:0">10. Number and date of invoices</th></tr>' +
-          '<tr><td>1</td><td>JIANGGE</td><td class="l">HS CODE: 252329<br>JIANGGE PORTLAND CEMENT TYPE I, LOADED IN BULK TRUCK<br><br>' +
-          'TOTAL: SIXTY-FOUR THOUSAND (64,000.00) KILOGRAM(S) ONLY,<br>TWO (2.00) BULK CAR LOAD ONLY</td><td>"99.99%"</td>' +
-          '<td class="l">GW: 64,000.00 KILOGRAM(S)<br>NW: 64,000.00 KILOGRAM(S)<br>' + exH('2.00 BULK CAR LOAD', 2) + '<br>1,736.00 $</td>' +
-          '<td class="l">INVOICE NO: FCR/0463<br>DATE: 01-11-2026</td></tr></table>' +
-          '<div class="row" style="gap:0"><div class="bx" style="flex:1 1 50%"><p class="sm">11. Declaration by the exporter</p>' +
-          '<p class="sm">(ของจริงมีตราประทับและลายมือชื่อผู้ส่งออก)</p></div>' +
-          '<div class="bx" style="flex:1 1 50%;border-left:0"><p class="sm">12. Certification</p>' +
-          '<p class="sm">(ของจริงมีตราประทับ ลายมือชื่อ และคิวอาร์โค้ดของหน่วยงานผู้ออก)</p>' +
-          '<p style="margin-top:6px">OUDOMXAY PROVINCE, ' + exH('02/11/2026', 3) + '</p>' +
-          '<p class="sm">Place and date, signature and stamp of certifying authority</p></div></div>';
+        return '<div class="dc"> <div style="font-size:8.6pt;line-height:1.35" class="en"> <div class="r b" style="font-size:11pt;margin-bottom:1.5mm">Original</div> ' +
+          '<table class="grid" style="font-size:8pt"> <tr> <td style="width:52%;height:21mm"> 1. Goods consigned from ( Exporter\'s business&nbsp; name, ' +
+          'address,<br>country) <div class="b" style="margin-top:3mm;font-size:8.2pt">OUDOMXAY DEMO CEMENT SOLE CO.,LTD<br> NATHONG VILLAGE, NAMOR DISTRICT, ' +
+          'OUDOMXAY PROVINCE, LAO PDR<br>TEL/FAX: 020-9XXXXXXX</div> </td> <td rowspan="2" style="vertical-align:top"> <div>Reference No.</div> <div class="c b" ' +
+          'style="font-size:10pt;margin:2mm 0 4mm"><span class="exh">E-CO/99000001</span><span class="exp">1</span></div> <div class="c b" ' +
+          'style="font-size:9.6pt;line-height:1.4">ASEAN TRADE IN GOODS AGREEMENT<br>CERTIFICATE OF ORIGIN</div> <div class="c" ' +
+          'style="margin-top:3mm;font-size:8.4pt">(Combined Declaration and Certificate)</div> <div class="c b" style="font-size:9.6pt">FORM D</div> <div ' +
+          'style="margin-top:5mm">Issued in&nbsp;&nbsp;<span class="u">&nbsp;LAO PEOPLE\'S DEMOCRATIC REPUBLIC&nbsp;</span></div> <div class="c" ' +
+          'style="font-size:8pt">(Country)</div> <div class="c" style="font-size:8pt">See Overleaf Notes</div> </td> </tr> <tr> <td style="height:21mm"> 2. ' +
+          'Goods consigned to (Consignee\'s name, address,&nbsp; country) <div class="b" style="margin-top:3mm;font-size:8.2pt">BLUE STONE TRADING CO.,LTD<br> ' +
+          '99 MOO 9 MAE KA, MUEANG, PHAYAO, THAILAND.<br>TEL: 0XX-XXXXXXX</div> </td> </tr> <tr> <td style="height:27mm"> 3. Means of transport and route (as ' +
+          'far as known) <div class="b" style="margin-top:2.5mm;font-size:8pt">FROM: OUDOMXAY PROVINCE, LAO PDR TO THAILAND BY TRUCK</div> <div ' +
+          'style="margin-top:1mm">Departure date</div> <div class="b" style="margin-top:1mm">02/11/2026</div> <div style="margin-top:2mm">Vessel\'s ' +
+          'name/Aircraft etc.</div> <div class="b" style="margin-top:1mm">BY TRUCK</div> <div style="margin-top:2mm">Port of Discharge</div> <div class="b" ' +
+          'style="margin-top:1mm">CHIANG KHONG CUSTOMS HOUSE</div> </td> <td style="vertical-align:top"> 4. For&nbsp; Official&nbsp; Use <div ' +
+          'style="margin-top:4mm;display:flex;gap:2mm"> <span style="display:inline-block;width:3.6mm;height:3.6mm;border:1px solid #000;flex:0 0 auto"></span> ' +
+          '<span>Preferential Treatment Given Under ASEAN<br>Trade in Goods Agreement</span> </div> <div style="margin-top:3mm;display:flex;gap:2mm"> <span ' +
+          'style="display:inline-block;width:3.6mm;height:3.6mm;border:1px solid #000;flex:0 0 auto"></span> <span>Preferential Treatment Not Given ' +
+          '(Please<br>state reason/s)</span> </div> <div class="c" style="margin-top:7mm">....................................................</div> <div ' +
+          'class="c" style="font-size:7.8pt">Signature of Authorised Signatory of the Customs<br>Authority of the Importing Country</div> </td> </tr> </table> ' +
+          '<table class="grid" style="font-size:7.6pt;border-top:0"> <tr class="c"> <td style="width:8%">5. Item<br>number</td> <td style="width:11%">6. Marks ' +
+          'and<br>numbers on<br>packages</td> <td style="width:31%">7. Number and type of packages, description<br>of goods (including quantity&nbsp; where ' +
+          'appropriate<br>and HS number of the Importing Country)</td> <td style="width:11%">8. Origin<br>criterion (see<br>Overleaf Notes)</td> <td ' +
+          'style="width:21%">9. Gross weight or other<br>quantity and FOB<br>price where RVC is<br>applied</td> <td style="width:18%">10. Number and<br>date of ' +
+          'invoices</td> </tr> <tr> <td class="c" style="height:30mm">1</td> <td class="c b">JIANGGE</td> <td class="b">HS CODE: 252329<br>JIANGGE PORTLAND ' +
+          'CEMENT TYPE I, LOADED IN BULK<br>TRUCK<br>HS CODE (IMPORTING COUNTRY): 25232990 <div style="margin-top:6mm">TOTAL: SIXTY-FOUR THOUSAND ' +
+          '(64,000.00)<br>KILOGRAM(S) ONLY,<br> SIXTY-FOUR THOUSAND (64,000.00) KILOGRAM(S)<br>ONLY,<br>TWO (2.00) BULK CAR LOAD ONLY</div> <div class="c b" ' +
+          'style="margin-top:5mm">Page 1/1</div></td> <td class="c b">"99.99%"</td> <td class="b">GW: 64,000.00<br>KILOGRAM(S)<br>NW: ' +
+          '64,000.00<br>KILOGRAM(S)<br> <span class="exh">2.00 BULK CAR</span><span class="exp">2</span><br><span class="exh">LOAD</span><br>1,736.00 $</td> <td ' +
+          'class="b">INVOICE NO:<br>FCR/9001<br>DATE:<br>01-11-2026</td> </tr> </table> <table class="grid" style="font-size:8pt;border-top:0"> <tr> <td ' +
+          'style="width:52%;height:29mm">11. Declaration by the exporter <div style="margin-top:2mm;font-size:7.8pt">The undersigned hereby declares that the ' +
+          'above details and<br> statement are correct; that all the goods&nbsp; were produced in</div> <div class="c" ' +
+          'style="margin-top:2mm">.................<b>LAO P.D.R.</b>.................</div> <div class="c" style="font-size:7.6pt">(Country)</div> <div ' +
+          'style="font-size:7.6pt;margin-top:1mm">and that they comply with the origin requirements specified for<br> these goods in the ASEAN Trade in Goods ' +
+          'Agreement for the<br>goods exported to</div> <div class="c" style="margin-top:1mm">.................<b>THAILAND</b>.................</div> <div ' +
+          'class="c" style="font-size:7.6pt">(Importing Country)</div> <div class="c" style="margin-top:4mm"><span ' +
+          'class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></div> <div class="c" style="font-size:7.6pt">Place and date, signature of authorised ' +
+          'signatory</div> </td> <td style="vertical-align:top">12. Certification <div style="margin-top:2mm;font-size:7.8pt">It is hereby certified, on the ' +
+          'basis of control carried out, that the<br> declaration by the exporter is correct.</div> <div class="c" style="margin-top:9mm"><span ' +
+          'class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></div> <div class="c b" style="margin-top:6mm;font-size:8pt">OUDOMXAY PROVINCE, <span ' +
+          'class="exh">02/11/2026</span><span class="exp">3</span></div> <div class="c" style="font-size:7.6pt">Place and date, signature and stamp of&nbsp; ' +
+          'certifying authority</div> </td> </tr> <tr> <td colspan="2" style="font-size:7.8pt"> <table style="width:52%;border:0"> <tr><td ' +
+          'style="border:0;padding:0;width:50%">13. &nbsp;<span style="display:inline-block;width:3mm;height:3mm;border:1px solid #000"></span> Third Country ' +
+          'Invoicing</td> <td style="border:0;padding:0"><span style="display:inline-block;width:3mm;height:3mm;border:1px solid #000"></span> ' +
+          'Exhibition</td></tr> <tr><td style="border:0;padding:0">&nbsp;&nbsp;&nbsp;&nbsp;<span style="display:inline-block;width:3mm;height:3mm;border:1px ' +
+          'solid #000"></span> Accumulation</td> <td style="border:0;padding:0"><span style="display:inline-block;width:3mm;height:3mm;border:1px solid ' +
+          '#000"></span> De Minimis</td></tr> <tr><td style="border:0;padding:0">&nbsp;&nbsp;&nbsp;&nbsp;<span ' +
+          'style="display:inline-block;width:3mm;height:3mm;border:1px solid #000"></span> Back-to-Back CO</td> <td style="border:0;padding:0"><span ' +
+          'style="display:inline-block;width:3mm;height:3mm;border:1px solid #000"></span> Issued Retroactively</td></tr> <tr><td ' +
+          'style="border:0;padding:0">&nbsp;&nbsp;&nbsp;&nbsp;<span style="display:inline-block;width:3mm;height:3mm;border:1px solid #000"></span> Partial ' +
+          'Cumulation</td><td style="border:0;padding:0"></td></tr> </table> </td> </tr> </table> </div> </div>';
       },
-      pins: [[1, 'Form D เลขที่', 'มุมขวาบน บรรทัด Reference No.', 'E-CO/26041226', ''],
-             [2, 'จำนวนคัน', 'ช่อง 9 เขียนว่า 2.00 BULK CAR LOAD ต้องตรงกับใน Invoice', '2', ''],
-             [3, 'Form D ลงวันที่', 'ช่อง 12 ล่างขวา บรรทัดสถานที่และวันที่ออกหนังสือรับรอง', '2 พ.ย. 69', 'm']] },
-
-    { k: 'tisi', f: '03-tisi-permit.pdf', t: 'ใบอนุญาต สมอ.', g: 0,
+      pins: [[1, 'Form D เลขที่', 'มุมขวาบน Reference No.', 'E-CO/99000001', ''],
+             [2, 'จำนวนคันตาม Form D', 'ช่อง 9 บรรทัด BULK CAR LOAD', '2', ''],
+             [3, 'Form D ลงวันที่', 'ช่อง 12 ด้านล่างขวา วันที่หน่วยงานลาวรับรอง', '2 พ.ย. 69', 'm']] },
+    { k: 'ws', n: 3, f: '03-factory-weigh-slip.pdf', t: 'ใบชั่งโรงงาน', g: 1,
+      who: 'โรงงานลาว', side: 'lao', ph: 1,
+      when: 'ตอนรถลาวเข้าไปรับปูนที่โรงงาน ออกคันละใบ', fill: 'ทะเบียนรถลาว · น้ำหนักชั่งจริง · เวลาออกจากโรงงาน',
       body: function () {
-        return '<p class="c b" style="font-size:14px">หลักฐานการรับแจ้งข้อมูลการนำเข้าผลิตภัณฑ์อุตสาหกรรมที่มีกฎหมาย<br>กำหนดให้ต้องเป็นไปตามมาตรฐานเข้ามาในราชอาณาจักร</p>' +
-          '<div class="row" style="margin-top:12px"><div>Permit Number : ' + exH('20261111040000115475', 1) + '</div><div>วันที่ออก Permit : ' + exH('11-11-2026', 3) + '</div></div>' +
-          '<div class="row"><div>ชื่อผู้นำเข้า : ' + EX_IMP + '</div><div>วัน Permit หมดอายุ : ' + exH('10-01-2027', 2) + '</div></div>' +
-          '<div class="row"><div>เลขที่บัญชีราคาสินค้า (Invoice Number) : FCR/0463</div><div>ลงวันที่ : 01-11-2026</div></div>' +
-          '<p>วัตถุประสงค์การนำเข้า : นำเข้ามาเพื่อจำหน่าย/จ่ายแจก</p><p>ประเทศต้นทาง : ลาว</p>' +
-          '<table><tr><th>ลำดับที่</th><th>เลขที่ใบอนุญาต</th><th>HS Code</th><th>English Description of Goods</th><th>ประเทศกำเนิด</th><th>ปริมาณ</th><th>หน่วย</th></tr>' +
-          '<tr><td>1</td><td>(เลขที่ใบอนุญาต)</td><td>2523.29.90.000</td><td class="l">JIANGGE PORTLAND CEMENT TYPE1 LOADED IN BULK TRUCK</td><td>ลาว</td><td>64000.000</td><td>KGM</td></tr></table>' +
-          '<p class="sm">หมายเหตุ : ตรวจสอบข้อมูลได้จากเว็บไซต์ของหน่วยงานผู้ออก</p>';
+        return '<div class="dc"> <div style="width:150mm;margin:4mm auto 0;border:1px solid #333;padding:4mm 5mm 5mm;font-size:8.6pt"> <div ' +
+          'style="display:flex;justify-content:space-between;align-items:flex-start"> <div> <div class="lao b" style="font-size:9pt">ບໍລິສັດ ຊີມັງອຸດົມໄຊຈຽງກ້າ ' +
+          'ຈຳກັດຜູ້ດຽວ</div> <div class="lao" style="font-size:8.4pt">ໃບຜ່ານຊັ່ງຜູ້ຈຳໜ່າຍ (ຊີມັງຜົງ)</div> <div ' +
+          'style="font-size:7.6pt;color:#555">ใบผ่านชั่งจำหน่าย (ปูนผง)</div> </div> <div class="c"> <div class="cjk b" ' +
+          'style="font-size:11pt">乌多姆赛江葛水泥独资有限公司</div> <div class="cjk b" style="font-size:11pt">销售过磅单（散装）</div> </div> <div class="r" style="font-size:8pt"> ' +
+          '<div>W20269991111009</div> </div> </div> <div style="margin-top:2mm;font-size:8pt"> <span class="lao">ວັນເດືອນປີ</span> <span ' +
+          'style="color:#777;font-size:6.8pt">วันที่</span> : <b>2026-11-11</b> </div> <table class="grid" ' +
+          'style="margin-top:2mm;font-size:8.4pt;border-color:#333"> <tr> <td style="width:18%;border-color:#333"><div class="cjk b" ' +
+          'style="font-size:9pt">发货单位</div><div style="font-size:6.8pt;color:#777">ผู้จ่ายสินค้า</div></td> <td style="width:32%;border-color:#333" class="b ' +
+          'en">OUDOMXAY DEMO CEMENT SOLE CO., LTD.</td> <td style="width:18%;border-color:#333"><div class="cjk b" style="font-size:9pt">收货单位</div><div ' +
+          'style="font-size:6.8pt;color:#777">ผู้รับสินค้า</div></td> <td style="border-color:#333" class="b en">BLUE STONE TRADING CO., LTD</td> </tr> </table> ' +
+          '<table class="grid" style="font-size:8.4pt;border-top:0;border-color:#333"> <tr class="c"> <td style="width:16%;border-color:#333"><div class="cjk b" ' +
+          'style="font-size:9pt">品名</div><div style="font-size:6.8pt;color:#777">ชนิด</div></td> <td style="width:13%;border-color:#333"><div class="cjk b" ' +
+          'style="font-size:9pt">重量(吨)</div><div style="font-size:6.8pt;color:#777">น้ำหนักสั่ง</div></td> <td style="width:13%;border-color:#333"><div ' +
+          'class="cjk b" style="font-size:9pt">车号</div><div style="font-size:6.8pt;color:#777">ทะเบียนรถ</div></td> <td style="width:13%;border-color:#333"><div ' +
+          'class="cjk b" style="font-size:9pt">毛重(吨)</div><div style="font-size:6.8pt;color:#777">น้ำหนักรวม</div></td> <td ' +
+          'style="width:13%;border-color:#333"><div class="cjk b" style="font-size:9pt">皮重(吨)</div><div style="font-size:6.8pt;color:#777">รถเปล่า</div></td> ' +
+          '<td style="width:14%;border-color:#333"><div class="cjk b" style="font-size:9pt">净重(吨)</div><div ' +
+          'style="font-size:6.8pt;color:#777">น้ำหนักสุทธิ</div></td> <td style="border-color:#333"><div class="cjk b" style="font-size:9pt">出厂编号</div><div ' +
+          'style="font-size:6.8pt;color:#777">เลขล็อต</div></td> </tr> <tr class="c" style="height:10mm"> <td style="border-color:#333" class="cjk">散装P.I ' +
+          '52.5</td> <td style="border-color:#333">32.00</td> <td style="border-color:#333" class="b"><span class="exh">3901</span><span ' +
+          'class="exp">1</span></td> <td style="border-color:#333">49.80</td> <td style="border-color:#333">17.55</td> <td style="border-color:#333" ' +
+          'class="b"><span class="exh">32.25</span><span class="exp">2</span></td> <td style="border-color:#333">26S5027</td> </tr> <tr> <td class="c" ' +
+          'style="border-color:#333"><div class="cjk b" style="font-size:9pt">入厂时间</div><div style="font-size:6.8pt;color:#777">เวลาเข้าโรงงาน</div></td> <td ' +
+          'colspan="2" class="c" style="border-color:#333">2026-11-11 12:46:30</td> <td class="c" style="border-color:#333"><div class="cjk b" ' +
+          'style="font-size:9pt">出厂时间</div><div style="font-size:6.8pt;color:#777">เวลาออกจากโรงงาน</div></td> <td colspan="3" class="c" ' +
+          'style="border-color:#333"><span class="exh b">2026-11-11 13:17:30</span><span class="exp">3</span></td> </tr> <tr> <td class="c" ' +
+          'style="border-color:#333"><div class="cjk b" style="font-size:9pt">备注</div><div style="font-size:6.8pt;color:#777">หมายเหตุ</div></td> <td ' +
+          'colspan="6" class="c cjk" style="border-color:#333">发卡机自动发卡: 2026/11/11 12:45:19</td> </tr> </table> <div ' +
+          'style="display:flex;justify-content:space-between;margin-top:4mm;font-size:7.6pt"> <span class="lao">ພະນັກງານຊັ່ງ <span class="cjk">司磅员</span></span> ' +
+          '<span class="lao">ຍາມ <span class="cjk">保安</span></span> <span class="lao">ຄົນຂັບລົດ <span class="cjk">司机</span></span> </div> <div class="c" ' +
+          'style="margin-top:4mm"><span class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></div> </div> </div>';
       },
-      pins: [[1, 'ใบอนุญาต สมอ. เลขที่', 'บรรทัดแรก Permit Number', '20261111040000115475', ''],
+      pins: [[1, 'ทะเบียนรถลาว', 'ช่อง 车号', '3901', ''],
+             [2, 'ใบชั่งโรงงาน (ตัน)', 'ช่อง 净重(吨) น้ำหนักสุทธิ ไม่ใช่ช่อง 重量', '32.25', ''],
+             [3, 'วันเวลารถลาวรับปูนที่โรงงาน', 'ช่อง 出厂时间 เวลาออกจากโรงงาน', '11 พ.ย. 69 · 13:17', '']] },
+    { k: 'fin', n: 4, f: '04-factory-tax-invoice.pdf', t: 'ใบเก็บเงินโรงงาน', g: 1,
+      who: 'โรงงานลาว', side: 'lao', ph: 1,
+      when: 'ออกคู่กับใบชั่ง คันละใบ ตามน้ำหนักที่ชั่งได้', fill: 'เลขใบเก็บเงินโรงงาน · ทะเบียนรถลาว',
+      body: function () {
+        return '<div class="dc"> <div style="border:2.5px solid #c0392b;padding:1.2mm"> <div style="border:1px solid #c0392b;padding:1mm"> <div style="border:1.5px ' +
+          'solid #c0392b;padding:5mm 6mm;font-size:9pt;line-height:1.5"> <table style="width:100%;border:0;margin-bottom:3mm"> <tr> <td ' +
+          'style="border:0;padding:0;width:16%;vertical-align:middle"><span style="display:inline-block;border:1px dashed ' +
+          '#bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm 3mm;line-height:1.3">(โลโก้โรงงาน<br>อยู่ตรงนี้ในเอกสารจริง)</span></td> ' +
+          '<td style="border:0;padding:0;text-align:center;vertical-align:middle"> <div class="lao b" style="font-size:16pt;letter-spacing:.3px">ໃບເກັບເງິນ/TAX ' +
+          'INVOICE</div> <div class="lao" style="font-size:9pt">(ອາກອນມູນຄ່າເພີ່ມ VAT)</div> </td> <td ' +
+          'style="border:0;padding:0;width:28%;vertical-align:middle"> <table style="width:100%;border:1px solid #c0392b;font-size:9pt"> <tr><td ' +
+          'style="border:0;padding:1.2mm 2mm"><span class="lao">ເລກທີ:</span> <span class="exh b">000000027304</span><span class="exp">1</span></td></tr> ' +
+          '<tr><td style="border:0;padding:1.2mm 2mm;border-top:1px solid #c0392b"><span class="lao">ວັນທີ:</span> <b>11/11/2026</b></td></tr> </table> </td> ' +
+          '</tr> </table> <table class="grid" style="border-color:#c0392b;font-size:8.4pt"> <tr> <td ' +
+          'style="width:50%;border-color:#c0392b;vertical-align:top;height:30mm"> <span class="lao b" style="font-size:9pt">ຜູ້ວິສາຫະກິດ (ຜູ້ຂາຍ):</span> <span ' +
+          'style="font-size:7pt;color:#777">ผู้ขาย</span> <div class="b en" style="margin-top:1.5mm;font-size:9pt">OUDOMXAY DEMO CEMENT SOLE CO., LTD</div> <div ' +
+          'class="lao" style="font-size:8.4pt">ເລກປະຈຳຕົວເສຍອາກອນ: XXXXXXXXX</div> <div class="lao" style="font-size:8.4pt">ທີ່ຢູ່: ບ້ານ ນາທົ່ງ, ເມືອງນາໝໍ້, ' +
+          'ແຂວງອຸດົມໄຊ</div> <div style="margin-top:2mm;font-size:8.4pt">Tel: 020 XXXX XXXX &nbsp;,Fax:</div> <div class="lao" style="font-size:8.4pt">ຊື່ບັນຊີ ' +
+          'ທຄ :</div> <div class="lao" style="font-size:8.4pt">ເລກບັນຊີ ທຄ : XXXXXXXXXX</div> </td> <td style="border-color:#c0392b;vertical-align:top"> <span ' +
+          'class="lao b" style="font-size:9pt">ຜູ້ວິສາຫະກິດ (ຜູ້ຊື້):</span> <span style="font-size:7pt;color:#777">ผู้ซื้อ</span> <div class="b en" ' +
+          'style="margin-top:1.5mm;font-size:9pt">BLUE STONE TRADING CO.,LTD</div> <div class="lao" style="font-size:8.4pt">ເລກປະຈຳຕົວເສຍອາກອນ: ' +
+          '0XXXXXXXXXXXX</div> <div class="lao" style="font-size:8.4pt">ທີ່ຢູ່: ບ້ານ, ເມືອງ, ແຂວງ</div> <div style="margin-top:2mm;font-size:8.4pt">Tel: +66 ' +
+          'XXXXXXXXX &nbsp;,Fax:</div> <div class="lao" style="font-size:8.4pt">ຊື່ບັນຊີ ທຄ :</div> <div class="lao" style="font-size:8.4pt">ຮູບແບບການຊຳລະສະສາງ ' +
+          ': ທະນາຄານ</div> <div class="lao" style="font-size:8.4pt">ສະຖານທີ່ປາຍທາງ: Thailand</div> </td> </tr> </table> <table class="grid" ' +
+          'style="border-color:#c0392b;border-top:0;font-size:8.4pt"> <tr class="c"> <td style="width:8%;border-color:#c0392b"><span class="lao ' +
+          'b">ລ/ດ</span></td> <td style="border-color:#c0392b"><span class="lao b">ເນື້ອໃນລາຍການ</span></td> <td style="width:10%;border-color:#c0392b"><span ' +
+          'class="lao b">ຫົວໜ່ວຍ</span></td> <td style="width:10%;border-color:#c0392b"><span class="lao b">ຈຳນວນ</span></td> <td ' +
+          'style="width:16%;border-color:#c0392b"><span class="lao b">ລາຄາຫົວໜ່ວຍ</span></td> <td style="width:19%;border-color:#c0392b"><span class="lao ' +
+          'b">ລວມເປັນເງິນ</span></td> </tr> <tr style="height:8mm"> <td class="c" style="border-color:#c0392b">1</td> <td style="border-color:#c0392b"><span ' +
+          'class="lao">ຊີມັງຕົງ P.I 52.5</span> &nbsp;<span class="exh b en">3901</span><span class="exp">2</span></td> <td class="c" ' +
+          'style="border-color:#c0392b">T</td> <td class="c" style="border-color:#c0392b">32</td> <td class="r" style="border-color:#c0392b">613,507.00</td> <td ' +
+          'class="r b" style="border-color:#c0392b">19,785,600.75<span class="exp">3</span></td> </tr> <tr style="height:8mm"><td ' +
+          'style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td> <td style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td> ' +
+          '<td style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td></tr> <tr style="height:8mm"><td style="border-color:#c0392b"></td><td ' +
+          'style="border-color:#c0392b"></td> <td style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td> <td ' +
+          'style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td></tr> <tr style="height:8mm"><td style="border-color:#c0392b"></td><td ' +
+          'style="border-color:#c0392b"></td> <td style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td> <td ' +
+          'style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td></tr> <tr style="height:8mm"><td style="border-color:#c0392b"></td><td ' +
+          'style="border-color:#c0392b"></td> <td style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td> <td ' +
+          'style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td></tr> <tr style="height:8mm"><td style="border-color:#c0392b"></td><td ' +
+          'style="border-color:#c0392b"></td> <td style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td> <td ' +
+          'style="border-color:#c0392b"></td><td style="border-color:#c0392b"></td></tr> <tr><td colspan="5" class="r" style="border-color:#c0392b"> <span ' +
+          'class="lao">ລວມມູນຄ່າບໍ່ມີອາກອນ</span> <span style="font-size:7pt;color:#777">รวมไม่มีภาษี</span></td> <td class="r b" ' +
+          'style="border-color:#c0392b">19,785,600.75</td></tr> <tr><td colspan="5" class="r" style="border-color:#c0392b"> <span ' +
+          'class="lao">ອັດຕາອາກອນມູນຄ່າເພີ່ມ(Vat):....0....%</span></td> <td class="r" style="border-color:#c0392b">0.00</td></tr> <tr><td colspan="5" class="r ' +
+          'b" style="border-color:#c0392b"> <span class="lao">ລວມມູນຄ່າທັງໝົດ (LAK)</span> <span style="font-size:7pt;color:#777">รวมทั้งหมด</span></td> <td ' +
+          'class="r b" style="border-color:#c0392b">19,785,600.75</td></tr> <tr><td colspan="6" style="border-color:#c0392b;font-size:8pt"> <span ' +
+          'class="lao">ຈຳນວນເງິນເປັນຈຶດຫົວນີ້ :</span> <span style="font-size:7pt;color:#777">(จำนวนเงินเป็นตัวอักษร)</span></td></tr> </table> <table ' +
+          'class="grid" style="border-color:#c0392b;border-top:0;font-size:8.4pt"> <tr> <td class="c" ' +
+          'style="width:50%;border-color:#c0392b;height:26mm;vertical-align:top"> <span class="lao b">ຜູ້ຊື້</span> <span ' +
+          'style="font-size:7pt;color:#777">ผู้ซื้อ</span> <div class="lao" style="font-size:7.6pt">(ລາຍເຊັນ ແລະ ຈ້ຳກາ)</div> <div style="margin-top:10mm"><span ' +
+          'class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></div> <div class="lao" ' +
+          'style="font-size:7.6pt;margin-top:3mm">ລົງຊື່:...................... ວັນທີ:..................</div></td> <td class="c" ' +
+          'style="border-color:#c0392b;vertical-align:top"> <span class="lao b">ຜູ້ຂາຍ</span> <span style="font-size:7pt;color:#777">ผู้ขาย</span> <div ' +
+          'class="lao" style="font-size:7.6pt">(ລາຍເຊັນ ແລະ ຈ້ຳກາ)</div> <div style="margin-top:10mm"><span ' +
+          'class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></div> <div class="lao" ' +
+          'style="font-size:7.6pt;margin-top:3mm">ລົງຊື່:...................... ວັນທີ:..................</div></td> </tr> </table> <div class="c lao" ' +
+          'style="font-size:7pt;color:#666;margin-top:2mm"> ໃບອະນຸຍາດນຳໃຊ້ໃບເກັບເງິນເລກທີ XXX/XXX, ວັນທີ XX/XX/XXXX</div> </div> </div> </div> </div>';
+      },
+      pins: [[1, 'เลขใบเก็บเงินโรงงาน', 'กรอบมุมขวาบน บรรทัด ເລກທີ (เลขที่)', '000000027304', 'm'],
+             [2, 'ทะเบียนรถลาว', 'ตัวเลขท้ายชื่อรายการในตาราง', '3901', ''],
+             [3, 'น้ำหนักที่โรงงานเก็บเงินจริง', 'ช่อง ລວມເປັນເງິນ หารด้วยราคาต่อหน่วย', '19,785,600.75 ÷ 613,507 = 32.25', 'k']] },
+    { k: 'tisi', n: 5, f: '05-tisi-permit.pdf', t: 'ใบอนุญาต สมอ.', g: 0,
+      who: 'สำนักงานมาตรฐานผลิตภัณฑ์อุตสาหกรรม', side: 'th', ph: 2,
+      when: 'ต้องได้ก่อนยื่นใบขนสินค้า ปูนเป็นสินค้าควบคุมมาตรฐาน', fill: 'เลขที่ใบอนุญาต · วันที่ออก · วันหมดอายุ',
+      body: function () {
+        return '<div class="dc"> <div class="th" style="font-size:9.4pt;line-height:1.5"> <div class="c" style="margin-bottom:2mm"><span ' +
+          'style="display:inline-block;border:1px dashed #bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(ตราหน่วยงาน สมอ.<br>อยู่ตรงนี้ในเอกสารจริง)</span></div> <div class="c b" ' +
+          'style="font-size:10.4pt;line-height:1.45">หลักฐานการรับแจ้งข้อมูลการนำเข้าผลิตภัณฑ์อุตสาหกรรมที่มีกฎหมาย<br> ' +
+          'กำหนดให้ต้องเป็นไปตามมาตรฐานเข้ามาในราชอาณาจักร</div> <table style="width:100%;border:0;margin-top:6mm;font-size:9.2pt"> <tr> <td ' +
+          'style="border:0;padding:1mm 0;width:52%">Permit Number :&nbsp; <span class="exh b">20269991104000115475</span><span class="exp">1</span></td> <td ' +
+          'style="border:0;padding:1mm 0">วันที่ออก Permit :&nbsp; <span class="exh b">11-11-2026</span><span class="exp">3</span></td> </tr> <tr> <td ' +
+          'style="border:0;padding:1mm 0">ชื่อผู้นำเข้า :&nbsp; บริษัท บลูสโตนเทรดดิ้ง จำกัด</td> <td style="border:0;padding:1mm 0">วัน Permit หมดอายุ :&nbsp; ' +
+          '<span class="exh b">10-01-2027</span><span class="exp">2</span></td> </tr> <tr> <td style="border:0;padding:1mm 0">เลขที่บัญชีราคาสินค้า ' +
+          ':&nbsp;&nbsp;&nbsp;FCR/9001</td> <td style="border:0;padding:1mm 0">เลขประจำตัวผู้เสียภาษีอากร :&nbsp; 0XXXXXXXXXXXX</td> </tr> <tr> <td ' +
+          'style="border:0;padding:1mm 0">(Invoice Number)</td> <td style="border:0;padding:1mm 0">ลงวันที่ :&nbsp;&nbsp;01-11-2026</td> </tr> <tr><td ' +
+          'colspan="2" style="border:0;padding:1mm 0">วัตถุประสงค์การนำเข้าผลิตภัณฑ์อุตสาหกรรม :&nbsp;&nbsp;&nbsp;&nbsp;นำเข้ามาเพื่อจำหน่าย/จ่ายแจก</td></tr> ' +
+          '<tr><td colspan="2" style="border:0;padding:1mm 0">สถานที่จัดเก็บ :&nbsp; บริษัท บลูสโตนเทรดดิ้ง จำกัด เลขที่ 99 หมู่ 9 แม่กา เมือง พะเยา ' +
+          '56000</td></tr> <tr><td colspan="2" style="border:0;padding:3mm 0 1mm">ประเทศต้นทาง :&nbsp;&nbsp;&nbsp;&nbsp;ลาว</td></tr> <tr><td colspan="2" ' +
+          'style="border:0;padding:0">รายละเอียดผลิตภัณฑ์</td></tr> </table> <table class="grid" style="margin-top:2mm;font-size:8.2pt"> <tr class="c"> <td ' +
+          'style="width:9%">ลำดับที่</td> <td style="width:17%">เลขที่ใบอนุญาต<br><span style="font-size:6.8pt">(เฉพาะรายการที่มีใบอนุญาต)</span></td> <td ' +
+          'style="width:14%">HS Code</td> <td style="width:28%">English Description of Goods</td> <td style="width:14%">ประเทศกำเนิด</td> <td ' +
+          'style="width:11%">ปริมาณ</td> <td style="width:7%">หน่วย</td> </tr> <tr> <td class="c">1</td> <td class="c">น42066-99/15</td> <td ' +
+          'class="c">2523.29.90.000</td> <td class="en" style="font-size:7.6pt">JIANGGE PORTLAND CEMENT TYPE1 LOADED<br>IN BULK TRUCK</td> <td class="c" ' +
+          'style="font-size:7.6pt">สาธารณรัฐประชาธิปไตย<br>ประชาชนลาว</td> <td class="r">64000.000</td> <td class="c">KGM</td> </tr> </table> <div ' +
+          'style="margin-top:5mm;font-size:9pt">เหตุผลในการตรวจปล่อย</div> <div style="font-size:9pt">เงื่อนไขที่ผู้นำเข้าต้องดำเนินการ :</div> <div ' +
+          'style="margin-top:12mm;font-size:9pt">กลุ่ม / กอง</div> <div style="margin-top:2mm;font-size:8.4pt;color:#333">กองตรวจการมาตรฐาน 1 ' +
+          'กลุ่มตรวจการมาตรฐาน 2 โทร : 0 XXXX XXXX ต่อ XXXX</div> <div style="font-size:8.4pt;color:#333">หมายเหตุ :&nbsp; สามารถตรวจสอบข้อมูลข้างต้นได้จาก ' +
+          'เว็บไซต์ของหน่วยงานผู้ออก</div> </div> </div>';
+      },
+      pins: [[1, 'ใบอนุญาต สมอ. เลขที่', 'บรรทัดแรก Permit Number', '20269991104000115475', ''],
              [2, 'สมอ. หมดอายุ', 'ด้านขวา บรรทัด วัน Permit หมดอายุ', '10 ม.ค. 70', ''],
              [3, 'สมอ. วันที่ออก', 'ด้านขวา บรรทัด วันที่ออก Permit', '11 พ.ย. 69', 'm']] },
-
-    { k: 'decl', f: '04-import-declaration.pdf', t: 'ใบขนสินค้า', g: 0,
+    { k: 'decl', n: 6, f: '06-import-declaration.pdf', t: 'ใบขนสินค้าขาเข้า', g: 0,
+      who: 'กรมศุลกากร · ชิปปิ้งไทยเป็นผู้ยื่น', side: 'th', ph: 2,
+      when: 'ยื่นเมื่อเอกสารฝั่งลาวและใบอนุญาตครบแล้ว', fill: 'ใบขนเลขที่ · วันที่ · มูลค่าสินค้าตามใบขน',
       body: function () {
-        return '<div class="row"><div class="b" style="font-size:14px">ใบขนสินค้าขาเข้าพร้อมแบบแสดงรายการภาษีสรรพสามิตและภาษีมูลค่าเพิ่ม</div>' +
-          '<div class="bx" style="white-space:nowrap">เลขที่ใบขนฯ<br>' + exH('A013-0691107386', 1) + '</div></div>' +
-          '<div class="row" style="gap:0;margin-top:8px"><div class="bx" style="flex:1 1 48%"><p class="sm">ผู้นำเข้า (ชื่อ ที่อยู่ โทรศัพท์)</p><p class="b">' + EX_IMP + '</p>' +
-          '<p class="sm" style="margin-top:6px">ใบอนุญาตนำเข้าหรือหนังสือรับรอง</p><p>20261111040000115475 ลว. 11/11/2026<br>E-CO/26041226 ลว. 02/11/2026</p>' +
-          '<p class="sm" style="margin-top:6px">ชื่อยานพาหนะ</p><p>BY TRUCK</p></div>' +
-          '<div style="flex:1 1 52%"><table style="margin:0"><tr><th>ภาษีอากรที่ต้องชำระ</th><th>ค่าภาษีอากร (บาท)</th></tr>' +
-          '<tr><td class="l">อากรขาเข้า</td><td class="r">0.00</td></tr><tr><td class="l">ภาษีสรรพสามิต</td><td class="r">0.00</td></tr>' +
-          '<tr><td class="l">ภาษีมูลค่าเพิ่ม</td><td class="r">9,184.00</td></tr>' +
-          '<tr><td class="l b">รวมทั้งสิ้น</td><td class="r">' + exH('9,184.00', 4) + '</td></tr></table>' +
-          '<div class="bx" style="border-top:0">เลขที่บัญชีราคาสินค้า FCR/0463 วันที่ 01/11/2026<br>วันนำเข้า ' + exH('2026-11-13', 2) + '</div></div></div>' +
-          '<div class="row" style="gap:0"><div class="bx" style="flex:1 1 50%;border-top:0">ประเทศกำเนิด LAO REPUBLIC · ท่าหรือที่นำเข้า ด่านศุลกากรเชียงของ</div>' +
-          '<div class="bx" style="flex:1 1 50%;border-left:0;border-top:0">อัตราแลกเปลี่ยน 1 USD = 33.73800 THB</div></div>' +
-          '<table><tr><th>รายการที่</th><th>ประเภทพิกัด</th><th>ราคาของ (เงินต่างประเทศ)</th><th>ราคาของ (บาท)</th><th>ฐานภาษีมูลค่าเพิ่ม</th><th>ภาษีมูลค่าเพิ่ม</th></tr>' +
-          '<tr><td>0001</td><td>25232990</td><td>USD 1,736.00</td><td>131,209.17</td><td>' + exH('131,209.17', 3) + '</td><td>9,184.64</td></tr></table>' +
-          '<p>น้ำหนักสุทธิ 64,000.000 KGM · JIANGGE PORTLAND CEMENT TYPE 1 · ปูนซีเมนต์ปอร์ตแลนด์ประเภท 1</p>' +
-          '<p class="sm" style="margin-top:8px">(ของจริงมีตราหน่วยงาน บาร์โค้ด และตราประทับเจ้าหน้าที่ศุลกากร)</p>';
+        return '<div class="dc"> <div class="th" style="font-size:7.4pt;line-height:1.3"> <table style="width:100%;border:0;border-collapse:collapse"> <tr> <td ' +
+          'style="border:0;padding:0;width:6mm;vertical-align:middle"> <div ' +
+          'style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:6.4pt;letter-spacing:.2px; ' +
+          'color:#333;white-space:nowrap">ใบขนสินค้าฉบับนี้ส่งชำระค่าธรรมเนียมการผ่านพิธีการศุลกากร 200 บาททางอิเล็กทรอนิกส์<span class="exp">5</span></div> ' +
+          '</td> <td style="border:0;padding:0"> <table style="width:100%;border:0;margin-bottom:.8mm"> <tr> <td style="border:0;padding:0;width:11%"><span ' +
+          'style="display:inline-block;border:1px dashed #bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(ครุฑ<br>อยู่ตรงนี้)</span></td> <td style="border:0;padding:0;text-align:center"> <div style="font-size:6.4pt">เคาน์เตอร์บริการ ' +
+          ': (ชื่อผู้ให้บริการผ่านพิธีการ) ใบอนุญาตเลขที่ 00X/25XX เลขประจำตัวผู้เสียภาษี 0XXXXXXXXXXXX</div> <div ' +
+          'style="display:flex;align-items:flex-end;gap:2mm;margin-top:.6mm"> <span ' +
+          'style="font-size:6.2pt;text-align:left;line-height:1.3;white-space:nowrap">Assessment req. = N<br>Inspection req. = N</span> <span class="b" ' +
+          'style="font-size:9.2pt;flex:1 1 auto">ใบขนสินค้าขาเข้าพร้อมแบบแสดงรายการภาษีสรรพสามิตและภาษีมูลค่าเพิ่ม</span> </div> </td> <td ' +
+          'style="border:0;padding:0;width:20%;text-align:right;vertical-align:top"> <div><span style="display:inline-block;border:1px dashed ' +
+          '#bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm 3mm;line-height:1.3">(บาร์โค้ดเลขที่ใบขนฯ)</span></div> <div ' +
+          'style="font-size:6.4pt;margin-top:1mm">แผ่นที่&nbsp;&nbsp;0/0&nbsp;&nbsp;&nbsp;กศก.99/1</div> </td> </tr> </table> <table class="grid" ' +
+          'style="font-size:7.2pt"> <tr> <!-- ================= ฝั่งซ้าย ================= --> <td style="width:47%;padding:0;vertical-align:top"> <table ' +
+          'class="grid" style="width:100%;border:0;font-size:7.2pt"> <tr><td ' +
+          'style="border-top:0;border-left:0;height:19mm;vertical-align:top;font-size:6.4pt;line-height:1.45"> สั่งการตรวจ <div>11-11-2026 10:37:34 ' +
+          'พบเจ้าหน้าที่ที่ด่านศุลกากร เพื่อขออนุญาตรวม ศบ.1 หลายฉบับต่อ 1 ใบขนสินค้า</div> <div>13-11-2026 12:12:50 ไม่ต้องตรวจสอบพิกัดศุลกากร ' +
+          'ราคาและของไปรับของที่ท่าหรือที่หรือสนามบินที่นำเข้า</div> <div>13-11-2026 12:12:50 ได้รับการชำระเงินเรียบร้อยแล้ว</div> <div>13-11-2026 12:12:50 ' +
+          'ได้รับชำระค่าธรรมเนียมในการดำเนินพิธีการทางศุลกากร เรียบร้อยแล้ว</div> <div>13-11-2026 13:50:10 ส่งมอบสินค้า</div> </td></tr> <tr><td ' +
+          'style="border-left:0;height:26mm;vertical-align:top"> ผู้นำของเข้า (ชื่อ ที่อยู่ โทรศัพท์) <div class="b en" ' +
+          'style="margin-top:1.2mm;font-size:8pt">BLUE STONE TRADING CO., LTD.</div> <div class="b" style="font-size:8.2pt">บริษัท บลูสโตนเทรดดิ้ง จำกัด</div> ' +
+          '<div class="b" style="font-size:8.2pt">99 หมู่ที่ 9 แม่กา</div> <div class="b" style="font-size:8.2pt">เมือง พะเยา 56000 โทร 0XX-XXXXXXX</div> <div ' +
+          'style="display:flex;justify-content:space-between;margin-top:1.4mm"> <span ' +
+          'class="b">0XXXXXXXXXXXX</span><span>สาขา&nbsp;&nbsp;<b>000000</b></span></div> </td></tr> <tr><td ' +
+          'style="border-left:0;height:7mm;vertical-align:top">ชื่อและเลขที่บัตรผ่านพิธีการ <div class="b" ' +
+          'style="display:inline-block;margin-left:3mm">(ชื่อผู้ผ่านพิธีการ) 3XXXXXXXXXXXX</div></td></tr> <tr><td ' +
+          'style="border-left:0;height:13mm;vertical-align:top">ใบอนุญาตนำเข้าหรือหนังสือรับรอง <div class="b" style="margin-top:1mm">20269991104000115475 ลว. ' +
+          '11/11/2026</div> <div class="b">E-CO/99000001 ลว. 02/11/2026</div></td></tr> <tr><td style="border-left:0;padding:0"> <table class="grid" ' +
+          'style="width:100%;border:0;font-size:7.2pt"> <tr> <td style="border-top:0;border-left:0;border-bottom:0;width:58%;height:11mm;vertical-align:top"> ' +
+          'ใบตราส่งเลขที่<div class="b" style="margin-top:1mm">23699990000000642</div></td> <td ' +
+          'style="border-top:0;border-right:0;border-bottom:0;vertical-align:top">แบบ ธ.ต.2 วันที่</td> </tr> </table></td></tr> <tr><td ' +
+          'style="border-left:0;padding:0"> <table class="grid" style="width:100%;border:0;font-size:7.2pt"> <tr> <td ' +
+          'style="border-top:0;border-left:0;border-bottom:0;width:58%;height:11mm;vertical-align:top"> ชื่อยานพาหนะ<div class="b" style="margin-top:1mm">BY ' +
+          'TRUCK</div></td> <td style="border-top:0;border-right:0;border-bottom:0;vertical-align:top">วันนำเข้า <div class="b exh" ' +
+          'style="margin-top:1mm">2026-11-13</div><span class="exp">2</span></td> </tr> </table></td></tr> <tr><td ' +
+          'style="border-left:0;border-bottom:0;padding:0"> <table class="grid" style="width:100%;border:0;font-size:7.2pt"> <tr> <td class="c" ' +
+          'style="border-top:0;border-left:0;border-bottom:0;width:58%;font-size:6.6pt"> เครื่องหมายและเลขหมายหีบห่อ</td> <td class="c" ' +
+          'style="border-top:0;border-right:0;border-bottom:0;font-size:6.6pt">จำนวนและ<br>ลักษณะหีบห่อ</td> </tr> <tr> <td ' +
+          'style="border-left:0;border-bottom:0;height:14mm;vertical-align:top" class="b en">JIANGGE</td> <td class="c b" ' +
+          'style="border-right:0;border-bottom:0;vertical-align:middle">IN BULK<div style="font-weight:400">2 TRUCKS</div></td> </tr> </table></td></tr> ' +
+          '</table> </td> <!-- ================= ฝั่งขวา ================= --> <td style="padding:0;vertical-align:top"> <table class="grid" ' +
+          'style="width:100%;border:0;font-size:7.2pt"> <tr> <td style="border-top:0;border-left:0;width:46%;height:11mm;vertical-align:top">ประเภทใบขนฯ <div ' +
+          'class="b" style="margin-top:1mm">ใบขนสินค้าขาเข้าปกติ</div></td> <td style="border-top:0;border-right:0;vertical-align:top">เลขที่ใบขนฯ <div ' +
+          'style="font-size:6.6pt">DKST000053618</div> <div class="b exh" style="font-size:10.5pt;letter-spacing:.3px">A013-0990000001</div><span ' +
+          'class="exp">1</span></td> </tr> <tr><td colspan="2" style="border-left:0;border-right:0;padding:0"> <table class="grid" ' +
+          'style="width:100%;border:0;font-size:7pt"> <tr class="c"> <td style="border-top:0;border-left:0;width:46%">ภาษีอากรที่ต้องชำระ</td> <td ' +
+          'style="border-top:0;width:27%">ค่าภาษีอากร (บาท)</td> <td style="border-top:0;border-right:0">เงินประกัน (บาท)</td> </tr> <tr><td ' +
+          'style="border-left:0;height:5.6mm">อากรขาเข้า</td><td class="r" style="vertical-align:bottom">0.00</td> <td style="border-right:0"></td></tr> <tr><td ' +
+          'style="border-left:0;height:5.6mm">ภาษีสรรพสามิต</td><td class="r" style="vertical-align:bottom">0.00</td> <td style="border-right:0"></td></tr> ' +
+          '<tr><td style="border-left:0;height:5.6mm">ภาษีเพื่อมหาดไทย</td><td class="r" style="vertical-align:bottom">0.00</td> <td ' +
+          'style="border-right:0"></td></tr> <tr><td style="border-left:0;height:5.6mm">ภาษีมูลค่าเพิ่ม</td> <td class="r b" ' +
+          'style="vertical-align:bottom">9,184.00</td><td style="border-right:0"></td></tr> <tr><td ' +
+          'style="border-left:0;height:5.6mm">ภาษีและค่าธรรมเนียมอื่นๆ</td> <td class="r" style="vertical-align:bottom">0.00</td><td ' +
+          'style="border-right:0"></td></tr> <tr><td style="border-left:0;border-bottom:0;height:6mm">รวมทั้งสิ้น</td> <td class="r b" ' +
+          'style="border-bottom:0;vertical-align:bottom">9,184.00<span class="exp">4</span></td> <td style="border-right:0;border-bottom:0"></td></tr> ' +
+          '</table></td></tr> <tr><td colspan="2" style="border-left:0;border-right:0;height:7mm;vertical-align:top"> ' +
+          'เลขที่บัญชีราคาสินค้า&nbsp;&nbsp;&nbsp;&nbsp;วันที่ 01/11/2026 <div class="b" style="margin-top:.6mm">FCR/9001</div></td></tr> <tr><td colspan="2" ' +
+          'style="border-left:0;border-right:0;height:20mm;vertical-align:top"> เลขที่ชำระภาษีอากร/ประกัน <div style="margin-top:11mm">Payment No.&nbsp; ' +
+          '090111&nbsp;&nbsp;Bank Transaction No. mKTB9990009000</div></td></tr> <tr><td colspan="2" style="border-left:0;border-right:0;padding:0"> <table ' +
+          'class="grid" style="width:100%;border:0;font-size:7pt"> <tr> <td ' +
+          'style="border-top:0;border-left:0;border-bottom:0;width:38%;font-size:6.6pt">ประเทศกำเนิด</td> <td class="r" ' +
+          'style="border-top:0;border-bottom:0;width:12%;font-size:6.6pt">รหัส</td> <td ' +
+          'style="border-top:0;border-bottom:0;width:38%;font-size:6.6pt">ประเทศต้นทางที่บรรทุก</td> <td class="r" ' +
+          'style="border-top:0;border-right:0;border-bottom:0;font-size:6.6pt">รหัส</td> </tr> <tr> <td class="b" ' +
+          'style="border-left:0;border-top:0;border-bottom:0;height:6mm">LAO REPUBLIC</td> <td class="r b" style="border-top:0;border-bottom:0">LA</td> <td ' +
+          'class="b" style="border-top:0;border-bottom:0">LAO REPUBLIC</td> <td class="r b" style="border-top:0;border-right:0;border-bottom:0">LA</td> </tr> ' +
+          '<tr> <td style="border-left:0;border-bottom:0;font-size:6.6pt">ท่าหรือที่นำเข้า</td> <td class="r" style="border-bottom:0;font-size:6.6pt">รหัส</td> ' +
+          '<td style="border-bottom:0;font-size:6.6pt">สถานที่ตรวจปล่อย</td> <td class="r" style="border-right:0;border-bottom:0;font-size:6.6pt">รหัส</td> ' +
+          '</tr> <tr> <td class="b" style="border-left:0;border-top:0;border-bottom:0;height:9mm;vertical-align:top">ด่านศุลกากรเชียงของ</td> <td class="r b" ' +
+          'style="border-top:0;border-bottom:0;vertical-align:top">4401</td> <td class="b" ' +
+          'style="border-top:0;border-bottom:0;vertical-align:top;font-size:6.4pt">ด่านพรมแดนเชียงของแห่งที่ 4 สะพานมิตรภาพไทย-ลาว แห่งที่ 4 ' +
+          'เชียงของ-ห้วยทราย</td> <td class="r b" style="border-top:0;border-right:0;border-bottom:0;vertical-align:top">4405</td> </tr> </table></td></tr> ' +
+          '</table> </td> </tr> <tr> <td style="font-size:6.8pt;height:8mm;vertical-align:top">จำนวนที่บรรจุรวม (ตัวเลข) <div class="b" ' +
+          'style="font-size:7.4pt">2 TRUCKS (TWO TRUCKS ONLY)</div></td> <td style="font-size:6.8pt;vertical-align:top">อัตราแลกเปลี่ยน <div class="b" ' +
+          'style="font-size:7.4pt">1 USD = 33.73800 THB</div></td> </tr> </table> <!-- ================= ตารางรายการสินค้า ================= --> <table ' +
+          'class="grid" style="font-size:6.6pt;border-top:0"> <tr class="c"> <td style="width:6%;font-size:6.2pt">รายการ<br>ที่</td><td ' +
+          'style="width:11%">ประเภทพิกัด</td> <td style="width:14%">ราคาของ<br>(เงินต่างประเทศ)</td><td ' +
+          'style="width:6%;font-size:6.2pt">อัตรา<br>อากร<br>ขาเข้า</td> <td style="width:12%">อากรขาเข้าตามปกติ</td><td style="width:11%">ค่าธรรมเนียม</td> <td ' +
+          'style="width:12%;font-size:6.2pt">รหัสสินค้าสรรพสามิต</td><td style="width:11%">ภาษีสรรพสามิต</td> <td>ฐานภาษีมูลค่าเพิ่ม</td> </tr> <tr> <td ' +
+          'class="c b" rowspan="3" style="vertical-align:middle">0001</td> <td class="c">25232990</td><td class="r b">USD 1,736.00</td> <td class="c">0%</td><td ' +
+          'class="r">0.00</td><td class="r">0.00</td><td></td><td class="r">0.00</td> <td class="r b exh">131,209.17<span class="exp">3</span></td> </tr> <tr> ' +
+          '<td style="font-size:6pt">รหัสสถิติ หน่วย<div class="b" style="font-size:6.8pt">000/KGM</div></td> <td style="font-size:6pt">ราคาของ (บาท)<div ' +
+          'class="r b" style="font-size:6.8pt">131,209.17</div></td> <td></td> <td style="font-size:6pt">อากรขาเข้าที่ชำระ<div class="r" ' +
+          'style="font-size:6.8pt">0.00</div></td> <td style="font-size:6pt">ภาษีอื่น<div class="r" style="font-size:6.8pt">0.00</div></td> <td ' +
+          'style="font-size:6pt">อัตราภาษีสรรพสามิต<div class="r" style="font-size:6.8pt">0.00</div></td> <td style="font-size:6pt">ภาษีเพื่อมหาดไทย<div ' +
+          'class="r" style="font-size:6.8pt">0.00</div></td> <td style="font-size:6pt">ภาษีมูลค่าเพิ่ม<div class="r b" style="font-size:7pt">9,184.64</div></td> ' +
+          '</tr> <tr> <td style="font-size:6pt">รหัสสิทธิพิเศษ<div class="c b" style="font-size:7.4pt">ATG</div></td> <td style="font-size:6pt">น้ำหนักสุทธิ<div ' +
+          'class="r b" style="font-size:6.8pt">64,000.000 KGM</div></td> <td style="font-size:6pt">ปริมาณ<div class="r" style="font-size:6.8pt">64,000.000 ' +
+          'KGM</div></td> <td colspan="5" style="font-size:6.2pt">20269991104000115475&nbsp;&nbsp;&nbsp;(LA) ชนิดของ&nbsp;&nbsp;NO BRAND <div class="b en" ' +
+          'style="font-size:7pt;margin-top:.4mm">JIANGGE PORTLAND CEMENT TYPE 1</div> <div style="font-size:6.8pt">ปูนซีเมนต์ปอร์ตแลนด์ประเภท 1</div></td> </tr> ' +
+          '<tr> <td colspan="3" style="font-size:6.6pt;height:9mm;vertical-align:top">Inv No. :&nbsp; FCR/9001 <div ' +
+          'style="margin-top:1.6mm">Oth.THB=72640.00&nbsp;&nbsp;E-CO/99000001</div></td> <td colspan="6" style="font-size:6.6pt;vertical-align:top">Org ' +
+          'Cri.99.99%</td> </tr> <tr><td style="height:8mm"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> <tr><td ' +
+          'style="height:8mm"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> <tr><td ' +
+          'style="height:8mm"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> <tr> <td class="c b" ' +
+          'style="vertical-align:top;height:12mm">รวม<div>CIF</div></td> <td></td> <td class="r b" style="vertical-align:top">USD 1,736.00<div ' +
+          'style="margin-top:3mm">131,209.17</div></td> <td></td> <td class="r" style="vertical-align:top">0.00<div style="margin-top:3mm">0.00</div></td> <td ' +
+          'class="r" style="vertical-align:top">0.00<div style="margin-top:3mm">0.00</div></td> <td></td> <td class="r" style="vertical-align:top">0.00<div ' +
+          'style="margin-top:3mm">0.00</div></td> <td class="r b" style="vertical-align:bottom">9,184.64</td> </tr> <tr> <td colspan="2" ' +
+          'style="font-size:6.4pt;vertical-align:top">รวมน้ำหนักสุทธิ <div class="b" style="font-size:6.8pt">64,000.000 KGM</div> <div ' +
+          'style="margin-top:1mm">STATUS0409</div><div>13/11/2026</div></td> <td colspan="2" style="font-size:6.4pt;vertical-align:top">Oth.THB=72640.00 <div ' +
+          'style="margin-top:2mm">ปริมาณ&nbsp;&nbsp;<b>64,000.000</b></div></td> <td colspan="3" class="r" ' +
+          'style="font-size:6.6pt;vertical-align:top">รวมค่าภาษีอากรทั้งสิ้น</td> <td colspan="2" class="r b" style="font-size:7pt;vertical-align:top">9,184.64 ' +
+          '<div style="font-weight:400;font-size:6.4pt;margin-top:2mm">GW.= 64,000.000 KGM</div> <div ' +
+          'style="font-weight:400;font-size:6.4pt">ประทับตรา</div></td> </tr> </table> <div style="border:1px solid #000;border-top:0;padding:1.4mm ' +
+          '2mm;font-size:6.8pt;line-height:1.5"> ข้าพเจ้าขอรับรองว่ารายการที่แสดงข้างต้นนี้เป็นความจริงทุกประการ ' +
+          '<div>หากไม่ถูกต้องครบถ้วนข้าพเจ้ายอมรับเป็นความผิดทางกฎหมาย <span style="margin-left:14mm">(ลายมือชื่อผู้นำของเข้า)</span> <span ' +
+          'style="margin-left:4mm"><span class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></span> <span style="margin-left:10mm">นิติบุคคล ' +
+          '(ถ้ามี)</span></div> <div style="display:flex;justify-content:space-between;margin-top:2.4mm"> ' +
+          '<span>เลขที่บัตรผู้จัดการ/ผู้รับมอบ.&nbsp;&nbsp;<b>3XXXXXXXXXXXX</b></span> <span>วันที่</span> ' +
+          '<span>วันที่ออกเลขที่ใบขนฯ&nbsp;&nbsp;<b>2026-11-13</b></span> </div> </div> </td> </tr> </table> </div> </div>';
       },
-      pins: [[1, 'ใบขนสินค้าเลขที่', 'กรอบมุมขวาบน เลขที่ใบขนฯ', 'A013-0691107386', ''],
-             [2, 'วันที่นำเข้า (ปุ่มสีเขียวบนสุดของหน้า)', 'กรอบด้านขวา บรรทัด วันนำเข้า', '13 พ.ย. 69', ''],
-             [3, 'มูลค่าสินค้าตามใบขน (บาท)', 'ตารางรายการ คอลัมน์ ฐานภาษีมูลค่าเพิ่ม', '131209.17', 'm'],
-             [4, 'ยอดนี้ยังไม่รวมค่าธรรมเนียม 200 บาท', 'ตารางภาษี บรรทัด รวมทั้งสิ้น ช่องจ่ายกรมศุลกากรให้ดูจากใบชำระภาษีหรือสลิป', '9,184 + 200 = 9,384', 'k']] },
-
-    { k: 'pay', f: '05-tax-payment-slip.pdf', t: 'ใบชำระภาษีและสลิป', g: 0,
+      pins: [[1, 'ใบขนสินค้าเลขที่', 'กรอบมุมขวาบน เลขที่ใบขนฯ', 'A013-0990000001', ''],
+             [2, 'วันที่ใบขน', 'กรอบกลาง บรรทัด วันนำเข้า', '13 พ.ย. 69', ''],
+             [3, 'มูลค่าสินค้าตามใบขน (บาท)', 'ตารางรายการ ช่อง ภาษีมูลค่าเพิ่ม/ฐานภาษีมูลค่าเพิ่ม', '131209.17', 'm'],
+             [4, 'ยอดภาษียังไม่รวมค่าธรรมเนียม 200 บาท', 'ตารางภาษีด้านบน บรรทัด รวมทั้งสิ้น', '9,184 + 200 = 9,384', 'k']] },
+    { k: 'pay', n: 7, f: '07-tax-payment-slip.pdf', t: 'ใบชำระภาษี', g: 0,
+      who: 'กรมศุลกากรออกแบบฟอร์ม · จ่ายผ่านธนาคาร', side: 'bank', ph: 2,
+      when: 'ต้องจ่ายก่อน ถ้ายังไม่จ่ายศุลกากรจะไม่ตรวจปล่อย รถออกจากด่านไม่ได้', fill: 'ยอดจ่ายกรมศุลกากร · เลขอ้างอิงการชำระเงิน',
       body: function () {
-        return '<p class="b" style="font-size:14px">แบบฟอร์มชำระค่าภาษีของใบขนสินค้าเลขที่ A013-0691107386</p>' +
-          '<p>สำหรับผ่านช่องทางอิเล็กทรอนิกส์ของธนาคาร/ตัวแทนรับชำระ</p>' +
-          '<div class="bx" style="margin:10px 0"><p>ชื่อ ' + EX_IMP + '</p><p>เลขที่อ้างอิง 1 (Reference 1) : 10A0130691107386</p>' +
-          '<p>เลขที่อ้างอิง 2 (Reference 2) : (เลขประจำตัวผู้เสียภาษี)</p>' +
-          '<p>จำนวนเงินที่ชำระ ' + exH('9,384.00', 1) + ' บาท</p></div>' +
-          '<p class="sm">(ของจริงมีคิวอาร์โค้ดและบาร์โค้ดสำหรับสแกนจ่าย)</p>' +
-          '<p class="b" style="font-size:14px;margin-top:16px">สลิปธนาคาร · จ่ายบิลสำเร็จ</p>' +
-          '<div class="bx" style="margin:10px 0;max-width:380px"><p>รหัสอ้างอิง ' + exH('mKTB2335209000', 2) + '</p>' +
-          '<p>จาก (ชื่อผู้โอน) · (เลขบัญชีบางส่วน)</p><p>ไปยัง กรมศุลกากร รับชำระเงินตามเลขที่ใบขนสินค้า</p>' +
-          '<p>จำนวนเงิน <b>9,384.00 บาท</b> · ค่าธรรมเนียม 0.00 บาท</p><p>วันที่ทำรายการ 13 พ.ย. 2569 - 13:35</p></div>' +
-          '<p class="sm">(ของจริงมีโลโก้ธนาคารและคิวอาร์โค้ดตรวจสอบสลิป)</p>';
+        return '<div class="dc"> <div class="th" style="font-size:9pt;line-height:1.55"> <div style="font-size:10.4pt" ' +
+          'class="b">แบบฟอร์มชำระค่าภาษีของใบขนสินค้าเลขที่ <span class="u exh">&nbsp;A013-0990000001&nbsp;</span>...............................</div> <div ' +
+          'style="font-size:10.4pt" class="b">สำหรับผ่านช่องทางอิเล็กทรอนิกส์ของธนาคาร/ตัวแทนรับชำระ</div> <div style="margin:4mm 0 3mm"><span ' +
+          'style="display:inline-block;border:1px dashed #bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(คิวอาร์โค้ดและบาร์โค้ดสำหรับสแกนจ่าย อยู่ตรงนี้ในเอกสารจริง)</span></div> <table style="width:88%;border:1px solid ' +
+          '#000;margin-top:2mm"> <tr><td style="border:0;padding:3mm 4mm"> <div>ชื่อ.......<span class="u">&nbsp;บริษัท บลูสโตนเทรดดิ้ง ' +
+          'จำกัด&nbsp;</span>..............................................</div> <div style="margin-top:2mm">เลขที่อ้างอิง 1 (Reference1.) : .......<span ' +
+          'class="u">&nbsp;10A0130990000001&nbsp;</span>...........</div> <div style="margin-top:2mm">เลขที่อ้างอิง 2 (Reference2.) : .......<span ' +
+          'class="u">&nbsp;00000000XXXXXXXXXXXX&nbsp;</span>.......</div> <div style="margin-top:2mm">จำนวนเงินที่ชำระ ..........<span class="u b ' +
+          'exh">&nbsp;9,384.00&nbsp;</span><span class="exp">1</span>.......... บาท</div> </td></tr> </table> <div ' +
+          'style="margin-top:5mm">หมายเลขโทรศัพท์ของผู้ประกอบการ ..................................................................</div> <div ' +
+          'style="margin-top:3mm">ธนาคาร/ตัวแทนรับชำระเงิน ............................................... สาขา ..................</div> <div ' +
+          'style="margin-top:4mm;text-align:center">ลงชื่อ ................................................ (ผู้รับเงิน)</div> <div ' +
+          'style="margin-top:8mm;border:1px solid #999;padding:3mm 4mm;font-size:8.4pt;line-height:1.5"> <b>ทำไมต้องจ่ายให้เสร็จก่อน</b><br> ' +
+          'ศุลกากรจะยังไม่ตรวจปล่อยสินค้าจนกว่าจะได้รับเงินภาษีครบตามใบขนฉบับนี้ ถ้ายังไม่จ่าย รถจะออกจากด่านไม่ได้ ของค้างอยู่ที่ด่าน ' +
+          'และอาจมีค่าใช้จ่ายที่ด่านเพิ่มขึ้นทุกวัน<br> เมื่อจ่ายแล้ว ธนาคารหรือตัวแทนรับชำระจะออกหลักฐานการจ่ายให้ ' +
+          'และระบบศุลกากรจะบันทึกเลขอ้างอิงการชำระเงินไว้ ซึ่งจะไปปรากฏในใบขนสินค้าที่บรรทัด Bank Transaction No. ด้วย </div> <div ' +
+          'style="margin-top:6mm;font-size:8.4pt;color:#555;line-height:1.5"> ยอดในใบนี้มักมากกว่ายอดภาษีที่พิมพ์ในใบขนสินค้า ' +
+          'เพราะรวมค่าธรรมเนียมของกรมศุลกากรเข้าไปด้วย เวลากรอกลงเว็บให้กรอกยอดที่จ่ายจริงตามใบนี้ </div> </div> </div>';
       },
-      pins: [[1, 'จ่ายกรมศุลกากร (บาท)', 'ใบชำระภาษี บรรทัด จำนวนเงินที่ชำระ ต้องตรงกับจำนวนเงินในสลิป', '9384.00', ''],
-             [2, 'เลขอ้างอิงการชำระเงิน', 'สลิปธนาคาร บรรทัด รหัสอ้างอิง', 'mKTB2335209000', 'm']] },
-
-    { k: 'bill', f: '06-lao-shipping-bill.pdf', t: 'บิลชิปปิ้งลาว', g: 0,
+      pins: [[1, 'จ่ายกรมศุลกากร (บาท)', 'กรอบกลางหน้า บรรทัด จำนวนเงินที่ชำระ', '9384.00', ''],
+             [2, 'เลขอ้างอิงการชำระเงิน', 'สลิปโอนเงินใบถัดไป (ลำดับ 08) หรือบรรทัด Bank Transaction No. ในใบขนสินค้า', 'mKTB9990009000', 'm']] },
+    { k: 'slip', n: 8, f: '08-bank-transfer-slip.pdf', t: 'สลิปโอนเงินจ่ายภาษี', g: 0,
+      who: 'ธนาคารที่โอนจ่าย', side: 'bank', ph: 2,
+      when: 'ออกทันทีที่โอนเงินตามใบชำระภาษี ยอดต้องตรงกัน', fill: 'จ่ายกรมศุลกากร (บาท) · เลขอ้างอิงการชำระเงิน',
       body: function () {
-        return '<p class="c b" style="font-size:14px">' + esc(nm.shipperFull) + '</p><p class="c">Ban HOUYSAY, HOUYSAY, BORKEW, LAO P.D.R</p>' +
-          '<p class="r">DATE: 13/11/2026<br>Truck receipt No : FCTR-0463</p>' +
-          '<p class="ttl">INVOICE / TRUCK RECEIPT</p>' +
-          '<p>Consignee name: ' + EX_IMP + '</p><p>Pick up point: ' + esc(nm.factory) + '</p><p>Destination place: CHIANG KHONG, CHIANG RAI, THAILAND</p>' +
-          '<table><tr><th>MARK &amp; NO.</th><th>DESCRIPTION</th><th>QUANTITIES (TON)</th><th>NET WEIGHT (KGM)</th><th>UNIT PRICE (THB/TON)</th><th>AMOUNT (THB)</th></tr>' +
-          '<tr><td>JIANGGE</td><td class="l">JIANGGE PORTLAND CEMENT TYPE I</td><td>64.00</td><td>64,000.00</td>' +
-          '<td>' + exH('1,135.00', 1) + '</td><td>' + exH('72,640.00', 2) + '</td></tr>' +
-          '<tr><td colspan="5" class="l">TOTAL (Freight &amp; Insurance 1,000.00 THB/TNE + Shipping Laos Fee 135.00 THB/TNE)</td><td>72,640.00</td></tr></table>' +
-          '<table style="max-width:420px"><tr><td class="l">DESCRIPTION</td><td class="l">JIANGGE PORTLAND CEMENT TYPE I</td></tr>' +
-          '<tr><td class="l">QUANTITIES</td><td class="l">64.00 TONs</td></tr>' +
-          '<tr><td class="l">DELIVERY BY</td><td class="l">' + exH('2', 3) + ' Truck</td></tr></table>' +
-          '<p class="sm">Payment to : (ชื่อบัญชีและเลขบัญชีของผู้ให้บริการ)</p>' + EX_SIG;
+        return '<div class="dc"> <div class="th" style="font-size:9pt;line-height:1.5"> <table style="width:86mm;margin:2mm auto 0;border:1px solid ' +
+          '#c9c9d6;border-radius:3mm;border-collapse:separate"> <tr><td style="border:0;padding:6mm 6mm 7mm"> <div class="c" style="margin-bottom:3mm"><span ' +
+          'style="display:inline-block;border:1px dashed #bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(โลโก้ธนาคาร อยู่ตรงนี้ในเอกสารจริง)</span></div> <div class="c" style="margin-bottom:2mm"> <span ' +
+          'style="display:inline-block;width:11mm;height:11mm;border-radius:50%;border:1.6px solid #0a7a4f; ' +
+          'color:#0a7a4f;font-size:15pt;line-height:10.4mm;font-weight:700">&#10003;</span></div> <div class="c b" style="font-size:12pt">โอนเงินสำเร็จ</div> ' +
+          '<div class="c" style="font-size:8.4pt;color:#6b6b7b;margin-bottom:4mm">13 พ.ย. 2569 &nbsp;13:35 น.</div> <div style="border-top:1px solid ' +
+          '#e3e3ee;padding-top:3mm"> <div style="font-size:8.4pt;color:#6b6b7b">จาก</div> <div class="b" style="font-size:9.4pt">บริษัท บลูสโตนเทรดดิ้ง ' +
+          'จำกัด</div> <div style="font-size:8.4pt;color:#6b6b7b">บัญชีออมทรัพย์ XXX-X-XXXXX-X</div> </div> <div style="margin-top:3mm;border-top:1px solid ' +
+          '#e3e3ee;padding-top:3mm"> <div style="font-size:8.4pt;color:#6b6b7b">ไปยัง</div> <div class="b" style="font-size:9.4pt">กรมศุลกากร</div> <div ' +
+          'style="font-size:8.4pt;color:#6b6b7b">รับชำระค่าภาษีอากรขาเข้า (Bill Payment)</div> </div> <div style="margin-top:3mm;border-top:1px solid ' +
+          '#e3e3ee;padding-top:1mm"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2.4mm"><span ' +
+          'style="color:#6b6b7b;font-size:8.4pt">จำนวนเงิน</span><span class="b" style="font-size:13pt;text-align:right"><span class="exh b">9,384.00</span> ' +
+          'บาท<span class="exp">1</span></span></div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2.4mm"><span ' +
+          'style="color:#6b6b7b;font-size:8.4pt">ค่าธรรมเนียม</span><span class="" style="font-size:9pt;text-align:right">0.00 บาท</span></div><div ' +
+          'style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2.4mm"><span style="color:#6b6b7b;font-size:8.4pt">Ref.1 ' +
+          '(เลขที่ใบขนสินค้า)</span><span class="" style="font-size:9pt;text-align:right">10A0130990000001</span></div><div ' +
+          'style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2.4mm"><span ' +
+          'style="color:#6b6b7b;font-size:8.4pt">Ref.2</span><span class="" style="font-size:9pt;text-align:right">00000000XXXXXXXXXXXX</span></div><div ' +
+          'style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2.4mm"><span ' +
+          'style="color:#6b6b7b;font-size:8.4pt">รหัสอ้างอิง</span><span class="b" style="font-size:9pt;text-align:right"><span class="exh ' +
+          'b">mKTB9990009000</span><span class="exp">2</span></span></div> </div> <div class="c" style="margin-top:4mm"><span ' +
+          'style="display:inline-block;border:1px dashed #bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(คิวอาร์สำหรับตรวจสอบสลิป)</span></div> <div class="c" style="font-size:7.4pt;color:#8a8a9c;margin-top:2mm"> ' +
+          'สลิปนี้เป็นหลักฐานการชำระเงิน ตรวจสอบได้ที่แอปของธนาคาร</div> </td></tr> </table> <div style="width:86mm;margin:5mm auto 0;border:1px solid ' +
+          '#c0392b;border-radius:2mm;padding:3mm 4mm; font-size:8.6pt;line-height:1.55"> <div class="b" style="color:#c0392b;margin-bottom:1mm">ยอดโอน 9,384.00 ' +
+          '= ภาษีมูลค่าเพิ่ม 9,184.00 + ค่าธรรมเนียมผ่านพิธีการ 200.00</div> ยอดที่โอนมากกว่ายอดภาษีในใบขนสินค้า 200 บาท ' +
+          'เพราะรวมค่าธรรมเนียมการผ่านพิธีการศุลกากรที่เก็บต่อใบขนหนึ่งฉบับไว้ด้วย (ในใบขนจะมีข้อความพิมพ์ไว้ที่ขอบซ้ายว่าส่งชำระค่าธรรมเนียม 200 ' +
+          'บาททางอิเล็กทรอนิกส์) · โอนครั้งเดียวแต่กรมศุลกากรจะออกใบเสร็จให้ 2 ฉบับ แยกภาษีกับค่าธรรมเนียม ดูใบลำดับ 09 <div class="b" ' +
+          'style="color:#c0392b;margin:1.5mm 0 1mm">ต้องโอนให้เสร็จก่อน รถจึงออกจากด่านได้</div> ' +
+          'ศุลกากรจะยังไม่ตรวจปล่อยสินค้าจนกว่าจะได้รับเงินภาษีครบตามใบขนสินค้า ถ้ายังไม่โอน รถที่จอดรอที่ด่านจะออกมาไม่ได้ ของค้างอยู่ที่ด่าน ' +
+          'และอาจมีค่าใช้จ่ายที่ด่านเพิ่มขึ้นทุกวัน · เมื่อโอนแล้ว เก็บสลิปใบนี้ไว้คู่กับใบชำระภาษี ใช้เป็นหลักฐานตอนกระทบยอดกับใบแจ้งหนี้ของชิปปิ้ง </div> ' +
+          '</div> </div>';
       },
-      pins: [[1, 'ราคาต่อตันในบิล', 'คอลัมน์ UNIT PRICE ต้องเท่ากับ ค่าขนส่งและประกัน 1,000 + ค่าชิปปิ้งลาวตามขั้นจำนวนคัน 135 ที่ตั้งไว้ในหน้าตั้งค่าอัตรา', '1,000 + 135 = 1,135', 'k'],
-             [2, 'ยอดรวมของบิล', 'คอลัมน์ AMOUNT เทียบกับป้าย “บิล…ควรเป็น … บาท” ในหัวข้อ 3 ระบบตรวจให้', '72,640.00', 'k'],
-             [3, 'จำนวนคันที่ใช้คิดขั้นราคา', 'บรรทัด DELIVERY BY ต้องตรงกับช่องจำนวนคันของชุด', '2', 'k']] },
-
-    { k: 'trk', f: '07-truck-list.pdf', t: 'ใบรายการรถ', g: 0,
+      pins: [[1, 'จ่ายกรมศุลกากร (บาท)', 'กลางสลิป บรรทัด จำนวนเงิน ต้องเท่ากับใบชำระภาษีใบก่อนหน้า', '9384.00', ''],
+             [2, 'เลขอ้างอิงการชำระเงิน', 'ท้ายสลิป บรรทัด รหัสอ้างอิง (บางธนาคารเขียน Transaction No.)', 'mKTB9990009000', 'm']] },
+    { k: 'rcpt', n: 9, f: '09-customs-receipt.pdf', t: 'ใบเสร็จรับเงินกรมศุลกากร', g: 0,
+      who: 'กรมศุลกากร (ระบบอิเล็กทรอนิกส์)', side: 'th', ph: 2,
+      when: 'ได้หลังโอนเงินสำเร็จ ออกเป็น 2 ฉบับ ภาษีกับค่าธรรมเนียม 200', fill: 'ไม่ต้องกรอก ใช้ตรวจยอดและใช้เครดิตภาษีซื้อ',
       body: function () {
-        return '<p class="c b">' + EX_IMP + '</p><p class="c b">ปูนซีเมนต์ปอร์ตแลนด์ ประเภท 1 (JIANGGE PORTLAND CEMENT TYPE 1)</p>' +
-          '<table class="exs"><tr><th rowspan="2">วันที่นำเข้า (ไทย)</th><th colspan="2">Invoice</th><th rowspan="2">น้ำหนัก (KGM)</th><th rowspan="2">ที่</th>' +
-          '<th colspan="2">ทะเบียนรถ (ไทย)</th><th rowspan="2">ยี่ห้อรถ</th><th rowspan="2">พนักงานขับรถ</th><th rowspan="2">โทรศัพท์</th><th rowspan="2">ทะเบียนรถ (ลาว)</th></tr>' +
-          '<tr><th>No.</th><th>Date</th><th>(หัว)</th><th>(หาง)</th></tr>' +
-          '<tr><td rowspan="2">13-11-2026</td><td rowspan="2">FCR/0463</td><td rowspan="2">01-11-2026</td><td>32,000</td><td>1</td>' +
-          '<td>' + exH('71-0087 เชียงราย', 1) + '</td><td>' + exH('67-0363 กทม', 2) + '</td><td>VOLVO</td>' +
-          '<td>' + exH('นายสมชาย ใจดี', 3) + '</td><td>' + exH('081-234-5678', 4) + '</td><td>' + exH('3957', 5) + '</td></tr>' +
-          '<tr><td>32,000</td><td>2</td><td>70-8787 เชียงราย</td><td>65-3566 กทม</td><td>ISUZU</td><td>นายสมศักดิ์ รักงาน</td><td>089-876-5432</td><td>6033</td></tr>' +
-          '<tr><td colspan="3" class="b">Total</td><td class="b">64,000</td><td colspan="7"></td></tr></table>' +
-          '<p class="sm">ชื่อพนักงานขับรถและเบอร์โทรในตัวอย่างนี้เป็นชื่อสมมุติ</p>';
+        return '<div class="dc"><div class="th" style="font-size:7.6pt"><div class="b" style="font-size:8.6pt;margin-bottom:2mm">จ่ายครั้งเดียว ได้ใบเสร็จ 2 ฉบับ — ' +
+          'ฉบับภาษีมูลค่าเพิ่ม และฉบับค่าธรรมเนียมผ่านพิธีการ 200 บาท</div><div style="border:1px solid #9a9ab0;padding:4mm 5mm ' +
+          '3mm;margin-bottom:4mm;font-size:7.6pt;line-height:1.45"><table style="width:100%;border:0"><tr><td ' +
+          'style="border:0;padding:0;width:42%;vertical-align:top"><div class="b">69111170476400000154</div><div>กรมศุลกากร</div><div ' +
+          'style="font-size:7pt">เลขที่ 1 ถ.สุนทรโกษา</div><div style="font-size:7pt">เขตคลองเตย แขวงคลองเตย กทม. 10110</div></td><td class="c" ' +
+          'style="border:0;padding:0;vertical-align:top"><span style="display:inline-block;border:1px dashed ' +
+          '#bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(ตราครุฑกรมศุลกากร<br>อยู่ตรงนี้ในเอกสารจริง)</span></td><td class="r" ' +
+          'style="border:0;padding:0;width:32%;vertical-align:top"><div class="b" style="font-size:10pt">ใบเสร็จรับเงิน</div><div class="b" ' +
+          'style="font-size:9pt">กศก. 123</div><div ' +
+          'style="font-size:6.8pt;margin-top:2mm">ชำระผ่านช่องทางอิเล็กทรอนิกส์ของธนาคาร/ตัวแทนรับชำระ</div></td></tr></table><div ' +
+          'style="margin-top:3mm">เลขประจำตัวผู้เสียภาษีอากร 0XXXXXXXXXXXX/000000</div><div>ชื่อผู้นำของเข้า/ผู้ส่งของออก&nbsp; บจก. บลูสโตนเทรดดิ้ง</div><div ' +
+          'style="display:flex;justify-content:space-between;margin-top:2.5mm"><span>เลขที่ใบขนสินค้า <b>A013-0990000001</b> ' +
+          '(4405)</span><span>เลขที่ชำระอากร/วันเดือนปี <b>4401-090111</b>/13-11-69</span></div><table class="grid" ' +
+          'style="margin-top:2.5mm;font-size:7.4pt;border-color:#9a9ab0"><tr style="background:#cfe7cf"><td class="c b" ' +
+          'style="border-color:#9a9ab0">ได้รับเงินตามรายการข้างล่างนี้ไว้แล้ว</td><td class="c b" style="width:26%;border-color:#9a9ab0">ที่ชำระตามสำแดง ' +
+          '(บาท)</td><td class="c b" style="width:22%;border-color:#9a9ab0">ที่วางประกัน (บาท)</td></tr><tr style="background:#ededed"><td ' +
+          'style="border-color:#9a9ab0">ค่าภาษีมูลค่าเพิ่ม</td><td class="c b" style="border-color:#9a9ab0">9,184.00<span class="exp">1</span></td><td ' +
+          'style="border-color:#9a9ab0"></td></tr><tr><td style="border-color:#9a9ab0;height:13mm" class="c"><span style="display:inline-block;border:1px dashed ' +
+          '#bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm 3mm;line-height:1.3">(ลายน้ำตราครุฑ อยู่ตรงนี้ในเอกสารจริง)</span></td><td ' +
+          'style="border-color:#9a9ab0"></td><td style="border-color:#9a9ab0"></td></tr><tr style="background:#cfe7cf"><td style="border-color:#9a9ab0"></td><td ' +
+          'class="c b" style="border-color:#9a9ab0">9,184.00</td><td style="border-color:#9a9ab0"></td></tr><tr style="background:#f6cfcf"><td class="r b" ' +
+          'style="border-color:#9a9ab0">รวมเงินทั้งสิ้น (บาท)</td><td class="c b" style="border-color:#9a9ab0">9,184.00</td><td ' +
+          'style="border-color:#9a9ab0"></td></tr><tr style="background:#f6cfcf"><td colspan="3" ' +
+          'style="border-color:#9a9ab0">จำนวนเงินตัวอักษร&nbsp;&nbsp;&nbsp;&nbsp;(เก้าพันหนึ่งร้อยแปดสิบสี่บาทถ้วน.)</td></tr></table><div ' +
+          'style="font-size:7pt;margin-top:1.5mm">ใบเสร็จรับเงินฉบับนี้จะสมบูรณ์ต่อเมื่อกรมศุลกากรได้รับเงินครบถ้วนแล้ว</div><div ' +
+          'style="display:flex;justify-content:center;gap:4mm;align-items:flex-end;margin-top:3mm"><span>ลงชื่อ</span><span><span ' +
+          'class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></span><span>ผู้รับมอบอำนาจ</span></div><div class="c" ' +
+          'style="font-size:7pt">(ชื่อเจ้าหน้าที่ผู้รับเงิน)<br>นักวิชาการเงินและบัญชีชำนาญการ</div><div class="r" style="font-size:6.8pt;color:#666">13-11-2569 ' +
+          '14:04:41</div></div><div style="border:1px solid #9a9ab0;padding:4mm 5mm 3mm;margin-bottom:4mm;font-size:7.6pt;line-height:1.45"><table ' +
+          'style="width:100%;border:0"><tr><td style="border:0;padding:0;width:42%;vertical-align:top"><div ' +
+          'class="b">69111170476400000153</div><div>กรมศุลกากร</div><div style="font-size:7pt">เลขที่ 1 ถ.สุนทรโกษา</div><div style="font-size:7pt">เขตคลองเตย ' +
+          'แขวงคลองเตย กทม. 10110</div></td><td class="c" style="border:0;padding:0;vertical-align:top"><span style="display:inline-block;border:1px dashed ' +
+          '#bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(ตราครุฑกรมศุลกากร<br>อยู่ตรงนี้ในเอกสารจริง)</span></td><td class="r" ' +
+          'style="border:0;padding:0;width:32%;vertical-align:top"><div class="b" style="font-size:10pt">ใบเสร็จรับเงิน</div><div class="b" ' +
+          'style="font-size:9pt">กศก. 123</div><div ' +
+          'style="font-size:6.8pt;margin-top:2mm">ชำระผ่านช่องทางอิเล็กทรอนิกส์ของธนาคาร/ตัวแทนรับชำระ</div></td></tr></table><div ' +
+          'style="margin-top:3mm">เลขประจำตัวผู้เสียภาษีอากร 0XXXXXXXXXXXX/000000</div><div>ชื่อผู้นำของเข้า/ผู้ส่งของออก&nbsp; บจก. บลูสโตนเทรดดิ้ง</div><div ' +
+          'style="display:flex;justify-content:space-between;margin-top:2.5mm"><span>เลขที่ใบขนสินค้า <b>A013-0990000001</b> ' +
+          '(4405)</span><span>เลขที่ชำระอากร/วันเดือนปี <b>4401-090112</b>/13-11-69</span></div><table class="grid" ' +
+          'style="margin-top:2.5mm;font-size:7.4pt;border-color:#9a9ab0"><tr style="background:#cfe7cf"><td class="c b" ' +
+          'style="border-color:#9a9ab0">ได้รับเงินตามรายการข้างล่างนี้ไว้แล้ว</td><td class="c b" style="width:26%;border-color:#9a9ab0">ที่ชำระตามสำแดง ' +
+          '(บาท)</td><td class="c b" style="width:22%;border-color:#9a9ab0">ที่วางประกัน (บาท)</td></tr><tr style="background:#ededed"><td ' +
+          'style="border-color:#9a9ab0">ค่าธรรมเนียมการผ่านพิธีการศุลกากร</td><td class="c b" style="border-color:#9a9ab0">200.00<span ' +
+          'class="exp">2</span></td><td style="border-color:#9a9ab0"></td></tr><tr><td style="border-color:#9a9ab0;height:13mm" class="c"><span ' +
+          'style="display:inline-block;border:1px dashed #bbb;color:#999;font-family:\'Loma\',sans-serif;font-size:7pt;padding:2mm ' +
+          '3mm;line-height:1.3">(ลายน้ำตราครุฑ อยู่ตรงนี้ในเอกสารจริง)</span></td><td style="border-color:#9a9ab0"></td><td ' +
+          'style="border-color:#9a9ab0"></td></tr><tr style="background:#cfe7cf"><td style="border-color:#9a9ab0"></td><td class="c b" ' +
+          'style="border-color:#9a9ab0">200.00</td><td style="border-color:#9a9ab0"></td></tr><tr style="background:#f6cfcf"><td class="r b" ' +
+          'style="border-color:#9a9ab0">รวมเงินทั้งสิ้น (บาท)</td><td class="c b" style="border-color:#9a9ab0">200.00</td><td ' +
+          'style="border-color:#9a9ab0"></td></tr><tr style="background:#f6cfcf"><td colspan="3" ' +
+          'style="border-color:#9a9ab0">จำนวนเงินตัวอักษร&nbsp;&nbsp;&nbsp;&nbsp;(สองร้อยบาทถ้วน.)</td></tr></table><div ' +
+          'style="font-size:7pt;margin-top:1.5mm">ใบเสร็จรับเงินฉบับนี้จะสมบูรณ์ต่อเมื่อกรมศุลกากรได้รับเงินครบถ้วนแล้ว</div><div ' +
+          'style="display:flex;justify-content:center;gap:4mm;align-items:flex-end;margin-top:3mm"><span>ลงชื่อ</span><span><span ' +
+          'class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></span><span>ผู้รับมอบอำนาจ</span></div><div class="c" ' +
+          'style="font-size:7pt">(ชื่อเจ้าหน้าที่ผู้รับเงิน)<br>นักวิชาการเงินและบัญชีชำนาญการ</div><div class="r" style="font-size:6.8pt;color:#666">13-11-2569 ' +
+          '14:04:41</div></div><div style="border:1px solid #9a9ab0;padding:2.5mm 4mm;font-size:7.2pt;line-height:1.55"><b>หมายเหตุ</b> ' +
+          '(พิมพ์อยู่ท้ายใบเสร็จจริงทุกฉบับ)<div>1. จำนวนเงินภาษีมูลค่าเพิ่มที่ชำระตามสำแดงเท่านั้นที่จะนำไปเครดิต<span class="exp">3</span></div><div>2. ' +
+          'ใบเสร็จรับเงินฉบับนี้ออกโดยระบบอิเล็กทรอนิกส์ของกรมศุลกากร ซึ่งสามารถใช้เป็นเอกสารอ้างอิงกับหน่วยงานที่เกี่ยวข้องได้ และต้องไม่มีการขูดลบ ขีดฆ่า ' +
+          'หรือแก้ไขเพิ่มเติมจำนวนเงินหรือข้อความใด ๆ ทั้งสิ้น</div><div>3. ' +
+          'ใบเสร็จรับเงินฉบับนี้ผู้รับเงินลงลายมือชื่อด้วยลายเซ็นอิเล็กทรอนิกส์</div></div></div></div>';
       },
-      pins: [[1, 'ทะเบียนรถไทย', 'คอลัมน์ ทะเบียนรถ (ไทย) หัว', '71-0087 เชียงราย', ''],
-             [5, 'ทะเบียนรถลาว', 'คอลัมน์ขวาสุด ใช้จับคู่ว่ารถไทยคันนี้รับปูนจากรถลาวคันไหน', '3957', ''],
+      pins: [[1, 'จ่ายกรมศุลกากร (บาท)', 'ยอดในใบเสร็จสองฉบับรวมกัน 9,184.00 + 200.00', '9384.00', ''],
+             [2, 'ค่าธรรมเนียมผ่านพิธีการ 200 บาท', 'ใบเสร็จฉบับที่สอง คือส่วนต่างจากยอดภาษีในใบขน', '200.00', 'k'],
+             [3, 'ภาษีซื้อที่เครดิตได้', 'หมายเหตุข้อ 1 ท้ายใบเสร็จ เครดิตได้เฉพาะยอดภาษีมูลค่าเพิ่ม', '9,184.00', 'k']] },
+    { k: 'cm', n: 10, f: '10-car-manifest.pdf', t: 'Car Manifest', g: 1,
+      who: 'กรมศุลกากร', side: 'th', ph: 3,
+      when: 'ออกตอนรถผ่านด่านเข้าไทยจริง คันละใบ', fill: 'ทะเบียนรถไทย · เลข Car Manifest · วันเวลาเข้า STOCK',
+      body: function () {
+        return '<div class="dc"> <div class="en" style="font-size:8.6pt;line-height:1.4"> <div class="c b" ' +
+          'style="font-size:13pt;letter-spacing:.5px;margin-bottom:2mm">CAR MANIFEST</div> <table style="width:100%;border:0"> <tr> <td ' +
+          'style="border:0;padding:0;width:50%;vertical-align:top"> <table style="width:100%;border:0;font-size:8.6pt"> <tr><td style="border:0;padding:.7mm ' +
+          '0;width:32mm" class="b">Reference No.</td><td style="border:0;padding:.7mm 0"><span class="exh b">DOWP990000101</span><span ' +
+          'class="exp">2</span></td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Car License</td><td style="border:0;padding:.7mm 0"><span ' +
+          'class="exh b">70-1111 เชียงราย</span><span class="exp">1</span></td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Car Brand ' +
+          'Name</td><td style="border:0;padding:.7mm 0">ISUZU</td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Car Arrival Date</td><td ' +
+          'style="border:0;padding:.7mm 0">13-11-2026</td></tr> </table> </td> <td style="border:0;padding:0;vertical-align:top"> <table ' +
+          'style="width:100%;border:0;font-size:8.6pt"> <tr><td style="border:0;padding:.7mm 0;width:34mm" class="b">Received Control</td><td ' +
+          'style="border:0;padding:.7mm 0">23699990000000643</td></tr> <tr><td style="border:0;padding:.7mm 0;width:34mm" class="b">Car Province</td><td ' +
+          'style="border:0;padding:.7mm 0">57 : เชียงราย</td></tr> <tr><td style="border:0;padding:.7mm 0;width:34mm" class="b">Car Country</td><td ' +
+          'style="border:0;padding:.7mm 0">TH : THAILAND</td></tr> <tr><td style="border:0;padding:.7mm 0;width:34mm" class="b">Master B/L</td><td ' +
+          'style="border:0;padding:.7mm 0">-</td></tr> </table> </td> </tr> </table> <div style="border-top:1px solid #000;margin:1.5mm 0 2mm"></div> <div ' +
+          'class="b">Item No. 0001</div> <div style="margin-top:2mm;border-bottom:1px solid #000;width:22mm" class="b">Shipper</div> <table ' +
+          'style="width:100%;border:0;margin-top:1.5mm"> <tr> <td style="border:0;padding:0;width:58%;vertical-align:top"> <table ' +
+          'style="width:100%;border:0;font-size:8.6pt"> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Shipper Name</td><td ' +
+          'style="border:0;padding:.7mm 0">OUDOMXAY DEMO CEMENT SOLE CO.,LTD</td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">St. and ' +
+          'No.</td><td style="border:0;padding:.7mm 0">NATHONG VILLAGE</td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Sub ' +
+          'Province</td><td style="border:0;padding:.7mm 0">OUDOMXAY</td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Post Code</td><td ' +
+          'style="border:0;padding:.7mm 0">N/A</td></tr> </table> </td> <td style="border:0;padding:0;vertical-align:top"> <table ' +
+          'style="width:100%;border:0;font-size:8.6pt"> <tr><td style="border:0;padding:.7mm 0;width:22mm" class="b">District</td><td ' +
+          'style="border:0;padding:.7mm 0">NAMOR</td></tr> <tr><td style="border:0;padding:.7mm 0;width:22mm" class="b">Province</td><td ' +
+          'style="border:0;padding:.7mm 0">LAO PDR</td></tr> <tr><td style="border:0;padding:.7mm 0;width:22mm" class="b">Country</td><td ' +
+          'style="border:0;padding:.7mm 0">LA :&nbsp;&nbsp;&nbsp;LAO PDR</td></tr> </table> </td> </tr> </table> <div style="margin-top:3mm;border-bottom:1px ' +
+          'solid #000;width:22mm" class="b">Importer</div> <div style="margin-top:1.5mm;display:flex;gap:14mm;font-size:8.6pt"> <span><span ' +
+          'style="display:inline-block;width:3mm;height:3mm;border:1px solid #000;vertical-align:-.3mm"></span> Consignee</span> <span><span ' +
+          'style="display:inline-block;width:3mm;height:3mm;border:1px solid #000;vertical-align:-.3mm"></span> Notify Party</span> </div> <table ' +
+          'style="width:100%;border:0;margin-top:1.5mm"> <tr> <td style="border:0;padding:0;width:58%;vertical-align:top"> <table ' +
+          'style="width:100%;border:0;font-size:8.6pt"> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Importer</td><td ' +
+          'style="border:0;padding:.7mm 0">BLUE STONE TRADING CO., LTD.</td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">St. and ' +
+          'No.</td><td style="border:0;padding:.7mm 0">99 หมู่ 9</td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Sub Province</td><td ' +
+          'style="border:0;padding:.7mm 0">แม่กา</td></tr> <tr><td style="border:0;padding:.7mm 0;width:32mm" class="b">Post Code</td><td ' +
+          'style="border:0;padding:.7mm 0">56000</td></tr> </table> </td> <td style="border:0;padding:0;vertical-align:top"> <table ' +
+          'style="width:100%;border:0;font-size:8.6pt"> <tr><td style="border:0;padding:.7mm 0;width:22mm" class="b">District</td><td ' +
+          'style="border:0;padding:.7mm 0">เมือง</td></tr> <tr><td style="border:0;padding:.7mm 0;width:22mm" class="b">Province</td><td ' +
+          'style="border:0;padding:.7mm 0">พะเยา</td></tr> <tr><td style="border:0;padding:.7mm 0;width:22mm" class="b">Country</td><td ' +
+          'style="border:0;padding:.7mm 0">TH :&nbsp;&nbsp;&nbsp;THAILAND</td></tr> </table> </td> </tr> </table> <div style="margin-top:3mm;border-bottom:1px ' +
+          'solid #000;width:40mm" class="b">Description of Goods</div> <table style="width:100%;border:0;margin-top:1.5mm;font-size:8.6pt"> <tr><td ' +
+          'style="border:0;padding:.7mm 0;width:38mm" class="b">Description of Goods</td><td style="border:0;padding:.7mm 0">JIANGGE PORTLAND CEMENT TYPE ' +
+          '1<br>ปูนซีเมนต์ปอร์ตแลนด์ประเภท 1</td></tr> <tr><td style="border:0;padding:.7mm 0;width:38mm" class="b">Mark and Labels</td><td ' +
+          'style="border:0;padding:.7mm 0">JIANGGE</td></tr> </table> <table style="width:100%;border:0;margin-top:3mm;font-size:8.6pt"> <tr> <td ' +
+          'style="border:0;padding:0;width:30mm" class="b">Gross Weight</td> <td style="border:0;padding:0;width:40mm">32,000.000KGM</td> <td ' +
+          'style="border:0;padding:0;width:32mm" class="b">Total Package</td> <td style="border:0;padding:0">1.00LT</td> </tr> <tr><td ' +
+          'style="border:0;padding:.7mm 0;width:30mm" class="b">Remark1</td><td style="border:0;padding:.7mm 0"><span class="exh">ทะเบียนหาง 67-0363 ' +
+          'กรุงเทพมหานคร</span><span class="exp">3</span></td></tr> </table> <div ' +
+          'style="margin-top:34mm;display:flex;justify-content:space-between;font-size:8pt"> <span class="b">วันที่ / เวลาตอบรับ&nbsp;&nbsp;<span ' +
+          'class="exh">2026-11-13 12:15:51</span><span class="exp">4</span></span> <span>System by DEMO SYSTEM Co.,Ltd.</span> </div> </div> </div>';
+      },
+      pins: [[1, 'ทะเบียนรถไทย', 'ช่อง Car License', '70-1111 เชียงราย', ''],
+             [2, 'Car Manifest', 'ช่อง Reference No.', 'DOWP990000101', 'm'],
+             [3, 'ทะเบียนหางรถไทย', 'ช่อง Remark1 ทะเบียนหาง', '67-0363 กทม', 'm'],
+             [4, 'วันเวลาเข้า STOCK', 'ล่างซ้าย วันที่ / เวลาตอบรับ', '13 พ.ย. 69 · 12:15', '']] },
+    { k: 'bill', n: 11, f: '11-lao-shipping-bill.pdf', t: 'บิลชิปปิ้งลาว', g: 0,
+      who: 'บริษัทขนส่งฝั่งลาว', side: 'lao', ph: 3,
+      when: 'เรียกเก็บหลังส่งมอบของเสร็จ มักได้ทีหลังสุด', fill: 'ไม่ต้องกรอก ใช้ตรวจว่าค่าขนส่งตรงกับที่ระบบคิดไว้',
+      body: function () {
+        return '<div class="dc"> <div class="en" style="font-size:8.6pt;line-height:1.45"> <div class="c b" style="font-size:10.4pt">BOKEO DEMO TRADING INTERNATIONAL ' +
+          'SOLE., LTD.</div> <div class="c b" style="font-size:9pt">Ban HOUYSAY, HOUYSAY, BORKEW, LAO P.D.R</div> <div class="c" ' +
+          'style="letter-spacing:2px;font-size:8pt">**********************************</div> <div class="r" style="margin-top:2mm">DATE: 13/11/2026</div> <div ' +
+          'class="r" style="font-size:8pt">Truck receipt No : FCTR-9001</div> <div class="c b u" style="font-size:11pt;margin:3mm 0 4mm">INVOICE / TRUCK ' +
+          'RECEIPT</div> <table style="width:100%;border:0"> <tr> <td style="border:0;padding:0;width:58%;vertical-align:top;font-size:8.2pt"> <div>Shipper ' +
+          'name: BOKEO DEMO TRADING INTERNATIONAL SOLE., LTD.</div> <div style="padding-left:8mm">ADD: Ban HOUYSAY, HOUYSAY ,BORKEW , LAO P.D.R</div> <div ' +
+          'style="margin-top:1.5mm">Consignee name: BLUE STONE TRADING CO.,LTD</div> <div style="padding-left:8mm">ADD : 99 MOO 9 MAE KA, MUEANG,</div> <div ' +
+          'style="padding-left:8mm">PHAYAO, THAILAND.</div> </td> <td style="border:1px solid #000;padding:2mm;vertical-align:top;font-size:8pt"> <div class="c ' +
+          'b">Bill to Name</div> <div class="c" style="margin-top:1.5mm">BLUE STONE TRADING CO.,LTD</div> <div class="c">Address :99 MOO 9 MAE KA, MUEANG,</div> ' +
+          '<div class="c">PHAYAO, THAILAND.</div> </td> </tr> </table> <div style="margin-top:2mm;font-size:8.2pt">Pick up point: OUDOMXAY DEMO CEMENT SOLE ' +
+          'LTD</div> <div style="padding-left:8mm;font-size:8.2pt">NATONG VILLAGE, NAMOR, OUDOMXAY, OUDOMXAY, LAO P.D.R</div> <div ' +
+          'style="margin-top:1.5mm;font-size:8.2pt">Destination place: CHIANG KHONG, CHIANG RAI, THAILAND</div> <table class="grid" ' +
+          'style="margin-top:3mm;font-size:8pt"> <tr class="c b"> <td style="width:13%">MARK &amp;<br>NO.</td><td style="width:28%">DISCRIPTION</td> <td ' +
+          'style="width:12%">QUANTITIES<br>(TON)</td><td style="width:14%">NET WEIGHT<br>(KGM)</td> <td style="width:14%">GROSS WEIGHT<br>(KGM)</td><td ' +
+          'style="width:11%">UNIT PRICE<br>(THB/TON)</td> <td>AMOUNT<br>(THB)</td> </tr> <tr style="height:14mm"> <td class="c">JIANGGE</td><td>JIANGGE PORTLAND ' +
+          'CEMENT TYPE I</td> <td class="c">64.00</td><td class="r">64,000.00</td><td class="r">64,000.00</td> <td class="r b exh">1,135.00<span ' +
+          'class="exp">1</span></td><td class="r b exh">72,640.00<span class="exp">2</span></td> </tr> <tr><td colspan="6" class="c" ' +
+          'style="font-size:7.6pt">TOTAL (Freight &amp; Insurance 1,000.00 THB/TNE + Shipping Laos Fee 135 .00 THB/TNE)</td> <td class="r b">72,640.00</td></tr> ' +
+          '</table> <div class="r b" style="margin-top:3mm;font-size:8.2pt">BOKEO DEMO TRADING INTERNATIONAL SOLE.,LTD.</div> <table ' +
+          'style="width:100%;border:0;margin-top:2mm"> <tr> <td style="border:0;padding:0;width:58%;vertical-align:top;font-size:8.2pt"> <table ' +
+          'style="width:100%;border:0"> <tr><td style="border:0;padding:.6mm 0;width:30mm">DISCRIPTION</td><td style="border:0;padding:.6mm 0">JIANGGE PORTLAND ' +
+          'CEMENT TYPE I</td></tr> <tr><td style="border:0;padding:.6mm 0">QUANTITIES</td><td style="border:0;padding:.6mm ' +
+          '0">64.00&nbsp;&nbsp;&nbsp;&nbsp;TONs</td></tr> <tr><td style="border:0;padding:.6mm 0">DELIVERY BY</td><td style="border:0;padding:.6mm 0"><span ' +
+          'class="exh b">2</span><span class="exp">3</span>&nbsp;&nbsp;&nbsp;Truck</td></tr> <tr><td style="border:0;padding:.6mm 0">PACKING</td><td ' +
+          'style="border:0;padding:.6mm 0">Non</td></tr> </table> <table style="width:100%;border:1px solid #000;margin-top:3mm;font-size:7.8pt"> <tr><td ' +
+          'style="border:0;padding:2mm"> Payment to : BOKEO DEMO TRADING INTERNATIONAL SOLE, LTD.<br> Account name: (ชื่อบัญชีของผู้ให้บริการ)<br> ' +
+          '&nbsp;&nbsp;Account no: XXX-XXX-XXXXXXX<br> &nbsp;&nbsp;Bank name : (ธนาคาร)<br> &nbsp;&nbsp;SWIFT CODE: XXXXXXXX </td></tr> </table> </td> <td ' +
+          'style="border:0;padding:0;vertical-align:top;text-align:center"> <div style="margin-top:14mm"><span ' +
+          'class="sig">(ในเอกสารจริงมีลายเซ็นและตราประทับตรงนี้)</span></div> </td> </tr> </table> </div> </div>';
+      },
+      pins: [[1, 'ราคาต่อตันในบิล', 'คอลัมน์ UNIT PRICE · 1,000 ค่าขนส่งและประกัน + 135 ค่าชิปปิ้งลาว', '1,135 บาท/ตัน', 'k'],
+             [2, 'ยอดรวมของบิล', 'คอลัมน์ AMOUNT เทียบกับที่ระบบคำนวณให้', '72,640.00', 'k'],
+             [3, 'จำนวนคันที่ใช้คิดขั้นราคา', 'บรรทัด DELIVERY BY', '2', 'k']] },
+    { k: 'trk', n: 12, f: '12-truck-list.pdf', t: 'ใบรายการรถ', g: 1,
+      who: 'ชิปปิ้งไทย (ทำสรุปคุมรถเอง)', side: 'th', ph: 3,
+      when: 'ชิปปิ้งไทยทำไว้คุมว่ารถคันไหนคู่กับรถลาวคันไหน', fill: 'ทะเบียนหัว-หาง · ชื่อคนขับ · เบอร์โทร · จับคู่รถลาว',
+      body: function () {
+        return '<div class="dc"> <div class="th" style="font-size:9pt;line-height:1.5"> <div class="c b" style="font-size:10.4pt">บริษัท บลูสโตนเทรดดิ้ง จำกัด</div> ' +
+          '<div class="c b" style="font-size:10pt;margin-top:1.5mm">ปูนซีเมนต์ปอร์ตแลนด์ ประเภท 1 (JIANGGE PORTLAND CEMENT TYPE 1)</div> <table class="grid" ' +
+          'style="margin-top:6mm;font-size:8pt;width:100%"> <tr> <td style="border:0"></td> <td colspan="3" class="c b" style="background:#ffff00">ปูนผง</td> ' +
+          '<td style="border:0"></td><td colspan="2" style="border:0"></td> <td style="border:0"></td><td style="border:0"></td><td style="border:0"></td><td ' +
+          'style="border:0"></td> </tr> <tr class="c b"> <td rowspan="2" style="width:11%;border-left:2px solid #c00;border-top:2px solid ' +
+          '#c00">วันที่นำเข้า<br>(ไทย)</td> <td colspan="2" style="border-top:2px solid #c00">Invoice</td> <td rowspan="2" style="width:10%;border-top:2px solid ' +
+          '#c00;border-right:2px solid #c00">น้ำหนัก<br>(KGM)</td> <td rowspan="2" style="width:4%">ที่</td> <td colspan="2">ทะเบียนรถ (ไทย)</td> <td ' +
+          'rowspan="2" style="width:8%">ยี่ห้อรถ</td> <td rowspan="2" style="width:16%">พนักงานขับรถ</td> <td rowspan="2" style="width:13%">โทรศัพท์</td> <td ' +
+          'rowspan="2" style="width:9%;border:2px solid #c00;color:#c00">ทะเบียนรถ<br>(ลาว)</td> </tr> <tr class="c b"> <td style="width:9%">No.</td><td ' +
+          'style="width:9%">Date</td> <td style="width:14%">(หัว)</td><td style="width:13%">(หาง)</td> </tr> <tr> <td class="c" style="border-left:2px solid ' +
+          '#c00">13-11-2026</td> <td class="c">FCR/9001</td><td class="c">01-11-2026</td> <td class="r" style="border-right:2px solid #c00">32,000</td> <td ' +
+          'class="c">1</td> <td><span class="exh">70-1111 เชียงราย</span><span class="exp">1</span></td> <td><span class="exh">67-0363 กทม</span><span ' +
+          'class="exp">2</span></td> <td class="c">VOLVO</td> <td><span class="exh">นายสมชาย ใจดี</span><span class="exp">3</span></td> <td class="c"><span ' +
+          'class="exh">081-234-5678</span><span class="exp">4</span></td> <td class="c b" style="border-left:2px solid #c00;border-right:2px solid ' +
+          '#c00;color:#c00"> <span class="exh">3901</span><span class="exp">5</span></td> </tr> <tr> <td class="c" style="border-left:2px solid ' +
+          '#c00;border-bottom:2px solid #c00"></td> <td class="c" style="border-bottom:2px solid #c00"></td><td class="c" style="border-bottom:2px solid ' +
+          '#c00"></td> <td class="r" style="border-right:2px solid #c00;border-bottom:2px solid #c00">32,000</td> <td class="c">2</td><td>70-2222 ' +
+          'เชียงราย</td><td>65-3566 กทม</td> <td class="c">ISUZU</td><td>นายสมศักดิ์ รักงาน</td><td class="c">089-876-5432</td> <td class="c b" ' +
+          'style="border-left:2px solid #c00;border-right:2px solid #c00;border-bottom:2px solid #c00;color:#c00">3902</td> </tr> <tr> <td ' +
+          'style="border:0"></td> <td colspan="2" class="c b" style="border:0;border-top:1px solid #000">Total</td> <td class="r b" ' +
+          'style="border:0;border-top:1px solid #000;border-bottom:2px solid #000">64,000</td> <td colspan="7" style="border:0"></td> </tr> </table> <div ' +
+          'style="margin-top:4mm;font-size:8.4pt;color:#555">ชื่อพนักงานขับรถและเบอร์โทรในตัวอย่างนี้เป็นชื่อสมมุติทั้งหมด</div> </div> </div>';
+      },
+      pins: [[1, 'ทะเบียนรถไทย', 'คอลัมน์ ทะเบียนรถ (ไทย) หัว', '70-1111 เชียงราย', ''],
              [2, 'ทะเบียนหางรถไทย', 'คอลัมน์ ทะเบียนรถ (ไทย) หาง', '67-0363 กทม', 'm'],
              [3, 'พนักงานขับรถไทย', 'คอลัมน์ พนักงานขับรถ', 'นายสมชาย ใจดี', 'm'],
-             [4, 'เบอร์โทรคนขับรถไทย', 'คอลัมน์ โทรศัพท์ กรอกเฉพาะตัวเลข ระบบตัดขีดให้เอง', '0812345678', 'm']] },
-
-    { k: 'cm', f: '08-car-manifest.pdf', t: 'Car Manifest', g: 1,
-      body: function () {
-        return '<p class="ttl" style="font-size:19px">CAR MANIFEST</p>' +
-          '<div class="row"><div><p><b>Reference No.</b> ' + exH('DOWP000103794', 2) + '</p><p><b>Car License</b> ' + exH('71-0087', 1) + '</p>' +
-          '<p><b>Car Brand Name</b> VOLVO</p><p><b>Car Arrival Date</b> 13-11-2026</p></div>' +
-          '<div><p><b>Received Control</b> (เลขรับของด่าน)</p><p><b>Car Province</b> 57 : เชียงราย</p><p><b>Car Country</b> TH : THAILAND</p></div></div>' +
-          '<hr style="border:0;border-top:1.5px solid #111;margin:8px 0">' +
-          '<p class="b">Shipper</p><p>Shipper Name ' + esc(nm.factory) + ' · NATHONG VILLAGE, NAMOR, OUDOMXAY, LAO PDR</p>' +
-          '<p class="b" style="margin-top:6px">Importer</p><p>Importer ' + EX_IMP + '</p>' +
-          '<p class="b" style="margin-top:6px">Description of Goods</p><p>JIANGGE PORTLAND CEMENT TYPE 1 · ปูนซีเมนต์ปอร์ตแลนด์ประเภท 1</p><p>Mark and Labels JIANGGE</p>' +
-          '<p style="margin-top:6px"><b>Gross Weight</b> 32,000.000KGM &nbsp; <b>Total Package</b> 1.00LT</p>' +
-          '<p><b>Remark1</b> ทะเบียนหาง ' + exH('67-0363 กรุงเทพมหานคร', 3) + '</p>' +
-          '<p class="sm" style="margin-top:14px">(ของจริงมีตราประทับและชื่อเจ้าหน้าที่ศุลกากรตรงนี้)</p>' +
-          '<p style="margin-top:10px"><b>วันที่ / เวลาตอบรับ</b> ' + exH('2026-11-13 12:15:51', 4) + '</p>';
-      },
-      pins: [[1, 'ทะเบียนรถไทย', 'ด้านซ้ายบน บรรทัด Car License รถหนึ่งคันมี Car Manifest หนึ่งใบ', '71-0087 เชียงราย', ''],
-             [4, 'วันเวลาเข้า STOCK', 'ล่างสุด บรรทัด วันที่ / เวลาตอบรับ คือเวลาที่รถผ่านด่านไทย', '13 พ.ย. 69 · 12:15', ''],
-             [2, 'เลข Car Manifest', 'ด้านซ้ายบน บรรทัด Reference No.', 'DOWP000103794', 'm'],
-             [3, 'ทะเบียนหางรถไทย', 'บรรทัด Remark1', '67-0363 กรุงเทพมหานคร', 'm']] },
-
-    { k: 'fin', f: '09-factory-tax-invoice.pdf', t: 'ใบเก็บเงินโรงงาน', g: 1,
-      body: function () {
-        return '<div class="row"><p class="ttl" style="margin:0">ใบเก็บเงิน / TAX INVOICE</p>' +
-          '<div class="bx" style="white-space:nowrap">เลขที่ ' + exH('000000027304', 1) + '<br>วันที่ 11/11/2026</div></div>' +
-          '<div class="row" style="gap:0;margin-top:8px"><div class="bx" style="flex:1 1 50%"><p class="sm">ผู้ขาย</p><p class="b">' + esc(nm.factory) + '</p><p>แขวงอุดมไซ สปป.ลาว</p></div>' +
-          '<div class="bx" style="flex:1 1 50%;border-left:0"><p class="sm">ผู้ซื้อ</p><p class="b">' + EX_IMP + '</p><p>สถานที่ปลายทาง : Thailand</p></div></div>' +
-          '<table><tr><th>ลำดับ</th><th>รายการ</th><th>หน่วย</th><th>จำนวน</th><th>ราคาต่อหน่วย</th><th>รวมเป็นเงิน</th></tr>' +
-          '<tr><td>1</td><td class="l">ปูนซีเมนต์ P.I 52.5 &nbsp; ' + exH('3957', 2) + '</td><td>T</td><td>32</td><td>613,507.00</td><td>' + exH('19,785,600.75', 3) + '</td></tr>' +
-          '<tr><td colspan="5" class="r">รวมมูลค่าไม่มีภาษี</td><td>19,785,600.75</td></tr>' +
-          '<tr><td colspan="5" class="r">ภาษีมูลค่าเพิ่ม 0%</td><td>0.00</td></tr>' +
-          '<tr><td colspan="5" class="r b">รวมมูลค่าทั้งหมด (LAK)</td><td class="b">19,785,600.75</td></tr></table>' +
-          '<p class="sm">ของจริงเป็นภาษาลาว พิมพ์บนกระดาษลายสีแดง มีลายมือชื่อผู้ซื้อและผู้ขายด้านล่าง</p>';
-      },
-      pins: [[2, 'ทะเบียนรถลาว', 'ตัวเลขท้ายชื่อรายการ โรงงานออกใบเก็บเงินคันละหนึ่งใบ', '3957', ''],
-             [1, 'เลขใบเก็บเงินโรงงาน', 'กรอบมุมขวาบน บรรทัด เลขที่', '000000027304', 'm'],
-             [3, 'น้ำหนักที่โรงงานเก็บเงินจริง', 'ช่องจำนวนพิมพ์ 32 แต่ยอดเงินคิดจากใบชั่ง 19,785,600.75 ÷ 613,507 = 32.25 ตัน ช่องใบชั่งโรงงานจึงต้องกรอกตามใบชั่ง', '32.25', 'k']] },
-
-    { k: 'ws', f: '10-factory-weigh-slip.pdf', t: 'ใบชั่งโรงงาน', g: 1,
-      body: function () {
-        return '<div class="row"><p class="b">ใบผ่านชั่งจำหน่าย (ปูนผง)</p><p class="b">销售过磅单（散装）</p></div>' +
-          '<p>วันที่ 2026-11-11 &nbsp;·&nbsp; เลขที่ W20261111009</p>' +
-          '<table><tr><td class="l" colspan="3"><span class="sm">发货单位 ผู้จ่ายสินค้า</span><br>' + esc(nm.factory) + '</td>' +
-          '<td class="l" colspan="4"><span class="sm">收货单位 ผู้รับสินค้า</span><br>' + EX_IMP + '</td></tr>' +
-          '<tr><th>品名<br><span class="sm">ชนิด</span></th><th>重量(吨)<br><span class="sm">น้ำหนักสั่ง</span></th><th>车号<br><span class="sm">ทะเบียนรถ</span></th>' +
-          '<th>毛重(吨)<br><span class="sm">น้ำหนักรวม</span></th><th>皮重(吨)<br><span class="sm">รถเปล่า</span></th>' +
-          '<th>净重(吨)<br><span class="sm">น้ำหนักสุทธิ</span></th><th>出厂编号<br><span class="sm">เลขล็อต</span></th></tr>' +
-          '<tr><td>散装 P.I 52.5</td><td>32.00</td><td>' + exH('3957', 1) + '</td><td>49.80</td><td>17.55</td><td>' + exH('32.25', 2) + '</td><td>26S5027</td></tr>' +
-          '<tr><td class="l" colspan="3">入厂时间 <span class="sm">เวลาเข้าโรงงาน</span> &nbsp; 2026-11-11 12:46:30</td>' +
-          '<td class="l" colspan="4">出厂时间 <span class="sm">เวลาออกจากโรงงาน</span> &nbsp; ' + exH('2026-11-11 13:17:30', 3) + '</td></tr></table>' +
-          '<p class="sm">ของจริงเป็นกระดาษต่อเนื่องแผ่นเล็ก มีลายมือชื่อพนักงานชั่งและคนขับด้านล่าง</p>';
-      },
-      pins: [[1, 'ทะเบียนรถลาว', 'ช่อง 车号', '3957', ''],
-             [3, 'วันเวลารถลาวรับปูนที่โรงงาน', 'ช่อง 出厂时间 คือเวลาออกจากโรงงาน', '11 พ.ย. 69 · 13:17', ''],
-             [2, 'ใบชั่งโรงงาน (ตัน)', 'ช่อง 净重 คือน้ำหนักสุทธิ ไม่ใช่ช่อง 重量 ที่พิมพ์ 32.00', '32.25', '']] }
+             [4, 'เบอร์โทรคนขับรถไทย', 'คอลัมน์ โทรศัพท์ กรอกเฉพาะตัวเลข', '0812345678', 'm'],
+             [5, 'ทะเบียนรถลาว', 'คอลัมน์ขวาสุด ใช้จับคู่รถไทยกับรถลาว', '3901', '']] }
   ];
 
   function exFind(k) {
@@ -5795,21 +6220,62 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       'h1{font-family:' + EX_FONT + ';font-size:15px;color:#0b1c57;margin:0 0 10px}</style></head><body>' +
       '<h1>ตัวอย่างเอกสารสำหรับสอนการกรอก · ' + esc(d.t) + '</h1>' + exPage(d) + exLegend(d) + '</body></html>';
   }
-  function exButtons() {
-    function row(g) {
-      return EX_DOCS.filter(function (d) { return d.g === g; }).map(function (d) {
-        return '<button type="button" class="btn sm" data-exdoc="' + d.k + '" style="border:1.5px solid var(--brand);' +
-          'color:var(--brand);font-weight:700">' + esc(d.t) + '</button>';
-      }).join('');
-    }
-    return '<div style="margin-top:12px;padding-top:11px;border-top:1px dashed var(--line-field)">' +
-      '<p style="margin:0 0 3px;font-size:13px;font-weight:700;color:var(--head)">กดดูตัวอย่างเอกสาร</p>' +
-      '<p class="hint" style="margin:0 0 9px">เอกสารจำลองคล้ายของจริง มีหมุดเลขสีแดงชี้ตำแหน่งที่ต้องดู เปิดเป็นไฟล์ PDF หรือสั่งพิมพ์ได้</p>' +
-      '<p class="hint" style="margin:0 0 6px;font-weight:700;color:var(--head)">เอกสารของทั้งชุด</p>' +
-      '<div style="display:flex;gap:7px;flex-wrap:wrap">' + row(0) + '</div>' +
-      '<p class="hint" style="margin:10px 0 6px;font-weight:700;color:var(--head)">เอกสารของรถแต่ละคัน</p>' +
-      '<div style="display:flex;gap:7px;flex-wrap:wrap">' + row(1) + '</div></div>';
+  function exSide(s) {
+    var m = { lao: ['ฝั่งลาว', 'var(--warn)', 'var(--warn-bg)', 'var(--warn-bd)'],
+              th: ['ฝั่งไทย', 'var(--accent)', 'var(--tint)', 'var(--line-field)'],
+              bank: ['ธนาคาร', 'var(--ok)', 'var(--ok-bg)', 'var(--ok-bd)'] }[s];
+    return '<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;' +
+      'color:' + m[1] + ';background:' + m[2] + ';border:1px solid ' + m[3] + '">' + m[0] + '</span>';
   }
+  function exRow(d) {
+    return '<div style="display:flex;gap:11px;align-items:flex-start;padding:10px 0;' +
+      'border-top:1px solid var(--line-soft)">' +
+      '<span style="flex:0 0 auto;width:30px;height:30px;border-radius:9px;background:var(--brand);color:#fff;' +
+      'font-size:13px;font-weight:700;display:flex;align-items:center;' +
+      'justify-content:center">' + (d.n < 10 ? '0' : '') + d.n + '</span>' +
+      '<div style="flex:1 1 auto;min-width:0">' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<b style="font-size:14px;color:var(--head)">' + esc(d.t) + '</b>' + exSide(d.side) +
+      '<span style="font-size:10.5px;color:var(--muted);background:var(--sunken);border-radius:999px;' +
+      'padding:2px 8px">' + (d.g === 0 ? 'ต่อชุด' : 'ต่อรถหนึ่งคัน') + '</span></div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:2px">ออกโดย ' + esc(d.who) + '</div>' +
+      '<div style="font-size:12.5px;margin-top:3px">' + esc(d.when) + '</div>' +
+      '<div style="font-size:12px;color:var(--accent);margin-top:3px">กรอกลงเว็บ · ' + esc(d.fill) + '</div>' +
+      '</div>' +
+      '<button type="button" class="btn sm" data-exdoc="' + d.k + '" style="flex:0 0 auto;align-self:center;' +
+      'border:1.5px solid var(--brand);color:var(--brand);font-weight:700;white-space:nowrap">ดูตัวอย่าง</button>' +
+      '</div>';
+  }
+  function exButtons() {
+    var out = '';
+    EX_PHASES.forEach(function (name, i) {
+      var list = EX_DOCS.filter(function (d) { return d.ph === i; });
+      if (!list.length) { return; }
+      out += '<section style="border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);' +
+        'padding:11px 13px 13px;margin-bottom:10px">' +
+        '<h4 style="margin:0 0 6px;font-size:13px;color:var(--accent);font-weight:700">' + esc(name) + '</h4>' +
+        list.map(exRow).join('') + '</section>';
+    });
+    return '<div style="margin-top:12px;padding-top:11px;border-top:1px dashed var(--line-field)">' +
+      '<p style="margin:0 0 3px;font-size:13px;font-weight:700;color:var(--head)">' +
+      'ลำดับเอกสารของหนึ่งชุดนำเข้า · กดดูตัวอย่างได้ทุกใบ</p>' +
+      '<p class="hint" style="margin:0 0 9px">ไล่จากตกลงซื้อขายที่ลาว จนรถผ่านด่านเข้าสตอกที่ไทย · ' +
+      'เอกสารจำลองคล้ายของจริง มีหมุดเลขสีแดงชี้ตำแหน่งที่ต้องดู เปิดเป็นไฟล์ PDF หรือสั่งพิมพ์ได้</p>' +
+      '<a href="ex/handbook.pdf" target="_blank" rel="noopener" class="btn sm" ' +
+      'style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:11px;' +
+      'border:1.5px solid var(--brand);color:var(--brand);font-weight:700">' +
+      'ดาวน์โหลดคู่มือรวมเล่ม PDF' +
+      '<span style="font-weight:400;font-size:11.5px;color:var(--muted)">คำอธิบาย + ตัวอย่างครบ 12 ใบ 35 หน้า</span>' +
+      '</a>' +
+      out +
+      '<p class="hint" style="margin:2px 0 0">บางใบสลับกันได้ตามงานจริง เช่น ใบอนุญาต สมอ. ขอล่วงหน้าได้ · ' +
+      'ที่สลับไม่ได้คือ Invoice ต้องมาก่อน Form D และต้องจ่ายภาษีก่อน รถจึงออกจากด่านได้</p></div>';
+  }
+
+
+
+
+
   function exClose() {
     var v = el('exView');
     if (v) { v.parentNode.removeChild(v); }
@@ -6977,7 +7443,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       row('ใบอนุญาต สมอ. เลขที่', '20261111040000115475', 'ใบ สมอ. บรรทัด Permit Number', 'tisi') +
       row('สมอ. หมดอายุ', '10 ม.ค. 70', 'ใบ สมอ. บรรทัด วัน Permit หมดอายุ', 'tisi') +
       row('จำนวนคัน', '2', 'Form D ช่อง 9 เขียนว่า 2.00 BULK CAR LOAD หรือดูช่อง TRUCK ใน Invoice', 'fd') +
-      row('จ่ายกรมศุลกากร (บาท)', '9,384.00', 'ยอดในสลิปธนาคารที่จ่ายกรมศุลกากร (ภาษี 9,184 + ค่าธรรมเนียม 200)', 'pay') +
+      row('จ่ายกรมศุลกากร (บาท)', '9,384.00', 'ยอดในสลิปโอนเงิน (ลำดับ 08) · ภาษีมูลค่าเพิ่ม 9,184 + ค่าธรรมเนียมผ่านพิธีการ 200', 'slip') +
+      row('ใบเสร็จกรมศุลกากร', 'ใช้ตรวจยอด', 'โอนครั้งเดียวได้ใบเสร็จ 2 ฉบับ แยกภาษีกับค่าธรรมเนียม 200 · เครดิตภาษีซื้อได้เฉพาะฉบับภาษี', 'rcpt') +
       head('2 · รถแต่ละคัน');
     if (bag) {
       body +=
@@ -7004,12 +7471,12 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     return '<div style="margin:0 0 12px;padding:12px 14px;border:1.5px solid var(--accent);border-radius:12px;background:var(--tint-weak)">' +
       '<p style="margin:0 0 3px;font-size:13px;font-weight:700;color:var(--head)">ตัวอย่างการกรอก ' + (bag ? 'ชุดปูนถุง' : 'ชุดปูนผง') + '</p>' +
       '<p class="hint" style="margin:0 0 9px">' + (bag
-        ? 'เลขเอกสารของชุดยกมาจากชุด FCR/0463 วันที่ 13 พ.ย. 69 ส่วนข้อมูลรถเป็นตัวอย่างสมมุติ · เอกสารตัวอย่างเป็นของชุดปูนผง ตำแหน่งที่ดูเหมือนกัน'
-        : 'ยกมาจากเอกสารจริงชุด FCR/0463 วันที่ 13 พ.ย. 69 · เวลารถไทยรับปูนและน้ำหนักชั่งฝั่งไทยเป็นตัวอย่างสมมุติ') +
+        ? 'เลขเอกสารกับชื่อคู่ค้าในตัวอย่างเป็นข้อมูลสมมติทั้งหมด วางผังตามแบบฟอร์มจริง · เอกสารตัวอย่างเป็นของชุดปูนผง ตำแหน่งที่ดูเหมือนกัน'
+        : 'เลขเอกสาร ชื่อคู่ค้า ชื่อคนขับ และตัวเลขทั้งหมดเป็นข้อมูลสมมติ วางผังตามแบบฟอร์มจริงเพื่อให้หาตำแหน่งช่องได้') +
       ' · กด “ดูตัวอย่าง” ท้ายแถวเพื่อเปิดเอกสารจำลองที่มีหมุดชี้ตำแหน่ง · ตารางนี้มีไว้ดูอย่างเดียว ไม่ถูกบันทึก</p>' +
       '<div class="tbox"><table><thead><tr><th>ช่อง</th><th>ตัวอย่างที่กรอก</th><th>ดูจากเอกสารตรงไหน</th>' +
       '<th class="c">ตัวอย่างเอกสาร</th></tr></thead>' +
-      '<tbody>' + body + '</tbody></table></div></div>';
+      '<tbody>' + body + '</tbody></table></div>' + exButtons() + '</div>';
   }
 
   function sxEditor(seq) {
