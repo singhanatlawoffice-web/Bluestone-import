@@ -8578,8 +8578,17 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   var EX_BAND = 'FAFAFA';
   var EX_DAY = 'EAF0FA';          /* แถวปิดยอดของวันในชีตรายวัน */
 
-  function exTag(ty) { return ty === 'bag' ? 'B' : (ty === 'round' ? 'R' : 'P'); }
-  function exWhat(ty) { return ty === 'round' ? 'ชุดนำเข้าและต้นทุน' : 'รับเข้าและตัดขาย · ' + typeTH(ty); }
+  function exTag(ty) {
+    if (ty === 'bag') { return 'B'; }
+    if (ty === 'round') { return 'R'; }
+    if (ty === 'transit') { return 'T'; }
+    return 'P';
+  }
+  function exWhat(ty) {
+    if (ty === 'round') { return 'ชุดนำเข้าและต้นทุน'; }
+    if (ty === 'transit') { return 'รถที่ยังไม่ผ่านด่าน'; }
+    return 'รับเข้าและตัดขาย · ' + typeTH(ty);
+  }
   function exISO(d) { return d.getFullYear() + '-' + rpPad(d.getMonth() + 1) + '-' + rpPad(d.getDate()); }
   function exDate(iso) {
     var a = String(iso || '').split('-');
@@ -9157,7 +9166,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
   function exRun(ty, fmt, redraw) {
     if (EXP.busy) { return; }
-    var doc = (ty === 'round') ? exRoundDoc() : exDoc(ty);
+    var doc = (ty === 'round') ? exRoundDoc()
+            : (ty === 'transit') ? exTransitDoc() : exDoc(ty);
     if (fmt === 'csv') {
       rpSave(doc.fname + '.csv', exCsv(doc), 'text/csv;charset=utf-8');
       logIt('ส่งออกข้อมูล', doc.fname + '.csv');
@@ -9236,6 +9246,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       (ty === 'round'
         ? 'ไฟล์เดียวมี 3 ชีต คือ สรุป · ชุดนำเข้า · รถในชุด · มีเอกสารของชุดครบทุกเลข ' +
           'และต้นทุนแยกรายการทั้งรายชุดและรายคัน'
+        : ty === 'transit'
+          ? 'ไฟล์เดียวมี 2 ชีต คือ สรุป · รถค้างด่าน · เรียงจากคันที่ค้างนานที่สุด ' +
+            'มีเบอร์คนขับกับผู้ขนส่งฝั่งลาวไว้ตามเรื่องได้เลย'
         : 'ไฟล์เดียวมี 6 ชีต คือ สรุป · รายวัน · รับเข้า · ตัดขายออก · สรุปตามลูกค้า · รายการที่ลบไว้') +
       ' · ทุกชีตมีโลโก้กับช่วงวันที่ พิมพ์ออกมาใช้ได้เลย</p>' +
       '</div></div>';
@@ -9246,7 +9259,9 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     var g = exTag(ty), b = el('exBtn' + g);
     if (b) {
       b.addEventListener('click', function () {
-        EXP.open = (EXP.open === ty ? '' : ty);
+        var opening = EXP.open !== ty;
+        EXP.open = opening ? ty : '';
+        if (opening && ty === 'transit') { EXP.mode = 'all'; }
         redraw();
       });
     }
@@ -9422,6 +9437,93 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         { frz: 3, name: 'รถในชุด', lines: L('รถทุกคันในชุดนำเข้า',
             T.trucks + ' คัน · ผ่านด่านแล้ว ' + T.done + ' คัน'), land: true,
           blocks: [{ head: tHead, fmt: tFmt, w: tW, rows: tRows, tone: tTone, toneAt: [26] }] }
+      ]
+    };
+  }
+
+  /* ================= ส่งออกรถที่ยังไม่ผ่านด่าน · หัวข้อ 3 ================= */
+  function exTransitDoc() {
+    var r = exRange(), items = exItems();
+    var warn = num(S.rates && S.rates.transitWarn) || 3;
+    var who = (S.profile && S.profile.name) || '—';
+    var role = (S.profile && S.profile.role) || '';
+    var now = todayISO() + ' เวลา ' + sbNow().slice(0, 5) + ' น.';
+
+    var list = [];
+    S.entries.forEach(function (e) {
+      if (e.kind !== 'import' || !e.trucks) { return; }
+      e.trucks.forEach(function (t, i) {
+        var load = dOnly(t.tLoad);
+        if (!load || dOnly(t.tSend)) { return; }        /* เอาเฉพาะรับปูนแล้วแต่ยังไม่ผ่านด่าน */
+        if (!exIn(r, load)) { return; }
+        list.push({ e: e, t: t, seq: i + 1, load: load, it: items[e.id + ':' + (i + 1)] || {},
+                    days: daysSince(load) });
+      });
+    });
+    list.sort(function (a, b) { return b.days - a.days; });   /* ค้างนานสุดอยู่บนสุด */
+
+    var T = { n: 0, late: 0, powder: 0, bag: 0, tons: 0, bags: 0, amt: 0, max: 0 };
+    var rows = [], tone = [];
+    list.forEach(function (x, i) {
+      var t = x.t, it = x.it, st = exSet(t.round);
+      var ty = t.type || 'powder';
+      var late = x.days >= warn;
+      T.n += 1; T.tons += num(it.tons); T.amt += num(it.fAmt);
+      if (late) { T.late += 1; }
+      if (ty === 'bag') { T.bag += 1; T.bags += num(t.bags) || BAGS_TRUCK; } else { T.powder += 1; }
+      if (x.days > T.max) { T.max = x.days; }
+      rows.push([i + 1, x.load, x.days, late ? 'ค้างเกินกำหนด' : 'ยังอยู่ในกำหนด',
+        (t.lao && t.lao.plate) || '', typeTH(ty),
+        num(it.tons), ty === 'bag' ? (num(t.bags) || BAGS_TRUCK) : '',
+        num(it.fRate), num(it.fAmt),
+        t.wb || '', st.inv, st.fd, st.decl,
+        (t.lao && t.lao.company) || '', (t.lao && t.lao.driver) || '', (t.lao && t.lao.phone) || '',
+        t.dest || '', (t.thai && t.thai.plate) || '']);
+      tone.push(late ? 'out' : '');
+    });
+
+    var head = ['ลำดับ', 'วันรับปูนจากโรงงาน', 'ค้างมา (วัน)', 'สถานะ', 'ทะเบียนรถลาว', 'ชนิดปูน',
+      'น้ำหนักฝั่งลาว (ตัน)', 'จำนวนถุง', 'ค่าปูน ฿/ตัน', 'ตัดเงินโรงงานไปแล้ว',
+      'ใบเก็บเงินโรงงาน', 'ชุดนำเข้า (Invoice)', 'Form D', 'ใบขนสินค้า',
+      'ขนส่งฝั่งลาว', 'คนขับลาว', 'เบอร์คนขับลาว', 'ปลายทางที่จะส่ง', 'ทะเบียนรถไทยที่จับคู่ไว้'];
+    var fmt = ['n0', 'd', 'n0', '', '', '', 'n2', 'n0', 'n2', 'n2', '', '', '', '', '', '', '', '', ''];
+    var w = [6, 19, 13, 17, 16, 9, 19, 11, 13, 19, 18, 20, 17, 19, 20, 16, 15, 22, 22];
+    var tot = ['รวม', '', '', T.n + ' คัน', '', '', T.tons, T.bags || '', '', T.amt,
+      '', '', '', '', '', '', '', '', ''];
+
+    var sumRows = [
+      [1, 'รถที่ยังไม่ผ่านด่าน', T.n, 'คัน'],
+      [2, 'ในนั้นค้างเกิน ' + warn + ' วัน', T.late, 'คัน'],
+      [3, 'ค้างนานที่สุด', T.max, 'วัน'],
+      [4, 'ปูนผง', T.powder, 'คัน'],
+      [5, 'ปูนถุง', T.bag, 'คัน'],
+      [6, 'น้ำหนักฝั่งลาวรวม', T.tons, 'ตัน'],
+      [7, 'จำนวนถุงรวม (เฉพาะปูนถุง)', T.bags, 'ถุง'],
+      [8, 'ตัดเงินโรงงานไปแล้วทั้งหมด', T.amt, 'บาท']
+    ];
+
+    function L(title, extra) {
+      return ['BLUE STONE TRADING CO., LTD.',
+        (S.names && S.names.company) || 'บริษัท บลูสโตนเทรดดิ้ง จำกัด',
+        title,
+        'ช่วงข้อมูล ' + exLabel(r) + (extra ? ' · ' + extra : ''),
+        'ออกเมื่อ ' + now + ' · โดย ' + who + (role ? ' (' + role + ')' : '')];
+    }
+    return {
+      fname: 'รถที่ยังไม่ผ่านด่าน-' + r.tag,
+      sheets: [
+        { frz: 2, name: 'สรุป', lines: L('สรุปรถที่ยังไม่ผ่านด่าน',
+            T.n + ' คัน · ค้างเกินกำหนด ' + T.late + ' คัน'), land: false,
+          blocks: [{ head: ['ลำดับ', 'หัวข้อ', 'ค่า', 'หน่วย'],
+                     fmt: function (i) {
+                       var u = (sumRows[i] || [])[3];
+                       return ['n0', '', (u === 'คัน' || u === 'วัน' || u === 'ถุง') ? 'n0' : 'n2', ''];
+                     },
+                     w: [7, 38, 16, 11], rows: sumRows }] },
+        { frz: 3, name: 'รถค้างด่าน', lines: L('รถที่เบิกปูนแล้วแต่ยังไม่ผ่านด่าน',
+            'เรียงจากค้างนานที่สุด · ถือว่าค้างเมื่อเกิน ' + warn + ' วัน'), land: true,
+          blocks: [{ head: head, fmt: fmt, w: w, rows: rows, tone: tone, toneAt: [1, 2, 3],
+                     total: rows.length ? tot : null }] }
       ]
     };
   }
@@ -9902,12 +10004,13 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     return {
       cards: cards,
       transit: section(3, 'รถที่ยังไม่ผ่านด่าน', 'เบิกปูนจากโรงงานลาวแล้ว ตัดเครดิตไปแล้ว แต่ยังไม่มีวันเวลาเข้า STOCK',
+        exPanel('transit') +
         '<div class="tbox"><table><thead><tr><th>วันรับปูน</th><th>ทะเบียนลาว</th><th>ชนิด</th>' +
         '<th class="c">น้ำหนัก (ตัน)</th><th>เลขที่ใบขน</th><th>รอบนำเข้า</th>' +
         '<th class="c">จัดการ</th><th class="c">ค้างมา</th>' +
         '</tr></thead><tbody>' + transitRows + '</tbody></table></div>' +
         '<p class="hint" style="margin-top:9px">เติมช่อง “วันเวลาเข้า STOCK” ในหน้าคุมนำเข้าและ STOCK แล้วรถจะหายจากตารางนี้เอง · ' +
-        'ตั้งจำนวนวันที่ถือว่าค้างได้ที่หน้าตั้งค่าอัตรา (ตอนนี้ ' + warnDays + ' วัน)</p>'),
+        'ตั้งจำนวนวันที่ถือว่าค้างได้ที่หน้าตั้งค่าอัตรา (ตอนนี้ ' + warnDays + ' วัน)</p>', exBtn('transit')),
       pw: pwSection(pwCalc(), 1),
       wh: section(2, 'โกดังปูนถุง' + whTail('bag') + ' · ตัดสตอก',
         'รับเข้าอัตโนมัติจากรถปูนถุงที่ผ่านด่านเข้า' + whOf('bag') + ' · จ่ายออกบันทึกเองตอนรถลูกค้ามารับ',
@@ -9930,6 +10033,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   function viewStock() { location.hash = '#entry'; viewEntry(); }
 
   function bindStock() {
+    exBind('transit', viewEntry);
     Array.prototype.forEach.call(document.querySelectorAll('[data-ied]'), function (b) {
       b.addEventListener('click', function () {
         if (sxOpenKey('e:' + b.getAttribute('data-ied'))) {
