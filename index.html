@@ -415,6 +415,13 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     if (!Array.isArray(S.trash[k])) { S.trash[k] = []; }
   });
   if (typeof S.lockUpto !== 'string') { S.lockUpto = ''; }
+  /* ย้ายผู้ซื้อรายเดียวเดิม (บจก. JP) มาเป็นคู่ค้าวางเงินล่วงหน้ารายแรก ทำครั้งเดียว */
+  if (!Array.isArray(S.credits) || !S.credits.length) {
+    S.credits = [{ id: 'c1', name: (S.names && S.names.buyer) || 'ผู้ซื้อรายแรก',
+                   pPowder: num((S.rates && S.rates.jPowder) || 0),
+                   pBag: num((S.rates && S.rates.jBag) || 0),
+                   warn: num((S.rates && S.rates.warnJ) || 0), off: false }];
+  }
   /* ยืนยันแล้วว่าขั้นราคาชิปปิ้งลาวนับจำนวนรถแยกตามประเภทปูน ผง/ถุง · ปรับให้ครั้งเดียว */
   /* เดิมช่องปูนถุงเคยกรอกเป็นบาทต่อถุง (115) · ยืนยันแล้วว่าตัดเงิน JP คิดเป็นบาทต่อตัน */
   if (!S.migBagTon) {
@@ -681,9 +688,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       });
     });
 
-    var fBal = 0, jBal = 0, stock = { powder: 0, bag: 0 }, rows = [];
+    var fBal = 0, jBal = 0, crBal = {}, stock = { powder: 0, bag: 0 }, rows = [];
     var T = { fIn: 0, jIn: 0, fCut: 0, jCut: 0, inTons: 0, inTonsThai: 0, loss: 0, trucks: 0, ship: 0, shipThai: 0, scan: 0,
-              inPowder: 0, inBag: 0, soldPowder: 0, soldBag: 0, revBuyer: 0, revOther: 0, soldCost: 0, negStock: false };
+              inPowder: 0, inBag: 0, soldPowder: 0, soldBag: 0, revBuyer: 0, revOther: 0, soldCost: 0, negStock: false,
+              crIn: {}, crCut: {} };
 
     list.forEach(function (e) {
       /* รอบนำเข้าเป็นข้อมูลเอกสาร ไม่ใช่รายการเงิน จึงข้ามไป
@@ -695,7 +703,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                 rev: 0, stockDelta: 0 };
 
       if (e.kind === 'depositF') { w.fIn = e.amount || 0; T.fIn += w.fIn; }
-      if (e.kind === 'depositJ') { w.jIn = e.amount || 0; T.jIn += w.jIn; }
+      if (e.kind === 'depositJ') {
+        w.jIn = e.amount || 0; T.jIn += w.jIn;
+        w.cid = crOf(e);
+        if (w.cid) { T.crIn[w.cid] = (T.crIn[w.cid] || 0) + w.jIn; }
+      }
 
       if (e.kind === 'import') {
         w.trucks = e.trucks.length;
@@ -774,7 +786,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         w.rev = 0;
         w.stockDelta = -w.tons;
         stock[e.cementType || 'bag'] -= w.tons;
-        if (wp.jp) { w.jAmt = w.outAmt; T.jCut += w.jAmt; }
+        w.cid = crOf(e);
+        if (w.cid) { w.jAmt = w.outAmt; T.jCut += w.jAmt; T.crCut[w.cid] = (T.crCut[w.cid] || 0) + w.jAmt; }
       }
 
       if (e.kind === 'saleBuyer' || e.kind === 'saleOther') {
@@ -784,7 +797,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         w.stockDelta = -w.tons;
         stock[e.cementType] -= w.tons;
         if (stock[e.cementType] < -0.001) { w.short = true; T.negStock = true; }
-        if (e.kind === 'saleBuyer') { w.jAmt = w.rev; T.jCut += w.jAmt; T.revBuyer += w.rev; }
+        if (e.kind === 'saleBuyer') {
+          w.cid = crOf(e);
+          w.jAmt = w.rev; T.jCut += w.jAmt; T.revBuyer += w.rev;
+          if (w.cid) { T.crCut[w.cid] = (T.crCut[w.cid] || 0) + w.jAmt; }
+        }
         else { T.revOther += w.rev; }
         if (e.cementType === 'powder') { T.soldPowder += w.tons; } else { T.soldBag += w.tons; }
         T.soldCost += costOf(e.cementType) * w.tons;
@@ -792,7 +809,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
 
       fBal = fBal + w.fIn - w.fAmt;
       jBal = jBal + w.jIn - w.jAmt;
-      w.fBal = fBal; w.jBal = jBal;
+      w.fBal = fBal;
+      if (w.cid) {
+        crBal[w.cid] = (crBal[w.cid] || 0) + w.jIn - w.jAmt;
+        w.jBal = crBal[w.cid];
+      } else { w.jBal = null; }
       w.stockP = stock.powder; w.stockB = stock.bag;
       rows.push(w);
     });
@@ -801,7 +822,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     var grossBeforeShip = revenue - T.soldCost;
 
     return {
-      rows: rows, T: T, fBal: fBal, jBal: jBal, stock: stock,
+      rows: rows, T: T, fBal: fBal, jBal: jBal, crBal: crBal, stock: stock,
       shipTotal: T.ship + T.scan + T.shipThai,
       shipLaoTotal: T.ship + T.scan,
       revenue: revenue, grossBeforeShip: grossBeforeShip,
@@ -812,14 +833,16 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   }
 
   /* ================= หน้า 1 · คุมการตัดเงิน ================= */
-  var mf = { open: false, kind: 'depositF', date: '2026-11-03', amount: '', note: '' };
+  var mf = { open: false, kind: 'depositF', date: '2026-11-03', amount: '', note: '', cid: '' };
   var periodSel = 'all';
 
   function moneyPanel(c) {
     if (!mf.open) { return ''; }
     var amt = num(mf.amount);
     var isF = mf.kind === 'depositF';
-    var after = isF ? c.fBal + amt : c.jBal + amt;
+    if (!isF && !crFind(mf.cid)) { mf.cid = (crOn()[0] || crFirst() || {}).id || ''; }
+    var mCur = isF ? c.fBal : num(c.crBal[mf.cid]);
+    var after = mCur + amt;
     function opt(id, label) {
       var on = mf.kind === id;
       return '<label style="flex:1 1 0;min-width:0;justify-content:center" class="' + (on ? 'seg-on' : '') + '">' +
@@ -833,8 +856,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       'style="border:1.5px solid var(--brand);color:var(--brand);font-weight:700">ปิด</button></div>' +
       '<div class="card-b stack">' +
         '<fieldset><legend>ประเภทรายการเงิน</legend><div class="seg fill">' +
-          opt('depositF', 'โอนเงินเข้า ' + nm.factory) + opt('depositJ', 'รับเงินจาก ' + nm.buyer) +
+          opt('depositF', 'โอนเงินเข้า ' + nm.factory) + opt('depositJ', 'รับเงินจากคู่ค้าวางเงินล่วงหน้า') +
         '</div></fieldset>' +
+        (isF ? '' : '<div class="grid g3">' + crSelect('mCid', mf.cid, 'รับเงินจากคู่ค้ารายไหน') +
+          '<div style="grid-column:span 2;align-self:end"><p class="hint" style="margin:0">' +
+          'เงินก้อนนี้จะไปเพิ่มเครดิตของรายที่เลือก · เพิ่มรายใหม่ได้ที่หน้าตั้งค่าอัตรา</p></div></div>') +
         '<div class="grid g3">' +
           '<div><span class="fl">วันที่</span>' +
           dtField('mDate', mf.date, false, 'data-mf="date"') + '</div>' +
@@ -844,8 +870,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '<input id="mNote" type="text" placeholder="ไม่กรอกก็ได้ ระบบจะใส่วันที่ให้" value="' + esc(mf.note) + '" data-mf="note"></div>' +
         '</div>' +
         '<div class="alert a-i"><div class="bd"><p>' +
-          (isF ? 'เพิ่มเฉพาะยอดที่' + esc(nm.factory) : 'เพิ่มเฉพาะยอดรับล่วงหน้าของ ' + esc(nm.buyer)) +
-          ' จาก <b class="num">' + m2(isF ? c.fBal : c.jBal) + '</b> เป็น <b class="num">' + m2(after) + '</b> บาท' +
+          (isF ? 'เพิ่มเฉพาะยอดที่' + esc(nm.factory) : 'เพิ่มเฉพาะยอดรับล่วงหน้าของ ' + esc(crName(mf.cid) || 'คู่ค้ารายนี้')) +
+          ' จาก <b class="num">' + m2(mCur) + '</b> เป็น <b class="num">' + m2(after) + '</b> บาท' +
         '</p></div></div>' +
         '<div class="actions" style="justify-content:flex-end">' +
           '<button type="button" class="btn" id="mCancel">ยกเลิก</button>' +
@@ -867,13 +893,17 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         if (k === 'amount') { viewLedger(); }
       });
     });
+    if (el('mCid')) {
+      el('mCid').addEventListener('change', function () { mf.cid = el('mCid').value; viewLedger(); });
+    }
     el('mClose').addEventListener('click', function () { mf.open = false; viewLedger(); });
     el('mCancel').addEventListener('click', function () { mf.open = false; viewLedger(); });
     el('mSave').addEventListener('click', function () {
       var a = num(mf.amount);
       if (a <= 0) { toast('กรุณาใส่จำนวนเงิน'); return; }
       var nid = S.entries.reduce(function (m, e) { return Math.max(m, e.id); }, 0) + 1;
-      S.entries.push({ id: nid, date: mf.date, kind: mf.kind, amount: a, note: mf.note || '' });
+      S.entries.push({ id: nid, date: mf.date, kind: mf.kind, amount: a, note: mf.note || '',
+                       trucks: mf.kind === 'depositJ' ? { cid: mf.cid } : null });
       var kindTxt = (mf.kind === 'depositF' ? 'โอนให้' + nm.factory : 'รับเงินจาก ' + nm.buyer);
       mf.amount = ''; mf.note = ''; mf.open = false;
       S.demo = false; save();
@@ -900,7 +930,14 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     if (num(r.warnF) > 0 && c.fBal < num(r.warnF)) {
       lowMsgs.push('เครดิตที่' + nm.factory + ' เหลือ ' + m2(c.fBal) + ' บาท ต่ำกว่าที่ตั้งเตือนไว้ ' + m2(num(r.warnF)));
     }
-    if (num(r.warnJ) > 0 && c.jBal < num(r.warnJ)) {
+    crCards(c).forEach(function (cc) {
+      var wv = num(cc.warn);
+      var bv = num(c.crBal[cc.id]);
+      if (wv > 0 && bv < wv) {
+        lowMsgs.push('เครดิตของ ' + cc.name + ' เหลือ ' + m2(bv) + ' บาท ต่ำกว่าที่ตั้งเตือนไว้ ' + m2(wv) + ' บาท');
+      }
+    });
+    if (false && num(r.warnJ) > 0 && c.jBal < num(r.warnJ)) {
       lowMsgs.push('เครดิตของ ' + nm.buyer + ' เหลือ ' + m2(c.jBal) + ' บาท ต่ำกว่าที่ตั้งเตือนไว้ ' + m2(num(r.warnJ)));
     }
     var lowAlert = lowMsgs.length
@@ -912,14 +949,17 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     if (c.fBal < 0 || c.jBal < 0 || T.negStock) {
       var msgs = [];
       if (c.fBal < 0) { msgs.push('เงินที่' + nm.factory + 'ติดลบ ' + m2(-c.fBal) + ' บาท'); }
-      if (c.jBal < 0) { msgs.push('เงินรับล่วงหน้าจาก ' + nm.buyer + ' ติดลบ ' + m2(-c.jBal) + ' บาท'); }
+      crCards(c).forEach(function (cc) {
+        var bv = num(c.crBal[cc.id]);
+        if (bv < 0) { msgs.push('เงินรับล่วงหน้าจาก ' + cc.name + ' ติดลบ ' + m2(-bv) + ' บาท'); }
+      });
       if (T.negStock) { msgs.push('มีรายการส่งมอบหรือจำหน่ายเกินยอดปูนคงคลัง'); }
       alert = '<div class="alert a-d" role="alert">' + I.bad + '<div class="bd"><b>มีรายการที่ต้องแก้</b><p>' +
         esc(msgs.join(' · ')) + '</p></div></div>';
     } else {
-      var who = tightJ ? nm.buyer : nm.factory;
+      var who = tightJ ? 'คู่ค้าวางเงินล่วงหน้า' : nm.factory;
       alert = '<div class="alert a-w" role="status">' + I.warn + '<div class="bd"><b>ฝั่ง ' + esc(who) + ' จะหมดก่อน</b>' +
-        '<p>เงินฝั่ง ' + esc(nm.buyer) + ' รองรับการส่งมอบปูนผงได้อีกประมาณ ' + m0(Math.floor(c.capJ)) + ' ตัน · ' +
+        '<p>เงินฝั่งคู่ค้าวางเงินล่วงหน้ารวมทุกราย รองรับการส่งมอบปูนผงได้อีกประมาณ ' + m0(Math.floor(c.capJ)) + ' ตัน · ' +
         'เงินที่' + esc(nm.factory) + 'รองรับการนำเข้าได้อีกประมาณ ' + m0(Math.floor(c.capF)) + ' ตัน</p></div>' +
         '<button type="button" class="btn" id="aMoney">บันทึกเงินเข้า</button></div>';
     }
@@ -938,11 +978,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       else if (e.kind === 'depositJ') { badge = '<span class="badge b-i">รับเงินล่วงหน้า</span>'; bg = ' style="background:var(--tint-weak)"'; }
       else if (e.kind === 'import') { badge = '<span class="badge b-w">ปูนเข้า</span>'; }
       else if (e.kind === 'whOut' || e.kind === 'pwOut') {
-        badge = ((e.trucks || {}).jp
-          ? '<span class="badge b-i">ส่งมอบให้ ' + esc(nm.buyer) + '</span>'
+        badge = (w.cid
+          ? '<span class="badge b-i">ส่งมอบให้ ' + esc(crName(w.cid)) + '</span>'
           : '<span class="badge b-n">' + (e.kind === 'pwOut' ? 'ขายปูนผงจากสตอก' : 'ขายจากโกดัง') + '</span>');
       }
-      else if (e.kind === 'saleBuyer') { badge = '<span class="badge b-i">ส่งมอบให้ ' + esc(nm.buyer) + '</span>'; }
+      else if (e.kind === 'saleBuyer') { badge = '<span class="badge b-i">ส่งมอบให้ ' + esc(crName(w.cid) || nm.buyer) + '</span>'; }
       else { badge = '<span class="badge b-n">จำหน่ายรายอื่น</span>'; }
 
       var label;
@@ -963,7 +1003,8 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       } else if (e.kind === 'saleOther') {
         label = typeTH(e.cementType) + ' ' + t2(w.tons) + ' ตัน @ ' + m0(w.jRate) + ' ฿' + (e.who ? ' · ' + e.who : '');
       } else if (e.kind === 'depositF' || e.kind === 'depositJ') {
-        var base = e.kind === 'depositF' ? 'โอนเงินเข้าโรงงาน ' + nm.factory : 'รับเงินจาก ' + nm.buyer;
+        var base = e.kind === 'depositF' ? 'โอนเงินเข้าโรงงาน ' + nm.factory
+          : 'รับเงินจาก ' + (crName(w.cid) || nm.buyer);
         var extra = (e.note && !/^(โอนเงิน|รับเงิน)/.test(e.note)) ? ' · ' + e.note : '';
         label = base + ' (ครั้งที่ ' + (seqOf[e.id] || 1) + ')' + extra;
       } else { label = e.note || ''; }
@@ -978,15 +1019,18 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<td class="n muted">' + (w.fRate ? m0(w.fRate) : dash()) + '</td>' +
         '<td class="n">' + (w.fIn ? '<span class="pos">+' + m2(w.fIn) + '</span>' : (w.fAmt ? '<span class="neg">−' + m2(w.fAmt) + '</span>' : dash())) + '</td>' +
         '<td class="n str sep">' + m2(w.fBal) + '</td>' +
-        '<td class="n muted">' + (w.jRate && e.kind !== 'saleOther' ? m0(w.jRate) : dash()) + '</td>' +
+        '<td class="c sep">' + (w.cid ? crChip(w.cid, true)
+          : ((e.kind === 'pwOut' || e.kind === 'whOut' || e.kind === 'saleOther')
+              ? '<span class="badge b-n">ไม่ตัดเครดิต</span>' : dash())) + '</td>' +
+        '<td class="n muted">' + (w.cid && w.jRate ? m0(w.jRate) : dash()) + '</td>' +
         '<td class="n">' + (w.jIn ? '<span class="pos">+' + m2(w.jIn) + '</span>' : (w.jAmt ? '<span class="neg">−' + m2(w.jAmt) + '</span>' : dash())) + '</td>' +
-        '<td class="n str sep">' + m2(w.jBal) + '</td>' +
+        '<td class="n str">' + (w.cid ? m2(w.jBal) : dash()) + '</td>' +
         '</tr>';
     }).join('');
 
     el('v-ledger').innerHTML =
       '<div class="head-row"><div>' +
-        '<h1>คุมการตัดเงิน — ' + esc(nm.factory) + ' × ' + esc(nm.buyer) + '</h1>' +
+        '<h1>คุมการตัดเงิน — ' + esc(nm.factory) + ' × ' + esc(crTitle(c)) + '</h1>' +
         '<p class="lede">หน้านี้ดูเรื่องเงินอย่างเดียว เครดิตที่เราเหลืออยู่กับโรงงาน และเครดิตที่ผู้ซื้อเหลืออยู่กับเรา ' +
         'การบันทึกปูน ทะเบียนรถ และน้ำหนัก อยู่ที่หน้าบันทึกปูน</p>' +
       '</div><div class="actions">' +
@@ -1018,11 +1062,19 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                c.fBal, T.fIn, T.fCut, c.capF, r, !tightJ,
                [['โอนเข้าสะสม', m2(T.fIn), 'in'], ['ใช้ไปแล้ว', m2(T.fCut), 'out']], 'โรงงานยังค้างปูนให้เรา',
                '#D2D2EC', '#2A3B96', r.fPowder, r.fBag, 'นำเข้าได้อีก') +
-        creditDonut('เครดิตคงเหลือของ ' + nm.buyer + ' ที่อยู่กับเรา',
-               'เงินที่ผู้ซื้อโอนมาล่วงหน้าแล้วเรายังไม่ได้ส่งมอบ',
-               c.jBal, T.jIn, T.jCut, c.capJ, r, tightJ,
-               [['รับเงินสะสม', m2(T.jIn), 'in'], ['ส่งมอบแล้ว', m2(T.jCut), 'out']], 'เรายังค้างปูนให้ผู้ซื้อ',
-               '#CDE6D6', '#1E7B3C', r.jPowder, r.jBag, 'ส่งมอบได้อีก') +
+        crCards(c).map(function (cc) {
+          var bal = num(c.crBal[cc.id]);
+          var cin = num(T.crIn[cc.id]), ccut = num(T.crCut[cc.id]);
+          var pp = crPrice(cc.id, 'powder');
+          var cap = pp > 0 ? bal / pp : 0;
+          var low = num(cc.warn) > 0 && bal < num(cc.warn);
+          return creditDonut('เครดิตคงเหลือของ ' + cc.name + ' ที่อยู่กับเรา',
+            'เงินที่คู่ค้ารายนี้โอนมาล่วงหน้าแล้วเรายังไม่ได้ส่งมอบ',
+            bal, cin, ccut, cap, r, low,
+            [['รับเงินสะสม', m2(cin), 'in'], ['ส่งมอบแล้ว', m2(ccut), 'out']],
+            'เรายังค้างปูนให้ ' + cc.name + ' ',
+            '#E2E2EE', crColor(cc.id), pp, crPrice(cc.id, 'bag'), 'ส่งมอบได้อีก');
+        }).join('') +
       '</div>' +
 
       monthlyCard(c) +
@@ -1035,20 +1087,23 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<div class="tbox"><table><thead>' +
           '<tr><th rowspan="2">วันที่</th><th rowspan="2">รายการ</th><th rowspan="2" class="n sep">ตัน</th>' +
           '<th colspan="3" class="d c sep">ฝั่ง' + esc(nm.factory) + ' (ต้นทุน)</th>' +
-          '<th colspan="3" class="m c sep">ฝั่ง ' + esc(nm.buyer) + ' (ราคาขาย)</th></tr>' +
+          '<th colspan="4" class="m c sep">ฝั่งคู่ค้าวางเงินล่วงหน้า</th></tr>' +
           '<tr><th class="d sub n">฿/ตัน</th><th class="d sub n">เคลื่อนไหว</th><th class="d sub n sep">คงเหลือ</th>' +
-          '<th class="m sub n">฿/ตัน</th><th class="m sub n">เคลื่อนไหว</th><th class="m sub n sep">คงเหลือ</th></tr>' +
+          '<th class="m sub sep">ราย</th>' +
+          '<th class="m sub n">฿/ตัน</th><th class="m sub n">เคลื่อนไหว</th><th class="m sub n">คงเหลือของรายนั้น</th></tr>' +
         '</thead><tbody>' +
         (opening ? '<tr style="background:var(--sunken)"><td class="muted">ยกมา</td>' +
           '<td class="muted">ยอดเครดิตคงเหลือก่อนเข้าเดือนนี้</td><td class="n faint sep">—</td>' +
           '<td class="n faint">—</td><td class="n faint">—</td><td class="n str sep">' + m2(opening.fBal) + '</td>' +
-          '<td class="n faint">—</td><td class="n faint">—</td><td class="n str sep">' + m2(opening.jBal) + '</td>' +
+          '<td class="faint sep">—</td>' +
+          '<td class="n faint">—</td><td class="n faint">—</td><td class="n str">' + m2(opening.jBal) + '</td>' +
           '</tr>' : '') +
-        (body || '<tr><td colspan="9" class="muted" style="padding:28px;text-align:center">ยังไม่มีรายการ · กดปุ่ม “บันทึกเงินเข้า” เพื่อเริ่ม</td></tr>') + '</tbody>' +
+        (body || '<tr><td colspan="10" class="muted" style="padding:28px;text-align:center">ยังไม่มีรายการ · กดปุ่ม “บันทึกเงินเข้า” เพื่อเริ่ม</td></tr>') + '</tbody>' +
         '<tfoot><tr><th colspan="2">รวมทั้งช่วง</th>' +
           '<td class="n sep">' + t2(T.inTons) + '</td><td></td>' +
-          '<td class="n" style="color:var(--bad)">−' + m2(T.fCut) + '</td><td class="n sep">' + m2(c.fBal) + '</td><td></td>' +
-          '<td class="n" style="color:var(--bad)">−' + m2(T.jCut) + '</td><td class="n sep">' + m2(c.jBal) + '</td>' +
+          '<td class="n" style="color:var(--bad)">−' + m2(T.fCut) + '</td><td class="n sep">' + m2(c.fBal) + '</td>' +
+          '<td class="muted sep" style="font-size:11px">ทุกราย</td><td></td>' +
+          '<td class="n" style="color:var(--bad)">−' + m2(T.jCut) + '</td><td class="n">' + m2(c.jBal) + '</td>' +
           '</tr></tfoot>' +
         '</table></div>' +
         '<div class="card-b" style="border-top:1px solid var(--line-soft)">' +
@@ -1216,11 +1271,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     var last = ms[ms.length - 1];
     return '<section class="card" style="margin-bottom:14px">' +
       '<div class="card-h"><div><h2>สรุปรายเดือน</h2>' +
-      '<p class="note">เราจ่ายให้' + esc(nm.factory) + 'เดือนละเท่าไร และ ' + esc(nm.buyer) + ' จ่ายเรามาเดือนละเท่าไร</p></div></div>' +
+      '<p class="note">เราจ่ายให้' + esc(nm.factory) + 'เดือนละเท่าไร และคู่ค้าวางเงินล่วงหน้า' + ' จ่ายเรามาเดือนละเท่าไร</p></div></div>' +
       '<div class="tbox"><table><thead>' +
         '<tr><th rowspan="2">เดือน</th>' +
         '<th colspan="3" class="d c sep">เครดิตกับ' + esc(nm.factory) + '</th>' +
-        '<th colspan="3" class="m c">เครดิตของ ' + esc(nm.buyer) + ' ที่อยู่กับเรา</th></tr>' +
+        '<th colspan="3" class="m c">เครดิตของคู่ค้าวางเงินล่วงหน้า · รวมทุกราย</th></tr>' +
         '<tr><th class="d sub n">เราจ่ายเข้าไป</th><th class="d sub n">ใช้ไป</th><th class="d sub n sep">คงเหลือสิ้นเดือน</th>' +
         '<th class="m sub n">เขาจ่ายเรา</th><th class="m sub n">ส่งมอบแล้ว</th><th class="m sub n">คงเหลือสิ้นเดือน</th></tr>' +
       '</thead><tbody>' + body + '</tbody>' +
@@ -2011,7 +2066,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<tr><th rowspan="2">วันที่</th><th rowspan="2" class="n">คู่รถ</th>' +
         '<th colspan="2" class="c">ปูนผง (ตัน)</th><th colspan="2" class="c">ปูนถุง (ตัน)</th>' +
         '<th rowspan="2" class="n sep">ตัดเงินโรงงาน</th>' +
-        '<th colspan="2" class="m c">ส่งมอบให้ ' + esc(nm.buyer) + '</th></tr>' +
+        '<th colspan="2" class="m c">ส่งมอบตัดเครดิต · ทุกราย</th></tr>' +
         '<tr><th class="sub n">ฝั่งลาว</th><th class="sub n">ฝั่งไทย</th>' +
         '<th class="sub n">ฝั่งลาว</th><th class="sub n">ฝั่งไทย</th>' +
         '<th class="m sub n">ตัน</th><th class="m sub n">ตัดเงิน</th></tr>' +
@@ -2363,6 +2418,38 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<p class="hint' + (warn ? ' w' : '') + '">' + esc(hint) + '</p></div>';
     }
 
+
+    /* ---------- คู่ค้าวางเงินล่วงหน้า แก้แล้วบันทึกทันที ---------- */
+    function crf(id, key, val, label, hint, kind) {
+      var iid = 'cr-' + id + '-' + key;
+      return '<div><label class="fl" for="' + iid + '">' + esc(label) + '</label>' +
+        '<input id="' + iid + '" ' + (kind === 'num' ? 'class="n" type="text" inputmode="decimal"' : 'type="text" maxlength="90"') +
+        ' value="' + esc(String(val === undefined || val === null ? '' : val)) + '" ' +
+        'data-cr="' + esc(id) + ':' + key + '"><p class="hint">' + esc(hint) + '</p></div>';
+    }
+    var crBody = crAll().map(function (c, i) {
+      var used = crUsed(c.id);
+      return '<div style="border:1px solid var(--line);border-left:4px solid ' + crColor(c.id) + ';' +
+        'border-radius:var(--r-md);padding:11px 13px;margin-bottom:10px;background:var(--card)">' +
+        '<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:9px">' +
+        '<b style="font-size:13.5px;color:var(--head)">' + esc(c.name || 'ยังไม่ได้ตั้งชื่อ') + '</b>' +
+        (i === 0 ? '<span class="badge b-i">รายแรก</span>' : '') +
+        (c.off ? '<span class="badge b-w">ปิดใช้งาน</span>' : '') +
+        '<span class="badge b-n">' + (used ? 'มีรายการแล้ว ' + used + ' รายการ' : 'ยังไม่มีรายการ') + '</span>' +
+        '<span style="flex:1 1 auto"></span>' +
+        '<button type="button" class="btn sm" data-croff="' + esc(c.id) + '">' +
+        (c.off ? 'เปิดใช้งาน' : 'ปิดใช้งาน') + '</button>' +
+        (used || crAll().length < 2 ? '' : '<button type="button" class="btn sm" data-crdel="' + esc(c.id) + '">ลบ</button>') +
+        '</div>' +
+        '<div class="grid g2">' +
+        crf(c.id, 'name', c.name, 'ชื่อคู่ค้า', 'ชื่อนี้ขึ้นทุกหน้า ทั้งการ์ดเครดิตและรายการเคลื่อนไหว', 'text') +
+        crf(c.id, 'warn', num(c.warn), 'เตือนเมื่อเครดิตเหลือต่ำกว่า', 'บาท · ใส่ 0 ถ้าไม่ต้องการให้เตือน', 'num') +
+        crf(c.id, 'pPowder', num(c.pPowder), 'ราคาปูนผง (บาท/ตัน)', 'ใช้เป็นค่าตั้งต้นตอนตัดสตอกให้รายนี้ แก้รายครั้งได้', 'num') +
+        crf(c.id, 'pBag', num(c.pBag), 'ราคาปูนถุง (บาท/ตัน)',
+          'เทียบเท่าถุงละ ' + m2(num(c.pBag) / bagPerTon(r)) + ' บาท (1 ตัน = ' + t2(bagPerTon(r)) + ' ถุง)', 'num') +
+        '</div></div>';
+    }).join('');
+
     var tierBody = [0, 1, 2, 3, 4].map(function (i) {
       return '<tr><th scope="row" style="font-weight:500;white-space:nowrap">' + (i === 4 ? '5 คันขึ้นไป' : (i + 1) + ' คัน') + '</th>' +
         ['pLao', 'pThai', 'bLao', 'bThai'].map(function (k) {
@@ -2381,7 +2468,6 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           '<div class="grid g2">' +
             namef('ownCompany', nm.ownCompany, 'ชื่อบริษัทเรา (ใช้ลงท้ายข้อความถึงลูกค้า)', 'ชื่อที่ปรากฏเป็นผู้ส่งในข้อความแจ้งลูกค้า') +
             namef('factory', nm.factory, 'ชื่อโรงงาน (ฝั่งต้นทุน)', 'ฝั่งที่เราโอนเงินไปและหักตอนปูนเข้า') +
-            namef('buyer', nm.buyer, 'ชื่อผู้ซื้อ (ฝั่งราคาขาย)', 'ฝั่งที่โอนเงินล่วงหน้ามาและหักตอนส่งมอบ') +
             namef('shipper', nm.shipper, 'ชื่อเรียกผู้ให้บริการชิปปิ้งลาว', 'ชื่อสั้นที่ใช้ในหัวข้อหน้าชิปปิ้ง') +
             namef('shipperFull', nm.shipperFull, 'ชื่อนิติบุคคลผู้ให้บริการชิปปิ้งลาว', 'ชื่อเต็มสำหรับเอกสารและการกระทบยอด') +
             namef('thaiShipper', nm.thaiShipper, 'ชื่อเรียกผู้ให้บริการชิปปิ้งไทย · ปูนผง', 'ชื่อสั้นที่ใช้ในหัวข้อหน้าค่าชิปปิ้ง') +
@@ -2392,11 +2478,14 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         section(2, 'ราคาที่' + nm.factory, 'ต้นทุนที่หักจากเครดิต คิดจากน้ำหนักฝั่งลาว',
           '<div class="grid g2">' + numf('fPowder', r.fPowder, 'ปูนผง', 'บาทต่อตัน') + numf('fBag', r.fBag, 'ปูนถุง', 'บาทต่อตัน') + '</div>') +
 
-        section(3, 'ราคาขายให้ ' + nm.buyer, 'ใช้เป็นค่าตั้งต้นในฟอร์มส่งมอบ แก้รายครั้งได้',
-          '<div class="grid g2">' +
-            numf('jPowder', r.jPowder, 'ปูนผง', 'บาทต่อตัน') +
-            numf('jBag', r.jBag, 'ปูนถุง (บาทต่อตัน)',
-              'เทียบเท่าถุงละ ' + m2(jBagPerBag(r)) + ' บาท (1 ตัน = ' + t2(bagPerTon(r)) + ' ถุง)') +
+        section(3, 'คู่ค้าวางเงินล่วงหน้า', 'ผู้ซื้อที่โอนเงินมาก่อนแล้วเราตัดเครดิตตอนส่งมอบ · เพิ่มได้หลายราย แต่ละรายมีราคาและยอดคงเหลือของตัวเอง',
+          '<p class="note" style="margin-bottom:10px">ส่วนนี้แก้แล้วบันทึกทันที ไม่ต้องกดปุ่มบันทึกด้านล่าง · ' +
+          'ทุกรายที่อยู่ในนี้จะมีการ์ดเครดิตในหน้าคุมการตัดเงิน และขึ้นในช่องเลือกตัดเครดิตของฟอร์มตัดสตอก</p>' +
+          crBody +
+          '<div class="actions"><button type="button" class="btn" id="crAdd" ' +
+          'style="border:1.5px dashed var(--accent);color:var(--accent);background:var(--tint-weak)">' +
+          '<span class="ms" aria-hidden="true" style="font-size:18px">add</span>เพิ่มคู่ค้าวางเงินล่วงหน้า</button></div>' +
+          '<div class="grid g2" style="margin-top:14px">' +
             numf('bagKg', r.bagKg, 'น้ำหนักปูนหนึ่งถุง (กก.)',
               'ใช้แปลงให้ดูราคาต่อถุงเท่านั้น การตัดเงินคิดเป็นบาทต่อตัน') +
           '</div>') +
@@ -2513,7 +2602,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         S.entries.forEach(function (e) {
           if (e.date <= d && !e.rates) {
             e.rates = JSON.parse(JSON.stringify(S.rates));
-            delete e.rates.lkH; delete e.rates.lkS;
+            delete e.rates.lkH; delete e.rates.lkS; delete e.rates.credits;
             delete e.rates.pnH; delete e.rates.pnS;
             n += 1;
           }
@@ -2544,6 +2633,67 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         viewRates();
       });
       inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); inp.blur(); } });
+    });
+    Array.prototype.forEach.call(el('v-rates').querySelectorAll('[data-cr]'), function (inp) {
+      inp.addEventListener('change', function () {
+        var pp = inp.getAttribute('data-cr').split(':');
+        var c = crFind(pp[0]);
+        if (!c) { return; }
+        if (pp[1] === 'name') {
+          var v = inp.value.trim();
+          if (!v) { inp.value = c.name; return; }
+          if (v === c.name) { return; }
+          c.name = v;
+        } else {
+          var n = parseFloat(String(inp.value).replace(/,/g, ''));
+          if (isNaN(n) || n < 0) { viewRates(); return; }
+          if (num(c[pp[1]]) === n) { return; }
+          c[pp[1]] = n;
+        }
+        crSyncName();
+        save(); logIt('แก้คู่ค้าวางเงินล่วงหน้า', c.name + ' · ' + pp[1]);
+        viewRates(); toast('บันทึกแล้ว');
+      });
+      inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); inp.blur(); } });
+    });
+    if (el('crAdd')) {
+      el('crAdd').addEventListener('click', function () {
+        S.credits.push({ id: crNewId(), name: 'คู่ค้ารายใหม่', pPowder: num(S.rates.jPowder),
+                         pBag: num(S.rates.jBag), warn: 0, off: false });
+        save(); logIt('เพิ่มคู่ค้าวางเงินล่วงหน้า', 'รายที่ ' + S.credits.length);
+        viewRates(); toast('เพิ่มแล้ว · ตั้งชื่อและราคาของรายนี้ได้เลย');
+      });
+    }
+    Array.prototype.forEach.call(el('v-rates').querySelectorAll('[data-croff]'), function (b) {
+      b.addEventListener('click', function () {
+        var c = crFind(b.getAttribute('data-croff'));
+        if (!c) { return; }
+        c.off = !c.off;
+        save(); logIt(c.off ? 'ปิดใช้งานคู่ค้าวางเงินล่วงหน้า' : 'เปิดใช้งานคู่ค้าวางเงินล่วงหน้า', c.name);
+        viewRates();
+        toast(c.off ? 'ปิดใช้งาน ' + c.name + ' แล้ว · ยอดเก่ายังอยู่ครบ' : 'เปิดใช้งาน ' + c.name + ' แล้ว');
+      });
+    });
+    Array.prototype.forEach.call(el('v-rates').querySelectorAll('[data-crdel]'), function (b) {
+      b.addEventListener('click', function () {
+        var c = crFind(b.getAttribute('data-crdel'));
+        if (!c) { return; }
+        if (crUsed(c.id)) { toast('รายนี้มีรายการเงินผูกอยู่ ลบไม่ได้ ใช้ปิดใช้งานแทน'); return; }
+        askBox({
+          title: 'ลบคู่ค้ารายนี้ใช่ไหม',
+          lede: 'ลบได้เพราะยังไม่มีรายการเงินผูกอยู่',
+          box: '<b>' + esc(c.name) + '</b><br>ราคาปูนผง ' + m2(num(c.pPowder)) +
+            ' · ราคาปูนถุง ' + m2(num(c.pBag)) + ' บาทต่อตัน',
+          hint: 'ลบรายนี้แล้วจะหายจากช่องเลือกตัดเครดิตและการ์ดในหน้าคุมการตัดเงิน',
+          ok: 'ลบรายนี้',
+          go: function () {
+            S.credits = crAll().filter(function (x) { return String(x.id) !== String(c.id); });
+            crSyncName();
+            save(); logIt('ลบคู่ค้าวางเงินล่วงหน้า', c.name);
+            viewRates(); toast('ลบ ' + c.name + ' แล้ว');
+          }
+        });
+      });
     });
     Array.prototype.forEach.call(el('v-rates').querySelectorAll('[data-rate]'), function (inp) {
       inp.addEventListener('change', function () {
@@ -2668,7 +2818,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     if (pick.balance) {
       sets.push({ title: 'สรุปยอด', header: ['รายการ', 'ค่า'], rows: [
         ['ยอดคงเหลือที่ ' + nm.factory, m2(c.fBal)],
-        ['เงินรับล่วงหน้าคงเหลือ ' + nm.buyer, m2(c.jBal)],
+        ['เงินรับล่วงหน้าคงเหลือ · คู่ค้าทุกราย', m2(c.jBal)],
         ['น้ำหนักออกจากโรงงาน ฝั่งลาว (ตัน)', t2(T.inTons)],
         ['น้ำหนักรับเข้าไทยจริง (ตัน)', t2(T.inTonsThai)],
         ['น้ำหนักส่วนต่างจากการถ่ายปูน (ตัน)', t2(T.loss)],
@@ -2716,13 +2866,13 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       });
       sets.push({ title: 'สมุดบัญชีคุมการตัดเงิน', header: ['วันที่', 'ประเภทรายการ', 'รายละเอียด', 'ประเภทปูน', 'ตัน',
         'เงินเข้า-' + nm.factory, 'อัตรา-' + nm.factory, 'ตัดเงิน-' + nm.factory, 'คงเหลือ-' + nm.factory,
-        'เงินเข้า-' + nm.buyer, 'ราคาขาย', 'ตัดเงิน-' + nm.buyer, 'คงเหลือ-' + nm.buyer, 'สต๊อกผง', 'สต๊อกถุง'], rows: lrows });
+        'คู่ค้าเครดิต', 'เงินเข้า-เครดิต', 'ราคาขาย', 'ตัดเงิน-เครดิต', 'คงเหลือ-เครดิต', 'สต๊อกผง', 'สต๊อกถุง'], rows: lrows });
     }
 
     if (pick.sales) {
       var srows = c.rows.filter(function (w) { return w.e.kind === 'saleBuyer' || w.e.kind === 'saleOther'; }).map(function (w) {
         var u = costOf(w.e.cementType);
-        return [thDate(w.date), w.e.kind === 'saleBuyer' ? nm.buyer : (w.e.who || 'ลูกค้ารายอื่น'),
+        return [thDate(w.date), crName(w.cid) || (w.e.who || 'ลูกค้ารายอื่น'),
           typeTH(w.e.cementType), t2(w.tons), m0(w.jRate), m2(w.rev), m0(u), m0(w.jRate - u), m2((w.jRate - u) * w.tons)];
       });
       srows.push(['รวม', '', '', t2(T.soldPowder + T.soldBag), '', m2(c.revenue), '', '', m2(c.grossBeforeShip)]);
@@ -4754,6 +4904,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           /* ฐานข้อมูลที่ยังไม่เคยรับกติกาชุดนำเข้า ต้องไม่ดึงวิธีนับแบบเก่ากลับมาทับ */
           if (!st.rates.setMode) { S.rates.tierCount = 'set'; S.rates.setMode = 1; }
           ratesFix();
+          /* รายชื่อคู่ค้าวางเงินล่วงหน้าเดินทางมากับ rates แต่เก็บแยกในเครื่อง */
+          if (Array.isArray(S.rates.credits) && S.rates.credits.length) {
+            S.credits = S.rates.credits;
+          }
+          delete S.rates.credits;
         }
         /* ฐานข้อมูลเป็นตัวตั้งเรื่องรหัสล็อก ถ้าที่นั่นยกเลิกแล้ว เครื่องนี้ต้องยกเลิกตาม */
         if (st.rates && !st.rates.lkH) { delete S.rates.lkH; delete S.rates.lkS; }
@@ -4814,7 +4969,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                   users: (S.trash.users || []).slice(),
                   entries: (S.trash.entries || []).slice() };
     var jobs = [
-      cl.from('app_settings').upsert({ id: 'default', rates: S.rates, names: S.names,
+      cl.from('app_settings').upsert({ id: 'default', rates: crPack(), names: S.names,
                                        updated_at: new Date().toISOString() }),
       cl.from('entries').upsert(S.entries.map(entToRow)),
       cl.from('customers').upsert(S.customers.map(cusToRow)),
@@ -5307,7 +5462,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
              wb: t.wb || '', mf: t.mf || '', round: t.round || '', wh: !!t.wh,
              sp: num(t.sp) || '', jp: !!t.jp, bags: num(t.bags) || BAGS_TRUCK,
              tTake: t.tTake || '', fi: (t.fi || '').trim(),
-             dw: (t.dw || '').trim(), dp: num(t.dp) || '', sid: t.sid || '', dt: num(t.dt) || '',
+             dw: (t.dw || '').trim(), dp: num(t.dp) || '', dcid: t.dcid || '', sid: t.sid || '', dt: num(t.dt) || '',
              lao: side(t.lao), thai: side(t.thai) };
   }
 
@@ -5770,7 +5925,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   function sxNewTruck(type) {
     var t = newTruck();
     t.type = type === 'bag' ? 'bag' : 'powder';
-    t.tTake = ''; t.dw = ''; t.dp = ''; t.sid = ''; t.fi = ''; t.dt = '';
+    t.tTake = ''; t.dw = ''; t.dp = ''; t.dcid = ''; t.sid = ''; t.fi = ''; t.dt = '';
     if (t.type === 'bag') {
       t.nation = 'lao'; t.wh = true; t.bags = BAGS_TRUCK;
       t.lao.tons = t2(BAGS_TRUCK / BAGS_TON); t.thai.tons = t.lao.tons;
@@ -5793,10 +5948,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
                 /* รถปูนถุงรุ่นเก่าไม่ได้เก็บจำนวนถุง คิดย้อนจากน้ำหนักที่บันทึกไว้ ยอดเดิมจะได้ไม่ขยับ */
                 bags: num(t.bags) || ((t.type === 'bag' && num(t.lao && t.lao.tons) > 0)
                   ? Math.round(num(t.lao.tons) * BAGS_TON) : BAGS_TRUCK),
-                dw: t.dw || '', dp: t.dp ? String(t.dp) : '', sid: t.sid || '', dt: t.dt || '',
+                dw: t.dw || '', dp: t.dp ? String(t.dp) : '', dcid: t.dcid || '', sid: t.sid || '', dt: t.dt || '',
                 lao: side(t.lao), thai: side(t.thai) };
     /* รายการขายที่เคยสร้างให้อัตโนมัติ ถ้าถูกลบไปจากตารางขายแล้ว ก็ล้างช่องขายปลายทางตาม */
-    if (out.sid && !sxFind(out.sid, 'pwOut')) { out.sid = ''; out.dw = ''; out.dp = ''; }
+    if (out.sid && !sxFind(out.sid, 'pwOut')) { out.sid = ''; out.dw = ''; out.dp = ''; out.dcid = ''; }
     return out;
   }
 
@@ -6091,7 +6246,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       (bag ? 'เท่ากับ ' + t2(num(e.tons)) + ' ตัน · ' : '') +
       'เป็นเงิน ' + m2(num(e.price) * (bag ? num(p.bags) : num(e.tons))) + ' บาท<br>' +
       'ลูกค้า ' + esc(e.who || 'ไม่ระบุ') + (p.plate ? ' · ทะเบียน ' + esc(p.plate) : '') +
-      (p.jp ? ' · ตัดเครดิต' + esc(nm.buyer) : '') + '<br>' +
+      (crOf(e) ? ' · ตัดเครดิต ' + esc(crName(crOf(e))) : '') + '<br>' +
       'วันที่รถมารับ ' + esc(thDate(e.date));
   }
   function outDel(k, e) {
@@ -6221,6 +6376,113 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   });
   window.addEventListener('resize', dotsPlace);
   window.addEventListener('scroll', dotsPlace, true);
+
+  /* ================= คู่ค้าวางเงินล่วงหน้า =================
+     เดิมระบบรองรับผู้ซื้อรายเดียวคือ บจก. JP · ตอนนี้เพิ่มได้หลายราย
+     แต่ละรายมีราคาขายของตัวเอง มีการ์ดเครดิต และยอดคงเหลือแยกกัน */
+  var CR_COLORS = ['#1E9B55', '#C9872A', '#5B6FE0', '#9A6CE0', '#1E9AA8', '#D05A8C'];
+
+  function crAll() { return Array.isArray(S.credits) ? S.credits : []; }
+  function crPack() {
+    var o = JSON.parse(JSON.stringify(S.rates));
+    o.credits = JSON.parse(JSON.stringify(crAll()));
+    return o;
+  }
+  function crOn() { return crAll().filter(function (c) { return !c.off; }); }
+  function crFirst() { return crAll()[0] || null; }
+  function crFind(id) {
+    var f = null;
+    crAll().forEach(function (c) { if (String(c.id) === String(id)) { f = c; } });
+    return f;
+  }
+  function crIndex(id) {
+    var i = -1;
+    crAll().forEach(function (c, k) { if (String(c.id) === String(id)) { i = k; } });
+    return i;
+  }
+  function crName(id) { var c = crFind(id); return c ? c.name : ''; }
+  function crColor(id) {
+    var i = crIndex(id);
+    return CR_COLORS[(i < 0 ? 0 : i) % CR_COLORS.length];
+  }
+  function crPrice(id, ty) {
+    var c = crFind(id) || {};
+    var v = num(ty === 'bag' ? c.pBag : c.pPowder);
+    if (v > 0) { return v; }
+    return num(ty === 'bag' ? S.rates.jBag : S.rates.jPowder);
+  }
+  /* รายการนี้ตัดเครดิตของใคร · ข้อมูลเก่าที่ติ๊ก jp ไว้ถือเป็นรายแรก */
+  function crOf(e) {
+    if (!e) { return ''; }
+    var p = e.trucks;
+    if (p && !Array.isArray(p) && p.cid) { return crFind(p.cid) ? String(p.cid) : ''; }
+    var f = crFirst();
+    if (e.kind === 'depositJ' || e.kind === 'saleBuyer') { return f ? String(f.id) : ''; }
+    if (p && !Array.isArray(p) && p.jp) { return f ? String(f.id) : ''; }
+    return '';
+  }
+
+  /* คู่ค้าที่ควรมีการ์ดในหน้าคุมการตัดเงิน · รายที่ปิดใช้งานแล้วแต่ยังมียอด ก็ยังต้องเห็น */
+  function crCards(c) {
+    c = c || compute();
+    return crAll().filter(function (x) {
+      return !x.off || Math.abs(num(c.crBal[x.id])) > 0.004 || num(c.T.crIn[x.id]) > 0;
+    });
+  }
+
+  /* ชื่อที่ขึ้นหัวหน้าคุมการตัดเงิน · เกินสองรายใช้คำรวม */
+  function crTitle(c) {
+    var list = crCards(c);
+    if (!list.length) { return 'คู่ค้าวางเงินล่วงหน้า'; }
+    if (list.length <= 2) { return list.map(function (x) { return x.name; }).join(' · '); }
+    return 'คู่ค้าวางเงินล่วงหน้า ' + list.length + ' ราย';
+  }
+  function crNewId() {
+    var m = 0;
+    crAll().forEach(function (c) {
+      var n = parseInt(String(c.id).replace(/[^0-9]/g, ''), 10);
+      if (n > m) { m = n; }
+    });
+    return 'c' + (m + 1);
+  }
+  function crUsed(id) {
+    var n = 0;
+    S.entries.forEach(function (e) {
+      if (e.kind === 'bin') { return; }
+      if (String(crOf(e)) === String(id) && (e.kind === 'depositJ' || e.kind === 'saleBuyer' ||
+          ((e.kind === 'pwOut' || e.kind === 'whOut') && (e.trucks || {}).cid) ||
+          ((e.kind === 'pwOut' || e.kind === 'whOut') && (e.trucks || {}).jp))) { n += 1; }
+    });
+    return n;
+  }
+  /* ชื่อรายแรกคือชื่อผู้ซื้อเดิมในระบบ ให้ชื่อสองที่ตรงกันเสมอ */
+  function crSyncName() {
+    var f = crFirst();
+    if (f && f.name && S.names.buyer !== f.name) { S.names.buyer = f.name; nm = S.names; }
+  }
+  function crChip(id, small) {
+    var c = crFind(id);
+    if (!c) { return '<span class="badge b-n">ไม่ตัดเครดิต</span>'; }
+    return '<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:var(--r-pill);' +
+      'font-size:' + (small ? '10.5' : '11.5') + 'px;font-weight:700;white-space:nowrap;' +
+      'border:1px solid var(--line-field);background:var(--tint-weak);color:var(--head)">' +
+      '<span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:' + crColor(id) + '"></span>' +
+      esc(c.name) + '</span>';
+  }
+  /* ช่องเลือกตัดเครดิตในฟอร์มต่าง ๆ */
+  function crSelect(id, cur, label) {
+    var opts = '<option value="">ไม่ตัดเครดิต</option>' +
+      crOn().map(function (c) {
+        return '<option value="' + esc(c.id) + '"' + (String(cur) === String(c.id) ? ' selected' : '') + '>' +
+          esc(c.name) + '</option>';
+      }).join('');
+    var off = cur ? crFind(cur) : null;
+    if (cur && off && off.off) {
+      opts += '<option value="' + esc(off.id) + '" selected>' + esc(off.name) + ' (ปิดใช้งาน)</option>';
+    }
+    return '<div><label class="fl" for="' + id + '">' + esc(label || 'เลือกตัดเครดิต') + '</label>' +
+      '<select id="' + id + '" style="min-height:38px">' + opts + '</select></div>';
+  }
 
   /* ทุกชุดในระบบ ทั้งชุดที่มีรถแล้ว และชุดที่มีแต่เอกสาร (รถยังไม่มา) */
   function sxAllSets() {
@@ -6445,6 +6707,19 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       (side === 'lao' ? '020 5551 2345' : '081 234 5678') + '" style="min-height:38px"></div>';
   }
 
+
+  /* ช่องเลือกตัดเครดิตของรถคันนั้น ใช้คู่กับช่องขายปลายทาง */
+  function sxCr(i) {
+    var id = 'sxt_dcid_' + i;
+    var cur = SX.trucks[i].dcid || '';
+    var opts = '<option value="">ไม่ตัดเครดิต</option>' +
+      crOn().map(function (c) {
+        return '<option value="' + esc(c.id) + '"' + (String(cur) === String(c.id) ? ' selected' : '') + '>' +
+          esc(c.name) + '</option>';
+      }).join('');
+    return '<div style="min-width:0"><label class="fl" for="' + id + '" style="font-size:11px">เลือกตัดเครดิต</label>' +
+      '<select id="' + id + '" data-sxt="dcid:' + i + '" style="min-height:38px">' + opts + '</select></div>';
+  }
   function sxTruckBadges(i) {
     var t = SX.trucks[i], bag = t.type === 'bag';
     var tn = num(t.thai.tons);
@@ -6496,10 +6771,11 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         sxT(i, 'thai.plate', 'ทะเบียนรถไทย', '71-0087 เชียงราย', { list: 'sxDlThai' }) +
         sxTD(i, 'tTake', 'วันเวลารถไทยรับปูน') +
         sxT(i, 'thai.tons', 'ชั่งฝั่งไทย (ตัน)', '32.10', { num: true }));
-      h += sxRow('ปลายทาง', 'minmax(0,1.1fr) minmax(0,1.25fr) minmax(0,.9fr)',
+      h += sxRow('ปลายทาง', 'minmax(0,1fr) minmax(0,1.05fr) minmax(0,.8fr) minmax(0,1fr)',
         sxTD(i, 'tSend', 'วันเวลาเข้า STOCK') +
-        sxT(i, 'dw', 'ขายปลายทาง · ชื่อลูกค้า (เว้นว่างได้)', 'เว้นว่าง = เก็บไว้ใน STOCK', { list: 'sxDlCus', raw: true }) +
-        sxT(i, 'dp', 'ราคาขาย (บาท/ตัน)', '1450', { num: true }));
+        sxT(i, 'dw', 'ขายปลายทาง · ลูกค้า/ปลายทางจัดส่ง (เว้นว่างได้)', 'เว้นว่าง = เก็บไว้ใน STOCK', { list: 'sxDlCus', raw: true }) +
+        sxT(i, 'dp', 'ราคาขาย (บาท/ตัน)', '1450', { num: true }) +
+        sxCr(i));
     }
 
     if (more) {
@@ -6711,7 +6987,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
   function sxEditor(seq) {
     var p = SX.p, bag = SX.type === 'bag', bk = book();
     var cus = bk.customers.slice();
-    if (cus.indexOf(nm.buyer) < 0) { cus.unshift(nm.buyer); }
+    crAll().forEach(function (q) { if (q.name && cus.indexOf(q.name) < 0) { cus.unshift(q.name); } });
     var c = sxCalc();
     var h = '<section class="card" id="sxEd" style="border:2px solid var(--brand);margin-bottom:12px">' +
       dataList('sxDlLao', bk.lao) + dataList('sxDlThai', bk.thai) + dataList('sxDlCoLao', bk.coLao) +
@@ -7031,16 +7307,16 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           : (tb ? num(t.bags) / BAGS_TON : num(S.rates.truckTon));
         if (tb) {
           t.nation = 'lao'; t.wh = true;
-          t.dw = ''; t.dp = '';
+          t.dw = ''; t.dp = ''; t.dcid = '';
         } else { t.wh = false; }
         /* 3) ขายปลายทาง เข้า STOCK ก่อนแล้วตัดขายให้ในคราวเดียว */
         var want = !tb && (t.dw || '').trim();
         var ex = t.sid ? sxFind(t.sid, 'pwOut') : null;
-        if (!want) { if (ex) { sxKill(ex.id); } t.sid = ''; return; }
+        if (!want) { if (ex) { sxKill(ex.id); } t.sid = ''; t.dcid = ''; return; }
         var who = t.dw.trim();
         var rec = { date: dOnly(t.tSend) || SX.date, kind: 'pwOut', cementType: 'powder', who: who,
                     price: num(t.dp), tons: num(t.thai.tons),
-                    trucks: { plate: (t.thai.plate || '').trim(), jp: who === nm.buyer, auto: 1, src: e.id + ':' + (i + 1) } };
+                    trucks: { plate: (t.thai.plate || '').trim(), cid: t.dcid || '', auto: 1, src: e.id + ':' + (i + 1) } };
         if (ex) { for (var kk in rec) { if (Object.prototype.hasOwnProperty.call(rec, kk)) { ex[kk] = rec[kk]; } } }
         else { rec.id = newId(); S.entries.push(rec); t.sid = rec.id; }
         keep[String(t.sid)] = 1;
@@ -7571,7 +7847,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     pwList().forEach(function (e) {
       var p = e.trucks || {};
       moves.push({ at: e.date, dir: 'out', tons: num(e.tons),
-                   who: e.who || '', plate: p.plate || '', jp: !!p.jp, auto: !!p.auto,
+                   who: e.who || '', plate: p.plate || '', cid: crOf(e), auto: !!p.auto,
                    price: num(e.price), amount: num(e.price) * num(e.tons), entry: e });
     });
     moves.sort(function (a, b) { return (a.at || '').localeCompare(b.at || ''); });
@@ -7600,15 +7876,13 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<input id="pfTons" class="n" type="text" inputmode="decimal" value="' + (ed ? esc(t2(num(ed.tons))) : '') + '" placeholder="32.00" style="min-height:38px"></div>' +
         '<div><label class="fl" for="pfPT">ราคาต่อตัน (รวม VAT)</label>' +
         '<input id="pfPT" class="n" type="text" inputmode="decimal" value="' + (ed ? esc(m2(num(ed.price))) : '') + '" placeholder="1450" style="min-height:38px"></div>' +
-        '<div><label class="fl" for="pfWho">ลูกค้า</label>' +
+        '<div><label class="fl" for="pfWho">ลูกค้า/ปลายทางจัดส่ง</label>' +
         '<input id="pfWho" type="text" list="pfCus" value="' + (ed ? esc(ed.who || '') : '') + '" placeholder="ชื่อลูกค้า" style="min-height:38px">' +
         '<datalist id="pfCus">' + cus + '</datalist></div>' +
         '<div><label class="fl" for="pfPlate">ทะเบียนรถที่มารับ</label>' +
         '<input id="pfPlate" type="text" list="pfPlt" value="' + esc(ep.plate || '') + '" placeholder="73-3415 สระบุรี" style="min-height:38px">' +
         '<datalist id="pfPlt">' + pltOpts() + '</datalist></div>' +
-        '<div><label class="fl" for="pfJp">ขายให้ใคร</label><select id="pfJp" style="min-height:38px">' +
-        '<option value=""' + (ep.jp ? '' : ' selected') + '>ลูกค้ารายอื่น</option>' +
-        '<option value="1"' + (ep.jp ? ' selected' : '') + '>' + esc(nm.buyer) + ' · ตัดเครดิต</option></select></div>' +
+        crSelect('pfCid', ed ? crOf(ed) : '', 'เลือกตัดเครดิต') +
       '</div>' +
       '<p class="hint" id="pfCalc" style="margin:9px 0 0">กรอกตันกับราคาต่อตัน ระบบคิดเป็นเงินให้เอง</p>' +
       '<div class="actions" style="margin-top:10px">' +
@@ -7624,7 +7898,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
           return '<tr><td class="muted" style="white-space:nowrap">' + esc(dtTH(m.at)) + '</td>' +
             '<td>' + (isIn ? '<span class="badge b-s">รับเข้า</span>'
                            : '<span class="badge b-w">ขายออก</span>' +
-                             (m.jp ? ' <span class="badge b-i">' + esc(nm.buyer) + '</span>' : '') +
+                             (m.cid ? ' ' + crChip(m.cid, true) : '') +
                              (m.auto ? ' <span class="badge b-n">ขายปลายทาง</span>' : '')) + '</td>' +
             '<td class="str">' + esc(isIn ? m.who : (m.who || '—') + (m.plate ? ' · ' + m.plate : '')) + '</td>' +
             '<td class="n">' + (isIn ? '+' : '−') + m2(m.tons) + '</td>' +
@@ -7660,6 +7934,15 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     if (el('pfCancel')) {
       el('pfCancel').addEventListener('click', function () { PF.open = false; PF.editId = null; redraw(); });
     }
+    if (el('pfCid')) {
+      el('pfCid').addEventListener('change', function () {
+        var pr = crPrice(el('pfCid').value, 'powder');
+        if (el('pfCid').value && pr > 0 && !num(el('pfPT').value)) { el('pfPT').value = m2(pr); }
+        if (el('pfCalc')) { el('pfCalc').dispatchEvent(new Event('x')); }
+        var ev = document.createEvent('Event'); ev.initEvent('input', true, true);
+        if (el('pfTons')) { el('pfTons').dispatchEvent(ev); }
+      });
+    }
     if (el('pfTons') && el('pfPT')) {
       function calc() {
         var t = num(el('pfTons').value), r = num(el('pfPT').value);
@@ -7685,7 +7968,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         var rec = ed || { id: newId(), kind: 'pwOut' };
         rec.date = date; rec.cementType = 'powder'; rec.who = el('pfWho').value.trim();
         rec.price = num(el('pfPT').value); rec.tons = tons;
-        rec.trucks = { plate: el('pfPlate').value.trim(), jp: !!(el('pfJp') && el('pfJp').value) };
+        rec.trucks = { plate: el('pfPlate').value.trim(), cid: el('pfCid') ? el('pfCid').value : '' };
         if (!ed) { S.entries.push(rec); }
         PF.open = false; PF.editId = null;
         save(); logIt(ed ? 'แก้ไขรายการขายปูนผง' : 'ขายปูนผงจากสตอก', m2(tons) + ' ตัน');
@@ -8601,15 +8884,13 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<input id="wfPB" class="n" type="text" inputmode="decimal" value="' + (ed ? esc(m2(num(ed.price))) : '') + '" placeholder="65" style="min-height:38px"></div>' +
         '<div><label class="fl" for="wfPT">ราคาต่อตัน (รวม VAT)</label>' +
         '<input id="wfPT" class="n" type="text" inputmode="decimal" value="' + (ed ? esc(m2(num(ed.price) * BAGS_TON)) : '') + '" placeholder="1300" style="min-height:38px"></div>' +
-        '<div><label class="fl" for="wfWho">ลูกค้า</label>' +
+        '<div><label class="fl" for="wfWho">ลูกค้า/ปลายทางจัดส่ง</label>' +
         '<input id="wfWho" type="text" list="wfCus" value="' + (ed ? esc(ed.who || '') : '') + '" placeholder="ชื่อลูกค้า" style="min-height:38px">' +
         '<datalist id="wfCus">' + cus + '</datalist></div>' +
         '<div><label class="fl" for="wfPlate">ทะเบียนรถที่มารับ</label>' +
         '<input id="wfPlate" type="text" list="wfPlt" value="' + esc(ep.plate || '') + '" placeholder="73-3415 สระบุรี" style="min-height:38px">' +
         '<datalist id="wfPlt">' + pltOpts() + '</datalist></div>' +
-        '<div><label class="fl" for="wfJp">ขายให้ใคร</label><select id="wfJp" style="min-height:38px">' +
-        '<option value=""' + (ep.jp ? '' : ' selected') + '>ลูกค้ารายอื่น</option>' +
-        '<option value="1"' + (ep.jp ? ' selected' : '') + '>' + esc(nm.buyer) + ' · ตัดเครดิต</option></select></div>' +
+        crSelect('wfCid', ed ? crOf(ed) : '', 'เลือกตัดเครดิต') +
       '</div>' +
       '<p class="hint" id="wfCalc" style="margin:9px 0 0">กรอกราคาช่องใดช่องหนึ่ง อีกช่องคำนวณให้เอง · 1 ตัน = ' + BAGS_TON + ' ถุง</p>' +
       '<div class="actions" style="margin-top:10px">' +
@@ -8770,6 +9051,15 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
     if (el('wfCancel')) {
       el('wfCancel').addEventListener('click', function () { WF.open = false; WF.editId = null; redraw(); });
     }
+    if (el('wfCid')) {
+      el('wfCid').addEventListener('change', function () {
+        var pr = crPrice(el('wfCid').value, 'bag');
+        if (el('wfCid').value && pr > 0 && !num(el('wfPB').value)) {
+          el('wfPB').value = m2(pr / BAGS_TON);
+          el('wfPT').value = m2(pr);
+        }
+      });
+    }
 
     /* ราคาต่อถุงกับต่อตัน กรอกช่องไหนก็ได้ อีกช่องคำนวณให้ */
     if (el('wfPB') && el('wfPT')) {
@@ -8798,7 +9088,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         wrec.date = wdate; wrec.cementType = 'bag'; wrec.who = el('wfWho').value.trim();
         wrec.price = num(el('wfPB').value); wrec.tons = bags / BAGS_TON;
         wrec.trucks = { bags: bags, plate: el('wfPlate').value.trim(),
-                        jp: !!(el('wfJp') && el('wfJp').value) };
+                        cid: el('wfCid') ? el('wfCid').value : '' };
         if (!edw) { S.entries.push(wrec); }
         WF.open = false; WF.editId = null;
         save();
