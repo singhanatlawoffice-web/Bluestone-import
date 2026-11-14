@@ -6246,7 +6246,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       'border:1.5px solid var(--brand);color:var(--brand);font-weight:700;white-space:nowrap">ดูตัวอย่าง</button>' +
       '</div>';
   }
-  function exButtons() {
+  function exButtons(solo) {
     var out = '';
     EX_PHASES.forEach(function (name, i) {
       var list = EX_DOCS.filter(function (d) { return d.ph === i; });
@@ -6256,7 +6256,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
         '<h4 style="margin:0 0 6px;font-size:13px;color:var(--accent);font-weight:700">' + esc(name) + '</h4>' +
         list.map(exRow).join('') + '</section>';
     });
-    return '<div style="margin-top:12px;padding-top:11px;border-top:1px dashed var(--line-field)">' +
+    return '<div style="' + (solo ? '' : 'margin-top:12px;padding-top:11px;border-top:1px dashed var(--line-field)') + '">' +
       '<p style="margin:0 0 3px;font-size:13px;font-weight:700;color:var(--head)">' +
       'ลำดับเอกสารของหนึ่งชุดนำเข้า · กดดูตัวอย่างได้ทุกใบ</p>' +
       '<p class="hint" style="margin:0 0 9px">ไล่จากตกลงซื้อขายที่ลาว จนรถผ่านด่านเข้าสตอกที่ไทย · ' +
@@ -6271,6 +6271,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       '<p class="hint" style="margin:2px 0 0">บางใบสลับกันได้ตามงานจริง เช่น ใบอนุญาต สมอ. ขอล่วงหน้าได้ · ' +
       'ที่สลับไม่ได้คือ Invoice ต้องมาก่อน Form D และต้องจ่ายภาษีก่อน รถจึงออกจากด่านได้</p></div>';
   }
+
 
 
 
@@ -7468,7 +7469,10 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       row('บิลชิปปิ้งลาว', 'ใช้ตรวจยอด', 'เทียบยอดรวมของบิลกับป้าย “บิล…ควรเป็น … บาท” ในหัวข้อ 3 ระบบตรวจให้', 'bill') +
       row('ใบรายการรถ', 'ใช้จับคู่รถ', 'บอกว่ารถไทยคันไหนรับปูนจากรถลาวคันไหน มีทะเบียนหาง ชื่อคนขับ และเบอร์โทร', 'trk') +
       row('ใบเก็บเงินโรงงาน', 'ใช้ตรวจน้ำหนัก', 'ยอดเงินหารราคาต่อตัน ต้องได้เท่ากับน้ำหนักสุทธิในใบชั่งโรงงาน', 'fin');
-    return '<div style="margin:0 0 12px;padding:12px 14px;border:1.5px solid var(--accent);border-radius:12px;background:var(--tint-weak)">' +
+    return '<div style="margin:0 0 12px;padding:12px 14px;border:1.5px solid var(--accent);border-radius:12px;' +
+      'background:var(--tint-weak)">' + exButtons(true) + '</div>';
+    /* ตารางตัวอย่างการกรอกแบบเดิม เก็บโค้ดไว้ก่อน เผื่อเอากลับ */
+    /* return '<div style="margin:0 0 12px;padding:12px 14px;border:1.5px solid var(--accent);border-radius:12px;background:var(--tint-weak)">' +
       '<p style="margin:0 0 3px;font-size:13px;font-weight:700;color:var(--head)">ตัวอย่างการกรอก ' + (bag ? 'ชุดปูนถุง' : 'ชุดปูนผง') + '</p>' +
       '<p class="hint" style="margin:0 0 9px">' + (bag
         ? 'เลขเอกสารกับชื่อคู่ค้าในตัวอย่างเป็นข้อมูลสมมติทั้งหมด วางผังตามแบบฟอร์มจริง · เอกสารตัวอย่างเป็นของชุดปูนผง ตำแหน่งที่ดูเหมือนกัน'
@@ -7476,7 +7480,7 @@ pre.out{margin:0;max-height:260px;overflow:auto;padding:12px;background:var(--su
       ' · กด “ดูตัวอย่าง” ท้ายแถวเพื่อเปิดเอกสารจำลองที่มีหมุดชี้ตำแหน่ง · ตารางนี้มีไว้ดูอย่างเดียว ไม่ถูกบันทึก</p>' +
       '<div class="tbox"><table><thead><tr><th>ช่อง</th><th>ตัวอย่างที่กรอก</th><th>ดูจากเอกสารตรงไหน</th>' +
       '<th class="c">ตัวอย่างเอกสาร</th></tr></thead>' +
-      '<tbody>' + body + '</tbody></table></div>' + exButtons() + '</div>';
+      '<tbody>' + body + '</tbody></table></div></div>'; */
   }
 
   function sxEditor(seq) {
