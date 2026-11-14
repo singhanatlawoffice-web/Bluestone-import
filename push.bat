@@ -8,6 +8,15 @@ echo   repo: singhanatlawoffice-web/Bluestone-import
 echo ==========================================================
 echo.
 
+echo [0/6] remove 11 old example PDFs in ex\ (renamed set)
+for %%F in (03-tisi-permit 04-import-declaration 05-tax-payment-slip 06-lao-shipping-bill 07-truck-list 08-car-manifest 09-car-manifest 09-factory-tax-invoice 10-factory-weigh-slip 10-lao-shipping-bill 11-truck-list) do (
+  if exist "ex\%%F.pdf" (
+    del /q "ex\%%F.pdf"
+    echo    deleted %%F.pdf
+  )
+)
+echo.
+
 where git >nul 2>nul
 if errorlevel 1 goto NOGIT
 
